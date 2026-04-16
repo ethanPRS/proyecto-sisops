@@ -1610,3 +1610,41 @@ tbody td:first-child {
 .tooltip.visible {
   opacity: 1;
 }
+
+/* ── Expanded / Fullscreen Card ─────────────────────────────────────── */
+.card.expanded {
+  position: fixed;
+  top: var(--space-xl);
+  left: var(--space-xl);
+  right: var(--space-xl);
+  bottom: var(--space-xl);
+  z-index: 9999;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.card.expanded .chart-container {
+  flex: 1;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.card.expanded .chart-container canvas {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.btn-expand {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.btn-expand:hover {
+  color: var(--purple-main);
+}

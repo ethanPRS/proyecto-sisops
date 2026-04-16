@@ -79,7 +79,7 @@ function drawBarChart(canvasId, labels, values, title, unit) {
   const dpr = window.devicePixelRatio || 1;
   const container = canvas.parentElement;
   const width = container.clientWidth;
-  const height = 280;
+  const height = container.clientHeight > 0 ? container.clientHeight : 280;
 
   canvas.width = width * dpr;
   canvas.height = height * dpr;
@@ -292,3 +292,41 @@ function renderComparisonTable(algos, data) {
 }
 
 window.runComparison = runComparison;
+
+window.toggleChartExpanded = function(cardId, canvasId) {
+  const card = document.getElementById(cardId);
+  card.classList.toggle('expanded');
+  
+  const btn = card.querySelector('.btn-expand i');
+  if (card.classList.contains('expanded')) {
+    btn.className = 'ph ph-corners-in';
+  } else {
+    btn.className = 'ph ph-arrows-out';
+  }
+
+  // Set timeout to draw exactly after CSS expansion has computed
+  setTimeout(() => {
+    if (window.AppState && window.AppState.lastComparisonResult) {
+      const results = window.AppState.lastComparisonResult;
+      const algos = [];
+      const values = [];
+
+      for (const [name, data] of Object.entries(results)) {
+        if (data.error) continue;
+        algos.push(name);
+        if (canvasId === 'chart-tat') values.push(data.avg_turnaround);
+        if (canvasId === 'chart-wt') values.push(data.avg_waiting);
+        if (canvasId === 'chart-rt') values.push(data.avg_response);
+        if (canvasId === 'chart-cpu') values.push(data.cpu_utilization);
+      }
+
+      let title, unit;
+      if (canvasId === 'chart-tat') { title = 'Avg Turnaround Time'; unit = 'time units'; }
+      if (canvasId === 'chart-wt') { title = 'Avg Waiting Time'; unit = 'time units'; }
+      if (canvasId === 'chart-rt') { title = 'Avg Response Time'; unit = 'time units'; }
+      if (canvasId === 'chart-cpu') { title = 'CPU Utilization'; unit = '%'; }
+
+      drawBarChart(canvasId, algos, values, title, unit);
+    }
+  }, 50);
+};

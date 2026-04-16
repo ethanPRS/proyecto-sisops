@@ -465,26 +465,38 @@
           </div>
 
           <div class="chart-grid" id="comparison-charts">
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Turnaround Time</div>
+            <div class="card" id="card-tat">
+              <div class="card-title flex-between">
+                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Turnaround Time</div>
+                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-tat', 'chart-tat')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
+              </div>
               <div class="chart-container">
                 <canvas id="chart-tat" height="280"></canvas>
               </div>
             </div>
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Waiting Time</div>
+            <div class="card" id="card-wt">
+              <div class="card-title flex-between">
+                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Waiting Time</div>
+                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-wt', 'chart-wt')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
+              </div>
               <div class="chart-container">
                 <canvas id="chart-wt" height="280"></canvas>
               </div>
             </div>
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Response Time</div>
+            <div class="card" id="card-rt">
+              <div class="card-title flex-between">
+                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Response Time</div>
+                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-rt', 'chart-rt')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
+              </div>
               <div class="chart-container">
                 <canvas id="chart-rt" height="280"></canvas>
               </div>
             </div>
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> CPU Utilization (%)</div>
+            <div class="card" id="card-cpu">
+              <div class="card-title flex-between">
+                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> CPU Utilization (%)</div>
+                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-cpu', 'chart-cpu')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
+              </div>
               <div class="chart-container">
                 <canvas id="chart-cpu" height="280"></canvas>
               </div>
