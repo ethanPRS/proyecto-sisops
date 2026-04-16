@@ -252,33 +252,46 @@ function toggleAutoPlay() {
   }
 }
 
+let autoplayTimer = null;
+
 function startAutoPlay() {
   if (!PRState.result) return;
   PRState.playing = true;
 
   const playBtn = document.getElementById('pr-btn-play');
-  playBtn.textContent = '⏸ Pause';
+  playBtn.innerHTML = '<i class="ph ph-pause"></i> Pause';
   playBtn.classList.remove('btn-primary');
   playBtn.classList.add('btn-secondary');
 
-  PRState.playInterval = setInterval(() => {
+  function scheduleNext() {
+    if (!PRState.playing) return;
     if (PRState.currentStep >= PRState.result.steps.length - 1) {
       stopAutoPlay();
       return;
     }
+    
     stepNext();
-  }, 500);
+    
+    // Calculate delay based on speed slider
+    const speed = parseFloat(document.getElementById('pr-speed').value) || 1;
+    const baseDelay = 800; // 800ms base delay
+    const delay = baseDelay / speed;
+    
+    autoplayTimer = setTimeout(scheduleNext, delay);
+  }
+  
+  scheduleNext();
 }
 
 function stopAutoPlay() {
   PRState.playing = false;
-  if (PRState.playInterval) {
-    clearInterval(PRState.playInterval);
-    PRState.playInterval = null;
+  if (autoplayTimer) {
+    clearTimeout(autoplayTimer);
+    autoplayTimer = null;
   }
 
   const playBtn = document.getElementById('pr-btn-play');
-  playBtn.textContent = '▶ Play';
+  playBtn.innerHTML = '<i class="ph ph-play"></i> Play';
   playBtn.classList.remove('btn-secondary');
   playBtn.classList.add('btn-primary');
 }
@@ -292,6 +305,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pr-btn-prev').addEventListener('click', stepPrev);
   document.getElementById('pr-btn-reset').addEventListener('click', stepReset);
   document.getElementById('pr-btn-play').addEventListener('click', toggleAutoPlay);
+  
+  const speedSlider = document.getElementById('pr-speed');
+  const speedLabel = document.getElementById('pr-speed-label');
+  if (speedSlider && speedLabel) {
+    speedSlider.addEventListener('input', (e) => {
+      speedLabel.textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+    });
+  }
 });
 
 window.runPageReplacement = runPageReplacement;

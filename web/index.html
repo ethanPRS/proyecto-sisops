@@ -422,12 +422,17 @@
               <div class="card mb-md">
                 <div class="card-title"><span class="card-icon"><i class="ph ph-squares-four"></i></span> Frames</div>
                 <div class="page-frames-visual" id="pr-frames-visual"></div>
-                <div class="step-controls">
+                <div class="step-controls" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
                   <button class="btn btn-secondary btn-sm" id="pr-btn-reset"><i class="ph ph-skip-back"></i> Reset</button>
                   <button class="btn btn-secondary btn-sm" id="pr-btn-prev"><i class="ph ph-caret-left"></i> Prev</button>
                   <span class="step-counter" id="pr-step-counter">Step 0 / 0</span>
                   <button class="btn btn-secondary btn-sm" id="pr-btn-next">Next <i class="ph ph-caret-right"></i></button>
                   <button class="btn btn-primary btn-sm" id="pr-btn-play"><i class="ph ph-play"></i> Play</button>
+                  <div class="playback-speed" style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+                    <label for="pr-speed" style="font-size:0.8rem; margin:0;">Velocidad</label>
+                    <input type="range" id="pr-speed" min="0.25" max="3" step="0.25" value="1" style="width:80px;" />
+                    <span id="pr-speed-label" class="text-mono" style="font-size:0.8rem;">1.0x</span>
+                  </div>
                 </div>
               </div>
 

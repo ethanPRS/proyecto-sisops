@@ -45,29 +45,17 @@ async function extractRegex() {
 /* ═══════════════════════════════════════════════════════════════════════
    Display Results
    ═══════════════════════════════════════════════════════════════════════ */
-function displayRegexResults(result) {
+async function displayRegexResults(result) {
   const matches = result.matches || [];
 
-  // Update match count
-  document.getElementById('regex-match-count').textContent = `${result.total_matches} matches`;
-
-  // Count by category
+  // Reset counters
+  document.getElementById('regex-match-count').textContent = `0 matches`;
+  const statIds = ['regex-dates', 'regex-emails', 'regex-phones', 'regex-names', 'regex-addresses'];
+  for (const id of statIds) document.getElementById(id).textContent = '0';
+  
   const counts = { date: 0, email: 0, phone: 0, name: 0, address: 0 };
-  for (const m of matches) {
-    if (counts[m.category] !== undefined) {
-      counts[m.category]++;
-    }
-  }
-
-  document.getElementById('regex-dates').textContent = counts.date;
-  document.getElementById('regex-emails').textContent = counts.email;
-  document.getElementById('regex-phones').textContent = counts.phone;
-  document.getElementById('regex-names').textContent = counts.name;
-  document.getElementById('regex-addresses').textContent = counts.address;
-
-  // Render table
   const tbody = document.getElementById('regex-tbody');
-
+  
   if (matches.length === 0) {
     tbody.innerHTML = `
       <tr>
@@ -79,6 +67,8 @@ function displayRegexResults(result) {
     return;
   }
 
+  tbody.innerHTML = ''; // clear table
+  
   const categoryIcons = {
     date: '📅',
     email: '📧',
@@ -87,19 +77,57 @@ function displayRegexResults(result) {
     address: '🏠',
   };
 
-  tbody.innerHTML = matches.map((m, i) => `
-    <tr style="animation: fadeSlideIn 0.3s ease ${i * 0.03}s both;">
+  // Helper promise delay
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  // Animate adding matches row by row
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    
+    // Increment specific counter
+    if (counts[m.category] !== undefined) counts[m.category]++;
+    const idMap = { date: 'regex-dates', email: 'regex-emails', phone: 'regex-phones', name: 'regex-names', address: 'regex-addresses' };
+    if (idMap[m.category]) {
+      document.getElementById(idMap[m.category]).textContent = counts[m.category];
+    }
+    
+    // Update total counter
+    document.getElementById('regex-match-count').textContent = `${i + 1} matches`;
+
+    // Append row
+    const tr = document.createElement('tr');
+    tr.style.animation = 'fadeSlideIn 0.3s ease both';
+    
+    // Phosphor icons for categories (since we replaced emojis in index)
+    const pIcons = {
+      date: '<i class="ph ph-calendar"></i>',
+      email: '<i class="ph ph-envelope"></i>',
+      phone: '<i class="ph ph-phone"></i>',
+      name: '<i class="ph ph-user"></i>',
+      address: '<i class="ph ph-house"></i>',
+    };
+    
+    tr.innerHTML = `
       <td>
         <span class="badge badge-${getCategoryBadgeClass(m.category)}">
-          ${categoryIcons[m.category] || '📎'} ${m.category}
+          ${pIcons[m.category] || categoryIcons[m.category]} ${m.category}
         </span>
       </td>
       <td>
         <span class="match-highlight ${m.category}">${escapeHtml(m.value)}</span>
       </td>
       <td class="text-mono text-muted">${m.line_number}</td>
-    </tr>
-  `).join('');
+    `;
+    
+    tbody.appendChild(tr);
+    
+    // Scroll to bottom
+    const wrapper = tbody.closest('.table-wrapper');
+    if (wrapper) wrapper.scrollTop = wrapper.scrollHeight;
+    
+    // Wait for the next one (slower)
+    await delay(250); 
+  }
 }
 
 function getCategoryBadgeClass(category) {
