@@ -220,12 +220,16 @@ async function runSimulation() {
     AppState.lastScheduleResult = result;
 
     // Update scheduling screen
-    updateSchedulingStats(result);
-    drawGanttChart(result);
-    updateMetricsTable(result);
-
     // Switch to scheduling screen
     document.querySelector('[data-screen="scheduling"]').click();
+
+    // Force reflow/paint un momentito si es necesario, pero click() debe ser sincrono.
+    // Update scheduling screen
+    updateSchedulingStats(result);
+    setTimeout(() => {
+      drawGanttChart(result);
+      updateMetricsTable(result);
+    }, 50);
 
     // Update status bar
     document.getElementById('status-text').textContent =
