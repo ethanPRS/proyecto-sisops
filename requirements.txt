@@ -1,1 +1,6 @@
 PyQt5
+pytest
+flask
+flask-cors
+pyqtgraph>=0.13
+numpy>=1.21
