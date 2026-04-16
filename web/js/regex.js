@@ -31,8 +31,8 @@ async function extractRegex() {
       categories: categories,
     });
 
-    displayRegexResults(result);
-    showToast(`${result.total_matches} coincidencias encontradas`, 'success');
+    await displayRegexResults(result, text);
+    showToast(`${result.total_matches} coincidencias encontradas. Click en el texto para editar.`, 'success');
   } catch (err) {
     // handled by apiCall
   } finally {
@@ -45,7 +45,7 @@ async function extractRegex() {
 /* ═══════════════════════════════════════════════════════════════════════
    Display Results
    ═══════════════════════════════════════════════════════════════════════ */
-async function displayRegexResults(result) {
+async function displayRegexResults(result, rawText) {
   const matches = result.matches || [];
 
   // Reset counters
@@ -56,6 +56,17 @@ async function displayRegexResults(result) {
   const counts = { date: 0, email: 0, phone: 0, name: 0, address: 0 };
   const tbody = document.getElementById('regex-tbody');
   
+  // Setup backdrop
+  const inputEl = document.getElementById('regex-input');
+  const backdrop = document.getElementById('regex-backdrop');
+  if (inputEl && backdrop && rawText !== undefined) {
+    inputEl.style.display = 'none';
+    backdrop.style.display = 'block';
+    backdrop.innerHTML = escapeHtml(rawText);
+  }
+  
+  let lines = rawText ? rawText.split('\n').map(escapeHtml) : [];
+
   if (matches.length === 0) {
     tbody.innerHTML = `
       <tr>
@@ -121,12 +132,27 @@ async function displayRegexResults(result) {
     
     tbody.appendChild(tr);
     
+    // Highlight in backdrop
+    if (backdrop && lines.length > 0) {
+      const l = m.line_number - 1;
+      if (l >= 0 && l < lines.length) {
+        const escapedVal = escapeHtml(m.value);
+        lines[l] = lines[l].replace(escapedVal, `<span class="match-highlight ${m.category}">${escapedVal}</span>`);
+        backdrop.innerHTML = lines.join('\n');
+      }
+    }
+    
     // Scroll to bottom
     const wrapper = tbody.closest('.table-wrapper');
     if (wrapper) wrapper.scrollTop = wrapper.scrollHeight;
     
+    // Scroll backdrop to highlight approx
+    if (backdrop) {
+      backdrop.scrollTop = (m.line_number - 1) * 20; 
+    }
+    
     // Wait for the next one (slower)
-    await delay(250); 
+    await delay(300); 
   }
 }
 
@@ -175,12 +201,23 @@ Su información: roberto@tech.io, 15/06/1985.`;
   // Filter chips re-extract on click
   document.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      // If there's text, re-extract with new filter
+      // Switch back to input before re-extracting
+      document.getElementById('regex-backdrop').style.display = 'none';
+      document.getElementById('regex-input').style.display = 'block';
+      
       const text = document.getElementById('regex-input').value.trim();
       if (text) {
         setTimeout(extractRegex, 100);
       }
     });
+  });
+
+  // Switch back to edit mode on backdrop click
+  document.getElementById('regex-backdrop').addEventListener('click', () => {
+    document.getElementById('regex-backdrop').style.display = 'none';
+    const input = document.getElementById('regex-input');
+    input.style.display = 'block';
+    input.focus();
   });
 });
 
