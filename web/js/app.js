@@ -233,7 +233,9 @@ async function runSimulation() {
     updateSchedulingStats(result);
     setTimeout(() => {
       drawGanttChart(result);
-      updateMetricsTable(result);
+      if (window.updateLiveMetricsTable) {
+        window.updateLiveMetricsTable(result, 0);
+      }
     }, 50);
 
     // Update status bar
@@ -262,23 +264,90 @@ function updateSchedulingStats(result) {
   document.getElementById('stat-ctx-sw').textContent = result.context_switches;
 }
 
-function updateMetricsTable(result) {
+window.updateLiveMetricsTable = function(result, t) {
   const tbody = document.getElementById('metrics-tbody');
-  tbody.innerHTML = result.metrics.map((m, i) => `
-    <tr style="animation: fadeSlideIn 0.3s ease ${i * 0.05}s both;">
-      <td>
-        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${pidColor(m.pid)};margin-right:8px;"></span>
-        P${m.pid}
-      </td>
-      <td>${m.arrival_time}</td>
-      <td>${m.burst_time}</td>
-      <td>${m.completion_time}</td>
-      <td>${m.turnaround_time}</td>
-      <td>${m.waiting_time}</td>
-      <td>${m.response_time}</td>
-    </tr>
-  `).join('');
-}
+  if (!tbody || !result) return;
+  const tick = Math.max(0, Math.floor(t));
+  const gantt = result.gantt || [];
+  
+  // Find first start times for RT
+  const firstStarts = {};
+  for(const entry of gantt) {
+    if (entry.pid < 0) continue;
+    if (!(entry.pid in firstStarts)) {
+      firstStarts[entry.pid] = entry.start;
+    }
+  }
+
+  tbody.innerHTML = result.metrics.map((m, i) => {
+    // Has Arrived?
+    if (m.arrival_time > tick) {
+      return `
+        <tr style="opacity: 0.5">
+          <td>
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${pidColor(m.pid)};margin-right:8px;"></span>
+            P${m.pid}
+          </td>
+          <td>${m.arrival_time}</td>
+          <td>${m.burst_time}</td>
+          <td colspan="4" class="text-muted" style="text-align:center;font-style:italic">Llega en t=${m.arrival_time}...</td>
+        </tr>`;
+    }
+
+    const completed = m.completion_time <= tick;
+    const hasStarted = (firstStarts[m.pid] !== undefined) && (firstStarts[m.pid] <= tick);
+
+    // Completion Time
+    let compHtml = completed ? `<strong>${m.completion_time}</strong>` : `<span class="text-muted">⏳ en proceso</span>`;
+
+    // RT
+    let rtHtml = '—';
+    if (hasStarted) {
+      rtHtml = `<span style="font-size:0.75rem; color:var(--info)">${firstStarts[m.pid]} - ${m.arrival_time}</span> = <strong>${m.response_time}</strong>`;
+    } else {
+      rtHtml = `<span class="text-muted">esperando CPU...</span>`;
+    }
+
+    // TAT
+    let tatHtml = '—';
+    if (completed) {
+      tatHtml = `<span style="font-size:0.75rem; color:var(--purple-main)">${m.completion_time} - ${m.arrival_time}</span> = <strong>${m.turnaround_time}</strong>`;
+    } else {
+      tatHtml = `<span class="text-muted text-mono">t=${tick - m.arrival_time}</span>`;
+    }
+
+    // WT
+    let wtHtml = '—';
+    if (completed) {
+      wtHtml = `<span style="font-size:0.75rem; color:var(--warning)">${m.turnaround_time} - ${m.burst_time}</span> = <strong>${m.waiting_time}</strong>`;
+    } else {
+      // Calculate live WT = (tick - arrival) - time_on_cpu
+      let cpuTime = 0;
+      for (const entry of gantt) {
+        if (entry.pid === m.pid && entry.start < tick) {
+          cpuTime += Math.min(entry.end, tick) - entry.start;
+        }
+      }
+      const liveWt = (tick - m.arrival_time) - cpuTime;
+      wtHtml = `<span class="text-muted text-mono">acum: ${liveWt}</span>`;
+    }
+
+    return `
+      <tr style="${completed ? 'background: rgba(34, 197, 94, 0.05);' : ''}">
+        <td>
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${pidColor(m.pid)};margin-right:8px;"></span>
+          <strong>P${m.pid}</strong>
+        </td>
+        <td>${m.arrival_time}</td>
+        <td>${m.burst_time}</td>
+        <td>${compHtml}</td>
+        <td>${tatHtml}</td>
+        <td>${wtHtml}</td>
+        <td>${rtHtml}</td>
+      </tr>
+    `;
+  }).join('');
+};
 
 
 /* ═══════════════════════════════════════════════════════════════════════

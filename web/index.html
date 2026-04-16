@@ -284,12 +284,12 @@
                 <thead>
                   <tr>
                     <th>PID</th>
-                    <th>Arrival</th>
-                    <th>Burst</th>
-                    <th>Completion</th>
-                    <th>Turnaround</th>
-                    <th>Waiting</th>
-                    <th>Response</th>
+                    <th>Arrival (AT)</th>
+                    <th>Burst (BT)</th>
+                    <th>Completion (CT)</th>
+                    <th title="Turnaround Time = Completion Time - Arrival Time">Turnaround<br><span style="font-size:0.65rem;font-weight:normal;color:var(--text-muted)">(CT - AT)</span></th>
+                    <th title="Waiting Time = Turnaround Time - Burst Time">Waiting<br><span style="font-size:0.65rem;font-weight:normal;color:var(--text-muted)">(TAT - BT)</span></th>
+                    <th title="Response Time = First Start - Arrival Time">Response<br><span style="font-size:0.65rem;font-weight:normal;color:var(--text-muted)">(1st Start - AT)</span></th>
                   </tr>
                 </thead>
                 <tbody id="metrics-tbody"></tbody>

@@ -193,6 +193,9 @@ function drawGanttChart(result) {
 
     // Sync state diagram + CPU + queue
     updateLiveView(result, revealedTime);
+    if (window.updateLiveMetricsTable) {
+      window.updateLiveMetricsTable(result, revealedTime);
+    }
   }
 
   GanttPlayer.renderFn = render;
