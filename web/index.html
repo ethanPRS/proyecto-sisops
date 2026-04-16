@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Simulador Visual de Sistemas Operativos — CPU Scheduling, Memory Paging, Page Replacement, Concurrency y más." />
-  <title>OS Simulator — Visual Operating Systems Simulator</title>
+  <title>Sisops — Simulador Visual de Sistemas Operativos</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body>
 
@@ -19,9 +20,9 @@
     <!-- ═══ Sidebar ═══════════════════════════════════════════════════ -->
     <aside class="sidebar" role="navigation" aria-label="Navegación principal">
       <header class="sidebar-brand">
-        <div class="brand-icon" aria-hidden="true">⚙️</div>
+        <div class="brand-icon" aria-hidden="true"><i class="ph ph-gear"></i></div>
         <div>
-          <h1>OS Simulator</h1>
+          <h1>Sisops</h1>
           <span class="brand-tag">UDEM — Sistemas Operativos</span>
         </div>
       </header>
@@ -30,31 +31,31 @@
 
       <nav class="sidebar-nav">
         <button class="nav-btn active" data-screen="processes" id="nav-processes">
-          <span class="nav-icon" aria-hidden="true">🖥️</span>
+          <span class="nav-icon" aria-hidden="true"><i class="ph ph-desktop"></i></span>
           <span>Processes</span>
         </button>
         <button class="nav-btn" data-screen="scheduling" id="nav-scheduling">
-          <span class="nav-icon" aria-hidden="true">📈</span>
+          <span class="nav-icon" aria-hidden="true"><i class="ph ph-chart-line-up"></i></span>
           <span>Scheduling</span>
         </button>
         <button class="nav-btn" data-screen="memory" id="nav-memory">
-          <span class="nav-icon" aria-hidden="true">🧠</span>
+          <span class="nav-icon" aria-hidden="true"><i class="ph ph-brain"></i></span>
           <span>Memory</span>
         </button>
         <button class="nav-btn" data-screen="page-replace" id="nav-page-replace">
-          <span class="nav-icon" aria-hidden="true">📄</span>
+          <span class="nav-icon" aria-hidden="true"><i class="ph ph-file-text"></i></span>
           <span>Page Replace</span>
         </button>
         <button class="nav-btn" data-screen="comparison" id="nav-comparison">
-          <span class="nav-icon" aria-hidden="true">⚖️</span>
+          <span class="nav-icon" aria-hidden="true"><i class="ph ph-scales"></i></span>
           <span>Comparison</span>
         </button>
         <button class="nav-btn" data-screen="csv-extract" id="nav-csv-extract">
-          <span class="nav-icon" aria-hidden="true">📑</span>
+          <span class="nav-icon" aria-hidden="true"><i class="ph ph-file-code"></i></span>
           <span>CSV Extract</span>
         </button>
         <button class="nav-btn" data-screen="concurrency" id="nav-concurrency">
-          <span class="nav-icon" aria-hidden="true">🔄</span>
+          <span class="nav-icon" aria-hidden="true"><i class="ph ph-arrows-clockwise"></i></span>
           <span>Concurrency</span>
         </button>
       </nav>
@@ -83,7 +84,7 @@
           <div class="grid-sidebar">
             <!-- Config panel -->
             <div class="card">
-              <div class="card-title"><span class="card-icon">⚙️</span> Configuración</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración</div>
 
               <div class="form-group">
                 <label for="algo-select">Algoritmo</label>
@@ -106,7 +107,7 @@
 
               <div class="sidebar-divider mt-md mb-md"></div>
 
-              <div class="card-title"><span class="card-icon">➕</span> Agregar Proceso</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-plus-circle"></i></span> Agregar Proceso</div>
 
               <div class="form-row">
                 <div class="form-group">
@@ -128,26 +129,26 @@
               </div>
 
               <div class="flex gap-sm mt-md">
-                <button class="btn btn-primary" id="btn-add-process">➕ Agregar</button>
-                <button class="btn btn-secondary" id="btn-load-sample">📂 Sample</button>
+                <button class="btn btn-primary" id="btn-add-process"><i class="ph ph-plus"></i> Agregar</button>
+                <button class="btn btn-secondary" id="btn-load-sample"><i class="ph ph-folder-open"></i> Sample</button>
               </div>
 
               <div class="sidebar-divider mt-md mb-md"></div>
 
               <div class="flex gap-sm">
                 <button class="btn btn-primary btn-lg" id="btn-run-simulation" style="flex:1">
-                  ▶️ Ejecutar Simulación
+                  <i class="ph ph-play"></i> Ejecutar Simulación
                 </button>
               </div>
               <div class="flex gap-sm mt-sm">
-                <button class="btn btn-danger btn-sm" id="btn-clear-processes" style="flex:1">🗑️ Limpiar</button>
+                <button class="btn btn-danger btn-sm" id="btn-clear-processes" style="flex:1"><i class="ph ph-trash"></i> Limpiar</button>
               </div>
             </div>
 
             <!-- Process table -->
             <div class="card">
               <div class="card-title flex-between">
-                <div><span class="card-icon">📋</span> Procesos (<span id="process-count">0</span>)</div>
+                <div><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Procesos (<span id="process-count">0</span>)</div>
               </div>
               <div class="process-table-container">
                 <div class="table-wrapper">
@@ -166,7 +167,7 @@
                   </table>
                 </div>
                 <div class="empty-state" id="empty-processes">
-                  <div class="empty-icon">📭</div>
+                  <div class="empty-icon"><i class="ph ph-mailbox"></i></div>
                   <p>No hay procesos aún. Agrega procesos usando el formulario o carga los datos de ejemplo.</p>
                 </div>
               </div>
@@ -210,7 +211,7 @@
 
           <div class="card mb-lg">
             <div class="card-title flex-between">
-              <div><span class="card-icon">📊</span> Gantt Chart</div>
+              <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Gantt Chart</div>
               <div class="gantt-tick-label" id="gantt-tick-label">t = 0</div>
             </div>
             <div class="gantt-container" id="gantt-container">
@@ -219,11 +220,11 @@
 
             <!-- Controles paso-a-paso del Gantt -->
             <div class="playback-controls" id="gantt-playback">
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reiniciar (R)">⏮</button>
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Paso atras (←)">⏪</button>
-              <button class="btn btn-primary btn-sm" id="gantt-btn-play" title="Play/Pausa (Espacio)">▶ Play</button>
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Paso adelante (→)">⏩</button>
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Ir al final">⏭</button>
+              <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reiniciar (R)"><i class="ph ph-skip-back"></i></button>
+              <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Paso atras (←)"><i class="ph ph-rewind"></i></button>
+              <button class="btn btn-primary btn-sm" id="gantt-btn-play" title="Play/Pausa (Espacio)"><i class="ph ph-play"></i> Play</button>
+              <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Paso adelante (→)"><i class="ph ph-fast-forward"></i></button>
+              <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Ir al final"><i class="ph ph-skip-forward"></i></button>
               <span class="step-counter" id="gantt-step-counter">0 / 0</span>
               <div class="playback-speed">
                 <label for="gantt-speed">Velocidad</label>
@@ -236,7 +237,7 @@
           <!-- Diagrama de estados + cola + CPU en vivo -->
           <div class="grid-2 mb-lg">
             <div class="card">
-              <div class="card-title"><span class="card-icon">🔁</span> Diagrama de Estados</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-arrows-left-right"></i></span> Diagrama de Estados</div>
               <div class="state-diagram" id="state-diagram">
                 <div class="state-node" data-state="new">
                   <div class="state-badge" style="background: var(--state-new)">NEW</div>
@@ -262,7 +263,7 @@
             </div>
 
             <div class="card">
-              <div class="card-title"><span class="card-icon">🎯</span> CPU &amp; Cola Ready</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-crosshair"></i></span> CPU &amp; Cola Ready</div>
               <div class="cpu-panel">
                 <div class="cpu-core" id="cpu-core">
                   <div class="cpu-label">CPU</div>
@@ -277,7 +278,7 @@
           </div>
 
           <div class="card">
-            <div class="card-title"><span class="card-icon">📋</span> Métricas por Proceso</div>
+            <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Métricas por Proceso</div>
             <div class="table-wrapper">
               <table id="metrics-table">
                 <thead>
@@ -306,7 +307,7 @@
 
           <div class="grid-sidebar">
             <div class="card">
-              <div class="card-title"><span class="card-icon">⚙️</span> Configuración de Memoria</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración de Memoria</div>
               <div class="form-group">
                 <label for="mem-size">Tamaño de Memoria (bytes)</label>
                 <input type="number" class="form-input" id="mem-size" value="1024" min="64" step="64" />
@@ -316,7 +317,7 @@
                 <input type="number" class="form-input" id="page-size" value="64" min="16" step="16" />
               </div>
               <button class="btn btn-primary mt-md" id="btn-allocate-memory" style="width:100%">
-                🧠 Asignar Memoria
+                <i class="ph ph-brain"></i> Asignar Memoria
               </button>
 
               <div class="stats-grid mt-lg" id="mem-stats" style="grid-template-columns: 1fr 1fr;">
@@ -340,10 +341,10 @@
             </div>
 
             <div class="card">
-              <div class="card-title"><span class="card-icon">🔲</span> Frame Map</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-squares-four"></i></span> Frame Map</div>
               <div class="memory-grid" id="memory-grid">
                 <div class="empty-state">
-                  <div class="empty-icon">🔲</div>
+                  <div class="empty-icon"><i class="ph ph-squares-four"></i></div>
                   <p>Ejecuta una simulación para ver la asignación de memoria.</p>
                 </div>
               </div>
@@ -351,10 +352,10 @@
           </div>
 
           <div class="card mt-lg">
-            <div class="card-title"><span class="card-icon">📖</span> Page Tables</div>
+            <div class="card-title"><span class="card-icon"><i class="ph ph-book-open"></i></span> Page Tables</div>
             <div id="page-tables-container">
               <div class="empty-state">
-                <div class="empty-icon">📖</div>
+                <div class="empty-icon"><i class="ph ph-book-open"></i></div>
                 <p>Las tablas de páginas aparecerán después de la asignación.</p>
               </div>
             </div>
@@ -370,7 +371,7 @@
 
           <div class="grid-sidebar">
             <div class="card">
-              <div class="card-title"><span class="card-icon">⚙️</span> Configuración</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración</div>
               <div class="form-group">
                 <label for="pr-algo">Algoritmo</label>
                 <select class="form-select" id="pr-algo">
@@ -390,13 +391,13 @@
                 <input type="text" class="form-input" id="pr-refstring" value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1" placeholder="7,0,1,2,0,3..." />
               </div>
               <button class="btn btn-primary mt-md" id="btn-run-pr" style="width:100%">
-                ▶️ Ejecutar
+                <i class="ph ph-play"></i> Ejecutar
               </button>
             </div>
 
             <div>
               <div class="card mb-md">
-                <div class="card-title"><span class="card-icon">📊</span> Resultados</div>
+                <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Resultados</div>
                 <div class="stats-grid" style="grid-template-columns: 1fr 1fr 1fr;">
                   <div class="stat-card">
                     <div class="stat-value" id="pr-total-faults">—</div>
@@ -414,24 +415,24 @@
               </div>
 
               <div class="card mb-md">
-                <div class="card-title"><span class="card-icon">🔢</span> Reference String</div>
+                <div class="card-title"><span class="card-icon"><i class="ph ph-list-numbers"></i></span> Reference String</div>
                 <div class="ref-string-visual" id="pr-ref-visual"></div>
               </div>
 
               <div class="card mb-md">
-                <div class="card-title"><span class="card-icon">🔲</span> Frames</div>
+                <div class="card-title"><span class="card-icon"><i class="ph ph-squares-four"></i></span> Frames</div>
                 <div class="page-frames-visual" id="pr-frames-visual"></div>
                 <div class="step-controls">
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-reset">⏮ Reset</button>
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-prev">◀ Prev</button>
+                  <button class="btn btn-secondary btn-sm" id="pr-btn-reset"><i class="ph ph-skip-back"></i> Reset</button>
+                  <button class="btn btn-secondary btn-sm" id="pr-btn-prev"><i class="ph ph-caret-left"></i> Prev</button>
                   <span class="step-counter" id="pr-step-counter">Step 0 / 0</span>
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-next">Next ▶</button>
-                  <button class="btn btn-primary btn-sm" id="pr-btn-play">▶ Play</button>
+                  <button class="btn btn-secondary btn-sm" id="pr-btn-next">Next <i class="ph ph-caret-right"></i></button>
+                  <button class="btn btn-primary btn-sm" id="pr-btn-play"><i class="ph ph-play"></i> Play</button>
                 </div>
               </div>
 
               <div class="card">
-                <div class="card-title"><span class="card-icon">📋</span> Step History</div>
+                <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Step History</div>
                 <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
                   <table id="pr-steps-table">
                     <thead>
@@ -460,30 +461,30 @@
           </header>
 
           <div class="flex gap-md mb-lg">
-            <button class="btn btn-primary" id="btn-run-comparison">📊 Comparar Todos los Algoritmos</button>
+            <button class="btn btn-primary" id="btn-run-comparison"><i class="ph ph-chart-bar"></i> Comparar Todos los Algoritmos</button>
           </div>
 
           <div class="chart-grid" id="comparison-charts">
             <div class="card">
-              <div class="card-title"><span class="card-icon">📊</span> Avg Turnaround Time</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Turnaround Time</div>
               <div class="chart-container">
                 <canvas id="chart-tat" height="280"></canvas>
               </div>
             </div>
             <div class="card">
-              <div class="card-title"><span class="card-icon">📊</span> Avg Waiting Time</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Waiting Time</div>
               <div class="chart-container">
                 <canvas id="chart-wt" height="280"></canvas>
               </div>
             </div>
             <div class="card">
-              <div class="card-title"><span class="card-icon">📊</span> Avg Response Time</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Response Time</div>
               <div class="chart-container">
                 <canvas id="chart-rt" height="280"></canvas>
               </div>
             </div>
             <div class="card">
-              <div class="card-title"><span class="card-icon">📊</span> CPU Utilization (%)</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> CPU Utilization (%)</div>
               <div class="chart-container">
                 <canvas id="chart-cpu" height="280"></canvas>
               </div>
@@ -491,7 +492,7 @@
           </div>
 
           <div class="card mt-lg">
-            <div class="card-title"><span class="card-icon">📋</span> Comparison Table</div>
+            <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Comparison Table</div>
             <div class="table-wrapper">
               <table id="comparison-table">
                 <thead>
@@ -519,7 +520,7 @@
 
           <div class="grid-2">
             <div class="card">
-              <div class="card-title"><span class="card-icon">📝</span> Texto de Entrada</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-note"></i></span> Texto de Entrada</div>
               <div class="form-group">
                 <textarea class="form-textarea" id="regex-input" rows="12" placeholder="Pega aquí el texto a analizar...
 Ejemplo:
@@ -529,19 +530,19 @@ Address: 123 Main St, Monterrey, NL"></textarea>
               </div>
               <div class="regex-category-filters">
                 <button class="filter-chip active" data-cat="all">All</button>
-                <button class="filter-chip" data-cat="date">📅 Dates</button>
-                <button class="filter-chip" data-cat="email">📧 Emails</button>
-                <button class="filter-chip" data-cat="phone">📞 Phones</button>
-                <button class="filter-chip" data-cat="name">👤 Names</button>
-                <button class="filter-chip" data-cat="address">🏠 Addresses</button>
+                <button class="filter-chip" data-cat="date"><i class="ph ph-calendar"></i> Dates</button>
+                <button class="filter-chip" data-cat="email"><i class="ph ph-envelope"></i> Emails</button>
+                <button class="filter-chip" data-cat="phone"><i class="ph ph-phone"></i> Phones</button>
+                <button class="filter-chip" data-cat="name"><i class="ph ph-user"></i> Names</button>
+                <button class="filter-chip" data-cat="address"><i class="ph ph-house"></i> Addresses</button>
               </div>
-              <button class="btn btn-primary" id="btn-extract" style="width:100%">🔍 Extraer Datos</button>
+              <button class="btn btn-primary" id="btn-extract" style="width:100%"><i class="ph ph-magnifying-glass"></i> Extraer Datos</button>
             </div>
 
             <div>
               <div class="card mb-md">
                 <div class="card-title flex-between">
-                  <div><span class="card-icon">📊</span> Resultados</div>
+                  <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Resultados</div>
                   <span class="badge badge-purple" id="regex-match-count">0 matches</span>
                 </div>
                 <div class="stats-grid" style="grid-template-columns: repeat(5,1fr);">
@@ -554,7 +555,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
               </div>
 
               <div class="card">
-                <div class="card-title"><span class="card-icon">📋</span> Extracted Data</div>
+                <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Extracted Data</div>
                 <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
                   <table id="regex-table">
                     <thead>
@@ -581,7 +582,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
 
           <div class="grid-sidebar">
             <div class="card">
-              <div class="card-title"><span class="card-icon">⚙️</span> Configuración</div>
+              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración</div>
               <div class="form-group">
                 <label for="conc-threads">Número de Threads</label>
                 <input type="number" class="form-input" id="conc-threads" value="4" min="1" max="16" />
@@ -593,12 +594,12 @@ Address: 123 Main St, Monterrey, NL"></textarea>
               <div class="form-group">
                 <label>Modo de Sincronización</label>
                 <div class="toggle-group mt-sm">
-                  <button class="toggle-option active" data-lock="true" id="toggle-safe">🔒 Safe (Lock)</button>
-                  <button class="toggle-option" data-lock="false" id="toggle-unsafe">⚠️ Unsafe</button>
+                  <button class="toggle-option active" data-lock="true" id="toggle-safe"><i class="ph ph-lock-key"></i> Safe (Lock)</button>
+                  <button class="toggle-option" data-lock="false" id="toggle-unsafe"><i class="ph ph-warning"></i> Unsafe</button>
                 </div>
               </div>
               <button class="btn btn-primary mt-lg" id="btn-run-concurrency" style="width:100%">
-                ▶️ Ejecutar Simulación
+                <i class="ph ph-play"></i> Ejecutar Simulación
               </button>
             </div>
 
@@ -620,14 +621,14 @@ Address: 123 Main St, Monterrey, NL"></textarea>
               </div>
 
               <div class="card mt-md">
-                <div class="card-title"><span class="card-icon">📊</span> Thread Timeline</div>
+                <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Thread Timeline</div>
                 <div class="timeline-container">
                   <canvas id="concurrency-canvas" height="300"></canvas>
                 </div>
               </div>
 
               <div class="card mt-md">
-                <div class="card-title"><span class="card-icon">📋</span> Thread Details</div>
+                <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Thread Details</div>
                 <div class="table-wrapper">
                   <table id="conc-table">
                     <thead>
@@ -652,7 +653,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
       <!-- Status bar -->
       <footer class="status-bar">
         <div class="status-item">
-          <span>🖥️</span>
+          <span><i class="ph ph-desktop"></i></span>
           <span id="status-text">Ready — Configure processes and run a simulation</span>
         </div>
         <div style="flex:1"></div>

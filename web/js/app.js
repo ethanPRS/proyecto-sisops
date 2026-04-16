@@ -68,11 +68,16 @@ function initNavigation() {
    ═══════════════════════════════════════════════════════════════════════ */
 function showToast(message, type = 'info', duration = 3500) {
   const container = document.getElementById('toast-container');
-  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const icons = { 
+    success: '<i class="ph ph-check-circle"></i>', 
+    error: '<i class="ph ph-x-circle"></i>', 
+    info: '<i class="ph ph-info"></i>', 
+    warning: '<i class="ph ph-warning-circle"></i>' 
+  };
 
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type] || '<i class="ph ph-info"></i>'}</span><span>${message}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {

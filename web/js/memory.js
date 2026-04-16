@@ -61,7 +61,7 @@ function renderMemoryGrid(result) {
     const color = isFree ? 'transparent' : pidColor(frame.pid);
     const bgStyle = isFree ? '' : `background: ${color}; border-color: ${color};`;
     const label = isFree ? '—' : `P${frame.pid}`;
-    const delay = i * 15; // stagger animation
+    const delay = i * 40; // stagger animation (slower)
 
     return `
       <div class="memory-frame ${isFree ? 'free' : 'allocated'}"

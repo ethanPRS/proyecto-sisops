@@ -111,6 +111,51 @@ function drawBarChart(canvasId, labels, values, title, unit) {
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let progress = prefersReducedMotion ? 1 : 0;
   let animId;
+  let hoveredIndex = -1;
+
+  // Tooltip
+  let tooltip = document.getElementById(canvasId + '-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = canvasId + '-tooltip';
+    tooltip.className = 'tooltip';
+    document.body.appendChild(tooltip);
+  }
+
+  canvas.onmousemove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    hoveredIndex = -1;
+    for (let i = 0; i < barCount; i++) {
+      const x = startX + i * (barWidth + barGap);
+      const barH = (values[i] / niceMax) * chartH * progress;
+      const y = TOP + chartH - barH;
+
+      if (mx >= x && mx <= x + barWidth && my >= y && my <= TOP + chartH) {
+        hoveredIndex = i;
+        const color = pidColor(i);
+        tooltip.innerHTML = `<strong style="color:${color}">${labels[i]}</strong><br>${title}: ${values[i].toFixed(2)} ${unit}`;
+        tooltip.style.left = (e.clientX + 12) + 'px';
+        tooltip.style.top = (e.clientY - 10) + 'px';
+        tooltip.classList.add('visible');
+        canvas.style.cursor = 'pointer';
+        render();
+        return;
+      }
+    }
+
+    tooltip.classList.remove('visible');
+    canvas.style.cursor = 'default';
+    render();
+  };
+
+  canvas.onmouseleave = () => {
+    hoveredIndex = -1;
+    tooltip.classList.remove('visible');
+    render();
+  };
 
   function render() {
     ctx.clearRect(0, 0, width, height);
@@ -140,19 +185,14 @@ function drawBarChart(canvasId, labels, values, title, unit) {
     }
     ctx.setLineDash([]);
 
-    // Bars (paleta clara)
-    const colors = [
-      '#3B82F6', '#EF4444', '#10B981', '#F59E0B',
-      '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
-    ];
-
+    // Bars
     for (let i = 0; i < barCount; i++) {
       const x = startX + i * (barWidth + barGap);
       const barH = (values[i] / niceMax) * chartH * progress;
       const y = TOP + chartH - barH;
 
       // Bar gradient
-      const color = colors[i % colors.length];
+      const color = pidColor(i);
       const grad = ctx.createLinearGradient(x, y, x, y + barH);
       grad.addColorStop(0, color);
       grad.addColorStop(1, color + '88');
@@ -168,18 +208,26 @@ function drawBarChart(canvasId, labels, values, title, unit) {
       ctx.lineTo(x, y + r);
       ctx.quadraticCurveTo(x, y, x + r, y);
       ctx.closePath();
+      
       ctx.fillStyle = grad;
       ctx.fill();
 
-      // Subtle shadow (menos glow, mas sombra suave para fondo claro)
-      ctx.shadowColor = 'rgba(15, 23, 42, 0.12)';
-      ctx.shadowBlur = 6;
-      ctx.shadowOffsetY = 2;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
+      if (i === hoveredIndex) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetY = 0;
+        ctx.fill();
+        ctx.shadowBlur = 0; // reset
+      } else {
+        ctx.shadowColor = 'rgba(15, 23, 42, 0.12)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 2;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
 
-      // Value label on bar (oscuro sobre fondo claro)
+      // Value label on bar
       if (progress > 0.5) {
         ctx.fillStyle = '#0F172A';
         ctx.font = 'bold 10px "JetBrains Mono", monospace';
@@ -192,7 +240,6 @@ function drawBarChart(canvasId, labels, values, title, unit) {
       ctx.fillStyle = '#475569';
       ctx.font = '9px "Inter", sans-serif';
       ctx.textAlign = 'center';
-      // Truncate long names
       const label = labels[i].length > 10 ? labels[i].slice(0, 9) + '…' : labels[i];
       ctx.fillText(label, x + barWidth / 2, TOP + chartH + 16);
     }
