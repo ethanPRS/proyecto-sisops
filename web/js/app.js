@@ -256,7 +256,14 @@ async function runSimulation() {
    Scheduling Stats
    ═══════════════════════════════════════════════════════════════════════ */
 function updateSchedulingStats(result) {
-  document.getElementById('stat-algo').textContent = result.algorithm;
+  const algoEl = document.getElementById('stat-algo');
+  algoEl.textContent = result.algorithm;
+  
+  // Re-trigger the tracking-in-expand animation
+  algoEl.classList.remove('tracking-in-expand');
+  void algoEl.offsetWidth; // force reflow
+  algoEl.classList.add('tracking-in-expand');
+
   document.getElementById('stat-avg-tat').textContent = result.avg_turnaround;
   document.getElementById('stat-avg-wt').textContent = result.avg_waiting;
   document.getElementById('stat-avg-rt').textContent = result.avg_response;
