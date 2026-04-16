@@ -218,20 +218,6 @@
               <canvas id="gantt-canvas" height="200"></canvas>
             </div>
 
-            <!-- Controles paso-a-paso del Gantt -->
-            <div class="playback-controls" id="gantt-playback">
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reiniciar (R)"><i class="ph ph-skip-back"></i></button>
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Paso atras (←)"><i class="ph ph-rewind"></i></button>
-              <button class="btn btn-primary btn-sm" id="gantt-btn-play" title="Play/Pausa (Espacio)"><i class="ph ph-play"></i> Play</button>
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Paso adelante (→)"><i class="ph ph-fast-forward"></i></button>
-              <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Ir al final"><i class="ph ph-skip-forward"></i></button>
-              <span class="step-counter" id="gantt-step-counter">0 / 0</span>
-              <div class="playback-speed">
-                <label for="gantt-speed">Velocidad</label>
-                <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" />
-                <span id="gantt-speed-label" class="text-mono">1.0x</span>
-              </div>
-            </div>
           </div>
 
           <!-- Diagrama de estados + cola + CPU en vivo -->
@@ -294,6 +280,21 @@
                 </thead>
                 <tbody id="metrics-tbody"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Controles paso-a-paso del Gantt (Sticky) -->
+          <div class="playback-controls" id="gantt-playback" style="position: sticky; bottom: 24px; z-index: 100; background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 25px rgba(0,0,0,0.5); padding: 12px 24px; border-radius: 100px; margin: 0 auto; width: fit-content; max-width: 100%;">
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reiniciar (R)" style="border-radius: 50%"><i class="ph ph-skip-back"></i></button>
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Paso atras (←)" style="border-radius: 50%"><i class="ph ph-rewind"></i></button>
+            <button class="btn btn-primary btn-sm" id="gantt-btn-play" title="Play/Pausa (Espacio)" style="border-radius: 24px; padding: 0 20px;"><i class="ph ph-play"></i> Play</button>
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Paso adelante (→)" style="border-radius: 50%"><i class="ph ph-fast-forward"></i></button>
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Ir al final" style="border-radius: 50%"><i class="ph ph-skip-forward"></i></button>
+            <span class="step-counter" id="gantt-step-counter" style="margin: 0 12px; min-width: 60px; text-align: center;">0 / 0</span>
+            <div class="playback-speed" style="margin-left: 8px;">
+              <label for="gantt-speed" style="margin:0; font-size: 0.8rem;">Velocidad</label>
+              <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
+              <span id="gantt-speed-label" class="text-mono" style="font-size: 0.8rem;">1.0x</span>
             </div>
           </div>
         </section>
