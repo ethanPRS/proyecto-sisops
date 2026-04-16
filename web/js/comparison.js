@@ -244,6 +244,21 @@ function drawBarChart(canvasId, labels, values, title, unit) {
       ctx.fillText(label, x + barWidth / 2, TOP + chartH + 16);
     }
 
+    // Axis Titles
+    ctx.fillStyle = '#64748B';
+    ctx.font = 'bold 10px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    
+    // X-axis Title
+    ctx.fillText('Algorithms', LEFT + chartW / 2, height - (BOTTOM / 2) + 10);
+    
+    // Y-axis Title
+    ctx.save();
+    ctx.translate(20, TOP + chartH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(`${title} (${unit})`, 0, 0);
+    ctx.restore();
+
     // Animate
     if (progress < 1) {
       progress = Math.min(progress + 0.02, 1);
