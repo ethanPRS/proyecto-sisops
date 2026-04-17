@@ -1147,6 +1147,33 @@ tbody td:first-child {
   flex-wrap: wrap;
 }
 
+.playback-controls.sticky-playback {
+  position: sticky; 
+  bottom: 24px; 
+  z-index: 100; 
+  background: rgba(30, 41, 59, 0.9); 
+  backdrop-filter: blur(12px); 
+  border: 1px solid rgba(255,255,255,0.1); 
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+  padding: 12px 24px; 
+  border-radius: 100px; 
+  margin: var(--space-md) auto 0 auto; 
+  width: fit-content; 
+  max-width: 100%;
+  color: #fff;
+}
+.playback-controls.sticky-playback .step-counter {
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+}
+.playback-controls.sticky-playback label,
+.playback-controls.sticky-playback .text-mono {
+  color: rgba(255,255,255,0.8);
+}
+
+
 .playback-controls .step-counter {
   font-family: var(--font-mono);
   font-size: 0.85rem;
