@@ -313,6 +313,22 @@ document.addEventListener('DOMContentLoaded', () => {
       speedLabel.textContent = parseFloat(e.target.value).toFixed(1) + 'x';
     });
   }
+
+  // Mario Metaphor Logic
+  const prAlgoSelect = document.getElementById('pr-algo');
+  const metaphorBox = document.getElementById('pr-metaphor-box');
+  if (prAlgoSelect && metaphorBox) {
+    prAlgoSelect.addEventListener('change', (e) => {
+      if (e.target.value === 'FIFO') {
+        metaphorBox.className = 'card mb-md mario-theme tracking-in-expand';
+      } else {
+        metaphorBox.className = 'card mb-md';
+        metaphorBox.style.display = 'none';
+      }
+    });
+    // Trigger on load
+    prAlgoSelect.dispatchEvent(new Event('change'));
+  }
 });
 
 window.runPageReplacement = runPageReplacement;

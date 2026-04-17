@@ -1682,3 +1682,73 @@ tbody td:first-child {
   -webkit-animation: tracking-in-expand 0.7s cubic-bezier(0.215, 0.610, 0.355, 1.000) both;
           animation: tracking-in-expand 0.7s cubic-bezier(0.215, 0.610, 0.355, 1.000) both;
 }
+
+/* ── Mario Galaxy Metaphor (FIFO) ─────────────────────────────────── */
+#pr-metaphor-box.mario-theme {
+  background: linear-gradient(135deg, #0B0E14 0%, #1A1A2E 100%);
+  border: 1px solid #7C3AED;
+  box-shadow: inset 0 0 40px rgba(124, 58, 237, 0.2), 0 10px 20px rgba(0,0,0,0.3);
+  display: block !important;
+  animation: fadeSlideIn 0.5s ease-out;
+}
+
+#pr-metaphor-box .galaxy-bg {
+  position: absolute;
+  top: -50px; left: -50px; right: -50px; bottom: -50px;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(255, 255, 255, 0.8) 1px, transparent 1px),
+    radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.6) 2px, transparent 2px),
+    radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.5) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.4) 2px, transparent 2px);
+  background-size: 80px 80px;
+  opacity: 0.6;
+  animation: mario-bg-pan 40s linear infinite;
+  z-index: 1;
+}
+
+@keyframes mario-bg-pan {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-80px) rotate(5deg); }
+}
+
+#pr-metaphor-box .luma-sprite {
+  position: absolute;
+  right: 25px;
+  top: 15px;
+  font-size: 2.5rem;
+  z-index: 5;
+  animation: float-luma 3.5s ease-in-out infinite;
+}
+#pr-metaphor-box .luma-sprite::before {
+  content: '⭐';
+  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.9));
+}
+
+@keyframes float-luma {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  50% { transform: translateY(-12px) rotate(15deg) scale(1.1); }
+}
+
+#pr-metaphor-box .mario-sprite {
+  position: absolute;
+  left: 20px;
+  bottom: 10px;
+  font-size: 3rem;
+  z-index: 5;
+  animation: mario-jump 3s ease-in-out infinite;
+  opacity: 0.9;
+}
+#pr-metaphor-box .mario-sprite::before {
+  content: '🍄';
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.6));
+}
+
+@keyframes mario-jump {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  5% { transform: translateY(5px) scaleY(0.85); }
+  15% { transform: translateY(-25px) scaleY(1.05) rotate(10deg); }
+  25% { transform: translateY(-25px) scaleY(1.05) rotate(-10deg); }
+  35% { transform: translateY(0) scaleY(0.9); }
+  45% { transform: translateY(0) scaleY(1); }
+}
