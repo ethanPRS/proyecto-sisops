@@ -13,7 +13,19 @@
 </head>
 <body>
 
-  <!-- Toast container -->
+  <!-- Page Loader -->
+  <div id="page-loader" class="page-overlay-loader">
+    <div class="loader"></div>
+  </div>
+  <script>
+    window.addEventListener('load', () => {
+      // Small artificial delay to show off the loader animation
+      setTimeout(() => {
+        const loader = document.getElementById('page-loader');
+        if(loader) loader.classList.add('hidden');
+      }, 500);
+    });
+  </script>  <!-- Toast container -->
   <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
 
   <div class="app-wrapper">
@@ -143,6 +155,20 @@
               <div class="flex gap-sm mt-sm">
                 <button class="btn btn-danger btn-sm" id="btn-clear-processes" style="flex:1"><i class="ph ph-trash"></i> Limpiar</button>
               </div>
+              <div class="flex gap-md mt-md" id="fcfs-game-link-container">
+                <a href="fcfs_game.html" id="btn-fcfs-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
+                  <i class="ph ph-game-controller" style="font-size: 1.2rem;"></i> FCFS (Mario)
+                </a>
+                <a href="sjf_game.html" id="btn-sjf-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
+                  <i class="ph ph-rocket" style="font-size: 1.2rem;"></i> SJF (Mario)
+                </a>
+                <a href="hrrn_game.html" id="btn-hrrn-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
+                  <i class="ph ph-star" style="font-size: 1.2rem;"></i> HRRN (Mario)
+                </a>
+                <a href="rr_game.html" id="btn-rr-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
+                  <i class="ph ph-arrows-clockwise" style="font-size: 1.2rem;"></i> Round Robin (Mario)
+                </a>
+              </div>
             </div>
 
             <!-- Process table -->
@@ -177,16 +203,27 @@
 
         <!-- ─── Screen 2: Scheduling ─────────────────────────────── -->
         <section class="screen" id="screen-scheduling" aria-labelledby="heading-scheduling">
-          <header class="screen-header">
-            <h2 id="heading-scheduling">CPU Scheduling</h2>
-            <p>Diagrama de Gantt animado, cola de listas y métricas por proceso.</p>
+          <header class="screen-header" style="display: flex; align-items: flex-end; justify-content: space-between; border-bottom: none; padding-bottom: 0;">
+            <div>
+              <h2 id="heading-scheduling" style="font-size: 2.2rem; margin-bottom: 5px;">Esperando Algoritmo...</h2>
+              <p>Diagrama de Gantt animado, cola de listas y métricas algorítmicas.</p>
+            </div>
+            <!-- Mario Algo Tooltip Component -->
+            <div class="mario-algo-btn-wrapper" id="algo-mario-tooltip" style="display: none; padding-bottom: 30px; margin-right: 20px;">
+              <div class="brick one"></div>
+              <div class="tooltip-mario-container">
+                <div class="box"></div>
+                <div class="mush"></div>
+                <div class="algo-popup" style="top: 50px; bottom: auto; right: -25px;">
+                  <h4 id="algo-popup-title">Algoritmo</h4>
+                  <p id="algo-popup-desc">Ejecuta la simulación para aprender de cada algoritmo.</p>
+                </div>
+              </div>
+              <div class="brick two"></div>
+            </div>
           </header>
 
           <div class="stats-grid" id="scheduling-stats">
-            <div class="stat-card">
-              <div class="stat-value" id="stat-algo">—</div>
-              <div class="stat-label">Algoritmo</div>
-            </div>
             <div class="stat-card">
               <div class="stat-value" id="stat-avg-tat">—</div>
               <div class="stat-label">Avg Turnaround</div>
@@ -287,15 +324,19 @@
           <div class="playback-controls sticky-playback" id="gantt-playback">
             <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reiniciar (R)" style="border-radius: 50%"><i class="ph ph-skip-back"></i></button>
             <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Paso atras (←)" style="border-radius: 50%"><i class="ph ph-rewind"></i></button>
-            <button class="btn btn-primary btn-sm" id="gantt-btn-play" title="Play/Pausa (Espacio)" style="border-radius: 24px; padding: 0 20px;"><i class="ph ph-play"></i> Play</button>
+            <button class="btn btn-primary" id="gantt-btn-play" title="Play/Pausa (Espacio)" style="border-radius: 24px; padding: 8px 28px; font-size: 1.1rem; font-weight: 700;"><i class="ph ph-play"></i> Play</button>
             <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Paso adelante (→)" style="border-radius: 50%"><i class="ph ph-fast-forward"></i></button>
             <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Ir al final" style="border-radius: 50%"><i class="ph ph-skip-forward"></i></button>
             <span class="step-counter" id="gantt-step-counter" style="margin: 0 12px; min-width: 60px; text-align: center;">0 / 0</span>
             <div class="playback-speed" style="margin-left: 8px;">
               <label for="gantt-speed" style="margin:0; font-size: 0.8rem;">Velocidad</label>
               <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
-              <span id="gantt-speed-label" class="text-mono" style="font-size: 0.8rem;">1.0x</span>
+              <span id="gantt-speed-label" class="text-mono" style="font-size: 0.85rem; font-weight: 600; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 6px; color: #fff; border: 1px solid rgba(255,255,255,0.2);">1.0x</span>
             </div>
+            <a href="#" id="sticky-game-link" target="_blank" class="btn-holographic" style="display: none; height: 32px; padding: 0 16px; font-size: 0.85rem; flex-direction: row; margin-left: 24px; width: auto; font-family: var(--font-body); text-decoration: none;">
+              <i class="ph ph-game-controller" id="sticky-game-icon" style="font-size: 1.1rem;"></i> <span id="sticky-game-text">Jugar</span>
+            </a>
+
           </div>
         </section>
 

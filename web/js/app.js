@@ -256,8 +256,8 @@ async function runSimulation() {
    Scheduling Stats
    ═══════════════════════════════════════════════════════════════════════ */
 function updateSchedulingStats(result) {
-  const algoEl = document.getElementById('stat-algo');
-  algoEl.textContent = result.algorithm;
+  const algoEl = document.getElementById('heading-scheduling');
+  algoEl.textContent = result.algorithm + " Scheduling";
   
   // Re-trigger the tracking-in-expand animation
   algoEl.classList.remove('tracking-in-expand');
@@ -269,6 +269,56 @@ function updateSchedulingStats(result) {
   document.getElementById('stat-avg-rt').textContent = result.avg_response;
   document.getElementById('stat-cpu-util').textContent = result.cpu_utilization + '%';
   document.getElementById('stat-ctx-sw').textContent = result.context_switches;
+
+  // Sticky game link update
+  const stickyLink = document.getElementById('sticky-game-link');
+  if (stickyLink) {
+    if (result.algorithm === 'FCFS') {
+      stickyLink.style.display = 'flex';
+      stickyLink.href = 'fcfs_game.html';
+      document.getElementById('sticky-game-text').textContent = 'Jugar FCFS (Mario)';
+      document.getElementById('sticky-game-icon').className = 'ph ph-game-controller';
+    } else if (result.algorithm === 'SJF') {
+      stickyLink.style.display = 'flex';
+      stickyLink.href = 'sjf_game.html';
+      document.getElementById('sticky-game-text').textContent = 'Jugar SJF (Mario)';
+      document.getElementById('sticky-game-icon').className = 'ph ph-rocket';
+    } else if (result.algorithm === 'HRRN') {
+      stickyLink.style.display = 'flex';
+      stickyLink.href = 'hrrn_game.html';
+      document.getElementById('sticky-game-text').textContent = 'Jugar HRRN (Mario)';
+      document.getElementById('sticky-game-icon').className = 'ph ph-star';
+    } else if (result.algorithm === 'Round Robin') {
+      stickyLink.style.display = 'flex';
+      stickyLink.href = 'rr_game.html';
+      document.getElementById('sticky-game-text').textContent = 'Jugar Round Robin (Mario)';
+      document.getElementById('sticky-game-icon').className = 'ph ph-arrows-clockwise';
+    } else {
+      stickyLink.style.display = 'none';
+    }
+  }
+
+  // Mario Algo Tooltip update
+  const tooltipBtn = document.getElementById('algo-mario-tooltip');
+  const popupTitle = document.getElementById('algo-popup-title');
+  const popupDesc = document.getElementById('algo-popup-desc');
+  if(tooltipBtn && popupTitle && popupDesc) {
+    tooltipBtn.style.display = 'flex';
+    popupTitle.textContent = result.algorithm;
+    let desc = '';
+    switch(result.algorithm) {
+      case 'FCFS': desc = 'First-Come, First-Served: El primer proceso en llegar a la cola de listos es el primero en recibir CPU. Es no expulsivo. Su simplicidad es ideal, pero suele sufir del "efecto convoy" (procesos cortos esperando a uno largo).'; break;
+      case 'SJF': desc = 'Shortest Job First: Selecciona el proceso con la ráfaga de CPU (Burst Time) más corta disponible. Minimiza el tiempo de espera promedio, pero puede causar inanición a los procesos más largos.'; break;
+      case 'HRRN': desc = 'Highest Response Ratio Next: Selecciona dinámicamente aquel proceso con la mayor "Tasa de Respuesta", calculada como (Espera + Ráfaga) / Ráfaga. ¡Es la cura contra la inanición!, ya que la paciencia aumenta matemáticamente el valor del proceso.'; break;
+      case 'Round Robin': desc = 'Round Robin: A cada proceso se le asigna un "Quantum" o intervalo máximo de tiempo. Si no termina en ese Quantum, es pausado y enviado al final de la cola. Muy equitativo, ideal para sistemas interactivos y de tiempo compartido.'; break;
+      case 'SRTF': desc = 'Shortest Remaining Time First: La variante expulsiva de SJF. Si llega un nuevo proceso con una ráfaga más corta que el tiempo restante del proceso actual, el sistema lo pausa para ejecutar al más rápido primero.'; break;
+      case 'Priority (Preemptive)': desc = 'Priority Scheduling (Expulsivo): La CPU se asigna siempre al proceso con la mayor prioridad. Si un proceso más importante aterriza en la cola, expulsa al actual de la CPU de inmediato.'; break;
+      case 'Multilevel Queue': desc = 'Colas Multinivel: El sistema mantiene varías colas estrictamente separadas (por prioridad o tipo). Cada proceso es asignado a una sola cola de forma permanente según sus características.'; break;
+      case 'MLFQ': desc = 'Multilevel Feedback Queue: Múltiples colas interconectadas. Los procesos pueden "subir" o "bajar" de prioridad dependiendo de su comportamiento. Si un proceso gasta mucho CPU, baja de cola; si espera demasiado, sube de nivel.'; break;
+      default: desc = 'Simulación de planificación de la CPU.'; break;
+    }
+    popupDesc.textContent = desc;
+  }
 }
 
 window.updateLiveMetricsTable = function(result, t) {
@@ -365,6 +415,19 @@ function updateQuantumVisibility() {
   const group = document.getElementById('quantum-group');
   const needsQuantum = ['Round Robin', 'MLFQ'];
   group.style.display = needsQuantum.includes(algo) ? 'block' : 'none';
+
+  const fcfsContainer = document.getElementById('fcfs-game-link-container');
+  if (fcfsContainer) {
+    fcfsContainer.style.display = (algo === 'FCFS' || algo === 'SJF' || algo === 'HRRN' || algo === 'Round Robin') ? 'flex' : 'none';
+    const btnFCFS = document.getElementById('btn-fcfs-game');
+    const btnSJF = document.getElementById('btn-sjf-game');
+    const btnHRRN = document.getElementById('btn-hrrn-game');
+    const btnRR = document.getElementById('btn-rr-game');
+    if (btnFCFS) btnFCFS.style.display = algo === 'FCFS' ? 'flex' : 'none';
+    if (btnSJF) btnSJF.style.display = algo === 'SJF' ? 'flex' : 'none';
+    if (btnHRRN) btnHRRN.style.display = algo === 'HRRN' ? 'flex' : 'none';
+    if (btnRR) btnRR.style.display = algo === 'Round Robin' ? 'flex' : 'none';
+  }
 }
 
 

@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Round Robin — Mario Plomero</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#05101a;
+  font-family:'Inter',monospace;color:#f0f0f0;user-select:none}
+
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;transition:opacity .35s}
+.scr.off{opacity:0;pointer-events:none}
+
+
+/* RETURN BUTTON */
+.button {
+  --stone-50: #fafaf9;
+  --stone-800: #292524;
+  --yellow-400: #facc15;
+
+  font-size: 1rem;
+  cursor: pointer;
+  position: relative;
+  font-family: "Inter", sans-serif;
+  font-weight: bold;
+  line-height: 1;
+  padding: 1px;
+  transform: translate(-4px, -4px);
+  outline: 2px solid transparent;
+  outline-offset: 5px;
+  border-radius: 9999px;
+  background-color: var(--stone-800);
+  color: var(--stone-800);
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+  text-align: center;
+  box-shadow:
+    0.5px 0.5px 0 0 var(--stone-800),
+    1px 1px 0 0 var(--stone-800),
+    1.5px 1.5px 0 0 var(--stone-800),
+    2px 2px 0 0 var(--stone-800),
+    2.5px 2.5px 0 0 var(--stone-800),
+    3px 3px 0 0 var(--stone-800),
+    0 0 0 2px var(--stone-50),
+    0.5px 0.5px 0 2px var(--stone-50),
+    1px 1px 0 2px var(--stone-50),
+    1.5px 1.5px 0 2px var(--stone-50),
+    2px 2px 0 2px var(--stone-50),
+    2.5px 2.5px 0 2px var(--stone-50),
+    3px 3px 0 2px var(--stone-50),
+    3.5px 3.5px 0 2px var(--stone-50),
+    4px 4px 0 2px var(--stone-50);
+}
+.button:hover {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 2px var(--stone-50);
+}
+.button:active,
+.button:focus-visible {
+  outline-color: var(--yellow-400);
+}
+.button:focus-visible {
+  outline-style: dashed;
+}
+.button > div {
+  position: relative;
+  pointer-events: none;
+  background-color: var(--yellow-400);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+}
+.button > div::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  opacity: 0.5;
+  background-image: radial-gradient(
+      rgb(255 255 255 / 80%) 20%,
+      transparent 20%
+    ),
+    radial-gradient(rgb(255 255 255 / 100%) 20%, transparent 20%);
+  background-position:
+    0 0,
+    4px 4px;
+  background-size: 8px 8px;
+  mix-blend-mode: hard-light;
+  animation: btn-dots 0.5s infinite linear;
+}
+.button > div > span {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  gap: 0.25rem;
+  filter: drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.25));
+}
+.button > div > span:active {
+  transform: translateY(2px);
+}
+@keyframes btn-dots { 0% { background-position: 0 0, 4px 4px; } 100% { background-position: 8px 0, 12px 4px; } }
+
+/* ══ TITLE ══ */
+#sT{background:linear-gradient(180deg,#021018 0%,#0a2840 50%,#0f3e5e 100%);
+  overflow-y:auto;padding:24px 20px;gap:18px}
+.t-sky{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.t-drop{position:absolute;width:2px;height:8px;background:rgba(147,197,253,.35);
+  animation:drip var(--d) linear infinite}
+@keyframes drip{
+  0%{transform:translateY(-20px);opacity:0}
+  10%{opacity:1}90%{opacity:1}
+  100%{transform:translateY(100vh);opacity:0}}
+
+.tc{position:relative;z-index:2;display:flex;flex-direction:column;
+  align-items:center;gap:16px;width:100%;max-width:960px}
+.logo-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.logo-mario-canvas{display:block;filter:drop-shadow(0 0 12px rgba(253,224,71,.6))}
+.logo-title{font-size:clamp(1.3rem,4.5vw,2.8rem);color:#fde047;
+  letter-spacing:.14em;text-align:center;line-height:1.15;
+  text-shadow:0 0 22px rgba(253,224,71,.9),0 0 48px rgba(253,224,71,.4),3px 3px 0 #7c2d12;
+  animation:lp 2.5s ease-in-out infinite alternate}
+@keyframes lp{
+  from{text-shadow:0 0 18px rgba(253,224,71,.8),3px 3px 0 #7c2d12}
+  to  {text-shadow:0 0 38px #fde047,0 0 70px rgba(253,224,71,.5),3px 3px 0 #7c2d12}}
+.logo-sub{font-size:.72rem;letter-spacing:.28em;color:#93c5fd;text-transform:uppercase}
+
+.rr-badge{background:linear-gradient(135deg,#0c4a6e,#075985);
+  border:2px solid #38bdf8;border-radius:8px;padding:10px 20px;
+  font-size:.78rem;color:#e0f2fe;text-align:center;max-width:600px;line-height:1.6}
+.rr-badge strong{color:#fde047}
+.rr-formula{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.3);
+  border-radius:8px;padding:10px 20px;text-align:center;font-size:.78rem;
+  color:#bae6fd;max-width:700px;line-height:1.55}
+.rr-formula .f-eq{font-size:.92rem;color:#fde047;font-weight:700;margin-top:4px}
+
+.lvl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px;width:100%;max-width:860px}
+.lc{background:rgba(255,255,255,.04);border:2px solid rgba(56,189,248,.2);
+  border-radius:10px;padding:14px 16px;cursor:pointer;transition:.22s;text-align:center}
+.lc:hover{border-color:#fde047;box-shadow:0 0 18px rgba(253,224,71,.28);
+  background:rgba(253,224,71,.05);transform:translateY(-3px)}
+.lc-num{font-size:1.8rem;font-weight:900;color:rgba(56,189,248,.25);
+  font-family:Impact,sans-serif;margin-bottom:4px}
+.lc-name{font-size:.8rem;font-weight:700;color:#38bdf8;margin-bottom:4px}
+.lc-desc{font-size:.62rem;color:#9090b0;line-height:1.4}
+.lc-tag{display:inline-block;margin-top:6px;font-size:.58rem;
+  background:rgba(56,189,248,.2);border:1px solid rgba(56,189,248,.4);
+  border-radius:99px;padding:2px 9px;color:#bae6fd}
+
+.key-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.kh{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;padding:5px 11px;font-size:.7rem;color:#b8b8d0;
+  display:flex;align-items:center;gap:6px}
+.kb{background:#0c4a6e;border-radius:4px;padding:2px 7px;
+  font-size:.66rem;color:#fff;font-weight:700;border-bottom:2px solid #082f49}
+
+/* ══ GAME ══ */
+#sG{background:#05101a;flex-direction:column;align-items:stretch}
+.hud{display:flex;align-items:center;padding:12px 18px;gap:18px;min-height:56px;flex-shrink:0;
+  background:rgba(0,0,0,.8);border-bottom:2px solid #38bdf8;z-index:100;flex-wrap:wrap}
+.hi{display:flex;align-items:center;gap:5px;font-size:.7rem}
+.hl{color:#93c5fd;letter-spacing:.08em;text-transform:uppercase;font-size:.58rem}
+.hv{color:#fde047;font-weight:700;font-size:.85rem;
+  text-shadow:0 0 8px rgba(253,224,71,.5)}
+.hlvl{margin-left:auto;color:#38bdf8;font-size:.68rem;letter-spacing:.12em}
+
+/* WRENCH / QUANTUM TIMER */
+.qt-wrap{display:flex;align-items:center;gap:8px;
+  background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.4);
+  border-radius:6px;padding:3px 10px}
+.qt-icon{font-size:1rem}
+.qt-label{font-size:.52rem;color:#bae6fd;letter-spacing:.15em;text-transform:uppercase}
+.qt-val{font-size:1.1rem;font-weight:900;color:#fde047;font-family:monospace;
+  text-shadow:0 0 10px rgba(253,224,71,.6);min-width:22px;text-align:center}
+.qt-bar{width:56px;height:8px;background:rgba(255,255,255,.12);
+  border-radius:99px;overflow:hidden}
+.qt-fill{height:100%;background:linear-gradient(90deg,#34d399,#fde047,#f472b6);
+  transition:width .12s linear;box-shadow:0 0 6px rgba(253,224,71,.5)}
+.qt-fill.danger{background:linear-gradient(90deg,#ef4444,#dc2626);
+  box-shadow:0 0 10px rgba(239,68,68,.8);animation:pulseWrench .4s ease-in-out infinite alternate}
+@keyframes pulseWrench{from{opacity:.7}to{opacity:1}}
+
+.gw{flex:1;position:relative;overflow:hidden;display:flex}
+#gc{display:block;image-rendering:pixelated}
+
+/* SIDE PANEL */
+.sp{position:absolute;right:0;top:0;bottom:0;width:300px;
+  background:rgba(2,8,16,.97);border-left:2px solid #38bdf8;
+  padding:10px 9px;overflow-y:auto;z-index:50;
+  display:flex;flex-direction:column;gap:7px}
+.spt{font-size:.56rem;letter-spacing:.18em;color:#38bdf8;text-transform:uppercase;
+  border-bottom:1px solid rgba(56,189,248,.28);padding-bottom:5px;margin-bottom:1px}
+.sp-ch{display:flex;align-items:center;gap:7px;padding:5px 7px;
+  border-radius:6px;border:1px solid rgba(56,189,248,.2);
+  background:rgba(56,189,248,.04);font-size:.68rem;transition:.22s;position:relative}
+.sp-ch.running{border-color:#fde047;background:rgba(253,224,71,.09);
+  box-shadow:0 0 10px rgba(253,224,71,.3)}
+.sp-ch.head{border-color:#38bdf8;background:rgba(56,189,248,.08)}
+.sp-ch.done{opacity:.3;filter:grayscale(.8)}
+.sp-ch.notyet{opacity:.55}
+.sp-qpos{position:absolute;left:-4px;top:-4px;font-size:.55rem;
+  background:#0c4a6e;color:#fff;border-radius:99px;padding:1px 5px;font-weight:700}
+.sp-pipe{width:12px;height:12px;flex-shrink:0;position:relative}
+.sp-info{flex:1;min-width:0}
+.sp-nm{font-weight:700;color:#f0f0f0;font-size:.85rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-bt{color:#8080a0;font-size:.70rem}
+.sp-rbar-wrap{width:100%;height:5px;background:rgba(255,255,255,.08);
+  border-radius:99px;margin-top:3px;overflow:hidden}
+.sp-rbar{height:100%;border-radius:99px;background:linear-gradient(90deg,#38bdf8,#34d399);
+  transition:width .3s ease}
+.sp-gseg{display:flex;align-items:center;padding:3px 5px;border-radius:4px;
+  font-size:.6rem;font-weight:700;margin-bottom:2px;animation:sgi .3s ease both}
+@keyframes sgi{from{transform:translateX(8px);opacity:0}to{opacity:1}}
+.sp-gt{margin-left:auto;font-size:.54rem;opacity:.6;font-family:monospace}
+.sp-row{display:flex;justify-content:space-between;font-size:.63rem;
+  padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sp-row .k{color:#9090b0}.sp-row .v{color:#fde047;font-weight:700;font-family:monospace}
+
+/* TOAST */
+#toast{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(2,8,16,.97);border:2px solid #38bdf8;border-radius:12px;
+  padding:20px 25px;text-align:center;z-index:200;pointer-events:none;
+  opacity:0;transition:opacity .28s;max-width:400px;min-width:260px}
+#toast.show{opacity:1}
+.ti{font-size:2.4rem;display:block;margin-bottom:8px}
+.tm{font-size:1.35rem;color:#38bdf8;font-weight:800;margin-bottom:6px}
+.ts{font-size:.95rem;color:#b0b0d0;line-height:1.55}
+
+/* MOBILE */
+.mc{display:none;position:absolute;bottom:10px;left:0;right:0;
+  justify-content:space-between;padding:0 12px;z-index:150;pointer-events:none}
+.mcg{display:flex;gap:8px;pointer-events:all}
+.mb{width:52px;height:52px;border-radius:50%;background:rgba(56,189,248,.4);
+  border:2px solid rgba(147,197,253,.6);font-size:1.2rem;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@media(max-width:640px){.mc{display:flex}.sp{width:150px}}
+@media(pointer:coarse){.mc{display:flex}}
+
+/* ══ RESULTS ══ */
+#sR{background:radial-gradient(ellipse at 50% 0%,#0c4a6e,#05101a 70%);
+  overflow-y:auto;padding:28px 18px;gap:18px;align-items:center}
+.rtro{font-size:3.5rem;animation:spin 1s ease-out}
+@keyframes spin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+.rtitle{font-size:clamp(1.8rem,5vw,2.8rem);color:#38bdf8;
+  text-shadow:0 0 20px rgba(56,189,248,.6);margin:6px 0 3px;text-align:center}
+.rsub{font-size:1rem;color:#bae6fd;letter-spacing:.2em;text-transform:uppercase}
+.rsb{background:rgba(56,189,248,.08);border:2px solid rgba(56,189,248,.3);
+  border-radius:12px;padding:20px 28px;display:flex;gap:35px;
+  justify-content:center;flex-wrap:wrap}
+.rsi .rv{font-size:2.5rem;font-weight:700;color:#fde047;
+  text-shadow:0 0 10px rgba(253,224,71,.5);font-family:monospace}
+.rsi .rl{font-size:.78rem;color:#bae6fd;letter-spacing:.12em;text-transform:uppercase}
+.rg-wrap{width:100%;max-width:1000px;overflow-x:auto}
+.rg-bar{display:flex;height:60px}
+.rg-seg{display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;font-weight:700;overflow:hidden;flex-shrink:0;
+  border-left:2px solid rgba(255,255,255,.2);animation:revSeg .4s ease both}
+@keyframes revSeg{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.rg-ticks{position:relative;height:24px;margin-top:6px}
+.rg-tick{position:absolute;transform:translateX(-50%);
+  font-size:.85rem;color:#999;white-space:nowrap}
+.rg-tick::before{content:'';display:block;width:1.5px;height:6px;
+  background:#999;margin:0 auto 3px}
+.rtbl{width:100%;max-width:1000px;border-collapse:collapse;font-size:1.05rem}
+.rtbl th{padding:12px 14px;color:#bae6fd;font-size:.8rem;letter-spacing:.12em;
+  border-bottom:2px solid rgba(56,189,248,.3);text-align:center;text-transform:uppercase}
+.rtbl td{padding:10px 14px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05)}
+.r-refl{width:100%;max-width:1000px;background:rgba(56,189,248,.05);
+  border:1px solid rgba(56,189,248,.25);border-radius:10px;
+  padding:24px 30px;font-size:1.05rem;color:#b0b0d0;line-height:1.7}
+.r-refl-t{color:#38bdf8;font-weight:700;font-size:1.3rem;margin-bottom:12px;
+  display:flex;gap:7px;align-items:center}
+.r-rr-box{background:rgba(253,224,71,.07);border:1px solid rgba(253,224,71,.25);
+  border-radius:7px;padding:14px 18px;margin-top:12px;font-size:1rem;color:#fde68a}
+.rbtns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.rb{padding:12px 28px;border-radius:8px;font-family:inherit;font-size:.9rem;
+  letter-spacing:.08em;cursor:pointer;border:2px solid;font-weight:700;
+  transition:.2s;text-transform:uppercase}
+.rb-p{background:#0c4a6e;border-color:#38bdf8;color:#fff}
+.rb-p:hover{background:#075985;box-shadow:0 0 14px rgba(56,189,248,.5)}
+.rb-g{background:transparent;border-color:rgba(56,189,248,.38);color:#bae6fd}
+.rb-g:hover{border-color:#38bdf8;background:rgba(56,189,248,.09)}
+</style>
+</head>
+<body>
+
+<!-- ══ TITLE ══ -->
+<div class="scr" id="sT">
+  <div class="t-sky" id="tSky"></div>
+  <div class="tc">
+    <div class="logo-wrap">
+      <canvas id="logoMario" class="logo-mario-canvas" width="64" height="64"></canvas>
+      <div class="logo-title">MARIO PLOMERO</div>
+      <div class="logo-sub">🔧 Round Robin · Repara las Tuberías 🔧</div>
+    </div>
+    <div class="rr-badge">
+      ¡El Reino Champiñón tiene <strong>tuberías rotas</strong>!
+      Mario es el plomero. Debe atender cada tubería por <strong>Q segundos</strong>
+      (un <strong>Quantum</strong>) antes de pasar a la siguiente. Si una tubería
+      no se repara en un turno, vuelve al final de la cola.
+    </div>
+    <div class="rr-formula">
+      🔧 <strong>Llave inglesa (Quantum):</strong> dura Q turnos antes de necesitar recarga<br>
+      <div class="f-eq">BT restante = trabajo pendiente en la tubería</div>
+      <div style="font-size:.64rem;margin-top:4px;color:#93c5fd">
+        Cuando el quantum expira → la tubería va al final, Mario corre a la siguiente.
+        Cuando la tubería se repara completamente → Mario la sella ✅
+      </div>
+    </div>
+    <div class="lvl-grid" id="lvlGrid"></div>
+    <a href="index.html" class="button" style="text-decoration: none; margin: 10px auto 25px auto; display: block; width: fit-content; max-width: 90%;">
+      <div><span>🏠 Regresar a Menú Principal</span></div>
+    </a>
+    <div class="key-row">
+      <div class="kh"><span class="kb">← →</span> Mover</div>
+      <div class="kh"><span class="kb">↑ / Z</span> Saltar</div>
+      <div class="kh"><span class="kb">SPACE</span> Reparar / Rotar</div>
+      <div class="kh"><span class="kb">ESC</span> Menú</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GAME ══ -->
+<div class="scr off" id="sG">
+  <div class="hud">
+    <div class="hi"><span class="hl">❤</span><span class="hv" id="hLives">3</span></div>
+    <div class="hi"><span class="hl">Score</span><span class="hv" id="hScore">0</span></div>
+    <div class="hi"><span class="hl">t</span><span class="hv" id="hClock">0</span></div>
+    <div class="qt-wrap">
+      <span class="qt-icon">🔧</span>
+      <div>
+        <div class="qt-label">Quantum</div>
+        <div class="qt-val" id="hQtVal">—</div>
+      </div>
+      <div class="qt-bar"><div class="qt-fill" id="hQtFill" style="width:0%"></div></div>
+    </div>
+    <div class="hi"><span class="hl">Tubería</span><span class="hv" id="hHead" style="color:#38bdf8">—</span></div>
+    <div class="hi"><span class="hl">Errores</span><span class="hv" id="hErr" style="color:#f87171">0</span></div>
+    <div class="hlvl" id="hLvl">NIVEL 1</div>
+  </div>
+  <div class="gw" id="gw">
+    <canvas id="gc"></canvas>
+    <div class="sp" id="sp">
+      <div class="spt">🔧 Cola de Tuberías</div>
+      <div id="spQ"></div>
+      <div class="spt" style="margin-top:5px">📊 Bitácora</div>
+      <div id="spG"></div>
+      <div class="spt" style="margin-top:5px">⏱ Métricas</div>
+      <div id="spM"></div>
+    </div>
+    <div id="toast">
+      <span class="ti" id="tIcon">🔧</span>
+      <div class="tm" id="tMsg">—</div>
+      <div class="ts" id="tSub">—</div>
+    </div>
+    <div class="mc" id="mc">
+      <div class="mcg"><div class="mb" id="mcL">◀</div><div class="mb" id="mcR">▶</div></div>
+      <div class="mcg"><div class="mb" id="mcJ">↑</div><div class="mb" id="mcA">🔧</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div class="scr off" id="sR">
+  <div class="rtro" id="rTro">🏆</div>
+  <div class="rtitle" id="rTitle">¡Tuberías Reparadas!</div>
+  <div class="rsub"   id="rSub">—</div>
+  <div class="rsb" id="rSB"></div>
+  <div class="rg-wrap">
+    <div style="font-size:.58rem;letter-spacing:.18em;color:#bae6fd;margin-bottom:5px">BITÁCORA — ROUND ROBIN</div>
+    <div class="rg-bar"   id="rGBar"></div>
+    <div class="rg-ticks" id="rGTks"></div>
+  </div>
+  <table class="rtbl"><thead><tr>
+    <th>Tubería</th><th>Llegó</th><th>Trabajo</th><th>Turnos</th>
+    <th>Fin</th><th>TAT</th><th>WT</th>
+  </tr></thead><tbody id="rTB"></tbody><tfoot id="rTF"></tfoot></table>
+  <div class="r-refl" id="rRefl"></div>
+  <div class="rbtns">
+    <button class="rb rb-p" id="bNxt">Siguiente Nivel ▶</button>
+    <button class="rb rb-g" id="bRep">↺ Repetir</button>
+    <button class="rb rb-g" id="bMenu">🏠 Menú</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════
+   PIXEL ART MARIO
+═══════════════════════════════════════════════════════════ */
+const _=null,R='#e52521',S='#fbd000',B='#5b3a1e',O='#f28030';
+
+const MARIO_FRAMES={
+  stand:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,S,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,O,_,_,_,_,_,_,_,_],
+    [_,O,O,O,R,O,O,O,O,O,_,_,_,_,_,_],
+    [O,O,O,O,R,R,O,O,O,O,O,_,_,_,_,_],
+    [S,S,O,R,S,S,R,O,S,S,_,_,_,_,_,_],
+    [S,S,S,R,S,S,R,S,S,S,_,_,_,_,_,_],
+    [_,_,R,R,_,_,R,R,_,_,_,_,_,_,_,_],
+    [_,B,B,B,_,_,B,B,B,_,_,_,_,_,_,_],
+    [B,B,B,_,_,_,_,B,B,B,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  run1:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,_,_,_,_,_,_,_,_,_],
+    [_,O,O,O,R,O,O,O,O,_,_,_,_,_,_,_],
+    [O,O,O,O,R,R,O,O,O,O,_,_,_,_,_,_],
+    [S,S,O,R,S,S,R,O,S,_,_,_,_,_,_,_],
+    [S,S,R,S,S,R,S,S,_,_,_,_,_,_,_,_],
+    [_,R,R,_,R,R,_,_,_,_,_,_,_,_,_,_],
+    [R,B,B,_,B,B,R,_,_,_,_,_,_,_,_,_],
+    [B,B,_,_,_,B,B,B,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  run2:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,O,_,_,_,_,_,_,_,_],
+    [O,O,O,O,R,O,O,O,O,_,_,_,_,_,_,_],
+    [O,O,O,R,R,O,O,O,O,O,_,_,_,_,_,_],
+    [S,O,R,S,S,R,O,O,S,_,_,_,_,_,_,_],
+    [S,R,S,S,R,S,S,_,_,_,_,_,_,_,_,_],
+    [R,R,_,R,R,_,_,_,_,_,_,_,_,_,_,_],
+    [B,B,_,B,B,R,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,B,B,B,B,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  jump:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],
+    [O,O,O,R,O,O,O,O,_,_,_,_,_,_,_,_],
+    [O,O,O,O,R,O,O,O,O,O,O,_,_,_,_,_],
+    [O,O,O,R,R,O,O,O,O,O,_,_,_,_,_,_],
+    [S,S,R,S,S,R,O,S,S,_,_,_,_,_,_,_],
+    [_,R,S,S,R,_,S,S,_,_,_,_,_,_,_,_],
+    [_,R,R,R,R,_,_,_,_,_,_,_,_,_,_,_],
+    [B,B,B,B,_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  // Mario hammering with wrench (fixing animation)
+  fix1:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,O,S,S,_,_,_,_,_,_],
+    [_,O,O,O,R,O,O,O,O,S,'#888',_,_,_,_,_],
+    [O,O,O,O,R,R,O,O,O,'#888','#ccc','#888',_,_,_,_],
+    [S,S,O,R,S,S,R,O,S,_,'#888','#ccc','#888',_,_,_],
+    [S,S,S,R,S,S,R,S,S,_,_,'#888',_,_,_,_],
+    [_,_,R,R,_,_,R,R,_,_,_,_,_,_,_,_],
+    [_,B,B,B,_,_,B,B,B,_,_,_,_,_,_,_],
+    [B,B,B,_,_,_,_,B,B,B,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  fix2:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,'#888',_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,'#ccc','#888',_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,'#ccc',_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,'#888',_,_,_],
+    [_,_,_,S,S,S,S,S,S,S,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,O,S,S,_,_,_,_,_,_],
+    [_,O,O,O,R,O,O,O,O,S,_,_,_,_,_,_],
+    [O,O,O,O,R,R,O,O,O,O,O,_,_,_,_,_],
+    [S,S,O,R,S,S,R,O,S,S,_,_,_,_,_,_],
+    [S,S,S,R,S,S,R,S,S,S,_,_,_,_,_,_],
+    [_,_,R,R,_,_,R,R,_,_,_,_,_,_,_,_],
+    [_,B,B,B,_,_,B,B,B,_,_,_,_,_,_,_],
+    [B,B,B,_,_,_,_,B,B,B,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+};
+
+function drawMarioSprite(ctx,x,y,scale,frameKey,flipX){
+  const frame=MARIO_FRAMES[frameKey]||MARIO_FRAMES.stand;const s=scale;
+  ctx.save();
+  if(flipX){ctx.translate(x+16*s,y);ctx.scale(-1,1);}
+  else ctx.translate(x,y);
+  for(let row=0;row<16;row++)for(let col=0;col<16;col++){
+    const c=frame[row][col];if(c===null||c===undefined)continue;
+    ctx.fillStyle=c;ctx.fillRect(col*s,row*s,s,s);
+  }
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PIPE SPRITE — replaces enemy characters
+   Each pipe has:
+   - color variation (different pipe types)
+   - damage state: cracks, steam, fire, water leak
+   - can be "sealed" when done
+═══════════════════════════════════════════════════════════ */
+function drawPipe(ctx,x,y,pipe,fixProgress,isRepairing,animT){
+  // fixProgress = 0..1  (1 = fully repaired)
+  // isRepairing = true → show steam/sparks coming OUT from repair
+  const s = 8; // pixel size inside pipe
+  const pw = s*8, ph = s*9;
+
+  // PIPE BODY — classic Mario green or variant color
+  const base = pipe.pipeColor || '#16a34a';
+  const dark = pipe.pipeDark || '#14532d';
+  const darker = '#052e16';
+
+  // Pipe top rim (wider)
+  ctx.fillStyle=dark;
+  ctx.fillRect(x-s, y, pw+2*s, s*2);
+  ctx.fillStyle=base;
+  ctx.fillRect(x-s+s/2, y+s/2, pw+s, s);
+  ctx.fillStyle='#86efac';
+  ctx.fillRect(x-s+s/2, y+s/2, s, s); // highlight
+
+  // Pipe shaft
+  ctx.fillStyle=dark;
+  ctx.fillRect(x, y+s*2, pw, ph-s*2);
+  ctx.fillStyle=base;
+  ctx.fillRect(x+s/2, y+s*2, pw-s, ph-s*2);
+  // inner shadow
+  ctx.fillStyle=darker;
+  ctx.fillRect(x+pw-s, y+s*2, s-1, ph-s*2);
+  // highlight stripe
+  ctx.fillStyle='#86efac';
+  ctx.fillRect(x+s, y+s*2+s, 2, ph-s*4);
+
+  // DAMAGE — cracks (visible proportional to 1-fixProgress)
+  if(fixProgress < 1){
+    const damage = 1-fixProgress;
+    ctx.fillStyle='#111';
+    // crack 1 — diagonal
+    if(damage>0.1){
+      ctx.fillRect(x+s*2, y+s*3, 2, 4);
+      ctx.fillRect(x+s*2+1, y+s*3+3, 2, 4);
+      ctx.fillRect(x+s*2+2, y+s*3+6, 2, 3);
+    }
+    // crack 2
+    if(damage>0.35){
+      ctx.fillRect(x+s*5, y+s*4, 2, 5);
+      ctx.fillRect(x+s*5-1, y+s*4+4, 2, 3);
+    }
+    // hole with water
+    if(damage>0.6){
+      ctx.fillStyle='#000';
+      ctx.fillRect(x+s*3, y+s*6, s*2, 5);
+      // water dripping
+      ctx.fillStyle='#3b82f6';
+      const dropY = (animT*40)%18;
+      ctx.fillRect(x+s*3+s, y+s*6+5+dropY, 2, 3);
+      ctx.fillRect(x+s*3+s-3, y+s*6+5+(dropY+8)%18, 2, 2);
+    }
+
+    // Steam coming out (constant when damaged)
+    const puffCount = Math.ceil(damage*3);
+    for(let i=0;i<puffCount;i++){
+      const pt = (animT*1.5 + i*0.8) % 2;
+      const px = x+pw/2 + Math.sin(pt*4+i)*8;
+      const py = y - 8 - pt*12;
+      const alpha = Math.max(0, 0.6 - pt*0.3);
+      ctx.fillStyle=`rgba(200,220,230,${alpha})`;
+      const r = 3 + pt*2;
+      ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
+    }
+  }
+
+  // REPAIR SPARKLES — when Mario is actively repairing
+  if(isRepairing){
+    for(let i=0;i<5;i++){
+      const t = (animT*3 + i*0.3) % 1;
+      const px = x + pw/2 + (Math.random()-0.5)*pw;
+      const py = y + ph/2 + Math.sin(t*Math.PI*2)*10 - 15;
+      const alpha = 1-t;
+      ctx.fillStyle=`rgba(253,224,71,${alpha})`;
+      ctx.fillRect(px, py, 2, 2);
+      ctx.fillStyle=`rgba(255,255,255,${alpha*0.8})`;
+      ctx.fillRect(px+1, py+1, 1, 1);
+    }
+  }
+
+  // SEAL when fully fixed (fixProgress=1 and done)
+  if(pipe.served){
+    // golden seal / bolt pattern
+    ctx.fillStyle='#fde047';
+    ctx.fillRect(x+s*2, y+s*3, pw-s*4, 3);
+    ctx.fillRect(x+s*2, y+s*5, pw-s*4, 3);
+    ctx.fillStyle='#ca8a04';
+    // bolts
+    for(let by=s*3; by<ph-s*2; by+=s*2){
+      ctx.fillRect(x+s, y+by, 2, 2);
+      ctx.fillRect(x+pw-s-1, y+by, 2, 2);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PIPE DEFINITIONS — different colors/types
+═══════════════════════════════════════════════════════════ */
+const PIPE_TYPES=[
+  { name:'Verde',    pipeColor:'#16a34a', pipeDark:'#14532d' },
+  { name:'Azul',     pipeColor:'#0284c7', pipeDark:'#075985' },
+  { name:'Morada',   pipeColor:'#9333ea', pipeDark:'#581c87' },
+  { name:'Roja',     pipeColor:'#dc2626', pipeDark:'#7f1d1d' },
+  { name:'Dorada',   pipeColor:'#f59e0b', pipeDark:'#78350f' },
+  { name:'Turquesa', pipeColor:'#14b8a6', pipeDark:'#134e4a' },
+];
+
+/* ═══════════════════════════════════════════════════════════
+   LEVELS
+═══════════════════════════════════════════════════════════ */
+const LEVELS=[
+  { id:0, name:'Nivel 1 — Tuberías básicas', tag:'Q=2', quantum:2,
+    desc:'3 tuberías rotas. Quantum=2. Aprende la cola circular.',
+    procs:[
+      {name:'T1',pipeIdx:0,at:0,bt:5},
+      {name:'T2',pipeIdx:1,at:0,bt:3},
+      {name:'T3',pipeIdx:2,at:0,bt:2},
+    ]},
+  { id:1, name:'Nivel 2 — Fugas nuevas', tag:'Q=3', quantum:3,
+    desc:'Tuberías se rompen en distintos momentos. Se unen a la cola al llegar.',
+    procs:[
+      {name:'T1',pipeIdx:3,at:0,bt:5},
+      {name:'T2',pipeIdx:0,at:1,bt:4},
+      {name:'T3',pipeIdx:1,at:2,bt:3},
+      {name:'T4',pipeIdx:2,at:4,bt:2},
+    ]},
+  { id:2, name:'Nivel 3 — Clase A/B/C/D', tag:'Q=2', quantum:2,
+    desc:'El ejercicio clásico con Q=2. Compara con FCFS/SJF/HRRN.',
+    procs:[
+      {name:'A',pipeIdx:4,at:0,bt:3},
+      {name:'B',pipeIdx:5,at:0,bt:2},
+      {name:'C',pipeIdx:0,at:1,bt:4},
+      {name:'D',pipeIdx:1,at:3,bt:2},
+    ]},
+  { id:3, name:'Nivel 4 — Plomero frenético', tag:'Q=1', quantum:1,
+    desc:'Quantum=1 te hace correr sin parar. ¡Siente el overhead del context switch!',
+    procs:[
+      {name:'T1',pipeIdx:2,at:0,bt:4},
+      {name:'T2',pipeIdx:1,at:0,bt:3},
+      {name:'T3',pipeIdx:0,at:0,bt:5},
+    ]},
+];
+
+const TILE=56,GU=54,SCALE=3;
+const MARIO_W=16*SCALE, MARIO_H=16*SCALE;
+const PIPE_W=8*8, PIPE_H=9*8;
+const EXEC_UNIT_SEC=1.8; // visual time per BT unit
+
+/* ═══════════════════════════════════════════════════════════
+   TITLE
+═══════════════════════════════════════════════════════════ */
+(function(){
+  const sky=document.getElementById('tSky');
+  // water drops instead of stars
+  for(let i=0;i<40;i++){
+    const d=document.createElement('div');d.className='t-drop';
+    d.style.cssText=`left:${Math.random()*100}%;top:${-Math.random()*100}%;--d:${(3+Math.random()*5).toFixed(1)}s;animation-delay:${(Math.random()*4).toFixed(1)}s`;
+    sky.appendChild(d);
+  }
+  const lc=document.getElementById('logoMario');
+  lc.width=64;lc.height=64;
+  const lx=lc.getContext('2d');lx.imageSmoothingEnabled=false;
+  drawMarioSprite(lx,0,0,4,'stand',false);
+  let lf=0;const lframes=['stand','fix1','fix2','fix1'];
+  setInterval(()=>{lf=(lf+1)%4;lx.clearRect(0,0,64,64);drawMarioSprite(lx,0,0,4,lframes[lf],false);},220);
+
+  const grid=document.getElementById('lvlGrid');
+  LEVELS.forEach((lv,i)=>{
+    const c=document.createElement('div');c.className='lc';
+    c.innerHTML=`<div class="lc-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="lc-name">${lv.name}</div>
+      <div class="lc-desc">${lv.desc}</div>
+      <div class="lc-tag">Quantum=${lv.quantum}</div>`;
+    c.addEventListener('click',()=>startLevel(i));grid.appendChild(c);
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   ENGINE
+═══════════════════════════════════════════════════════════ */
+const canvas=document.getElementById('gc'),ctx=canvas.getContext('2d');
+const gw=document.getElementById('gw');
+let W,H,SP_W=300;
+
+function resize(){
+  SP_W=window.innerWidth<=640?150:300;
+  W=gw.clientWidth-SP_W;H=gw.clientHeight;
+  canvas.width=W;canvas.height=H;
+  ctx.imageSmoothingEnabled=false;
+}
+
+let G={running:false};
+const keys={};
+let starBg=null,lastT=0;
+
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('sG').classList.contains('off'))return;
+  keys[e.code]=true;
+  if(e.code==='Space'){e.preventDefault();doAction();}
+  if(e.code==='KeyZ') keys['ArrowUp']=true;
+  if(e.code==='Escape') goMenu();
+});
+document.addEventListener('keyup',e=>{
+  keys[e.code]=false;
+  if(e.code==='KeyZ')keys['ArrowUp']=false;
+});
+['mcL','mcR','mcJ','mcA'].forEach(id=>{
+  const el=document.getElementById(id);
+  const cm={mcL:'ArrowLeft',mcR:'ArrowRight',mcJ:'ArrowUp',mcA:'Space'};
+  if(!el)return;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();if(id==='mcA')doAction();else keys[cm[id]]=true;});
+  el.addEventListener('pointerup',()=>keys[cm[id]]=false);
+  el.addEventListener('pointerleave',()=>keys[cm[id]]=false);
+});
+
+/* BUILD WORLD */
+function buildWorld(li){
+  const lv=LEVELS[li],n=lv.procs.length;
+  const worldW=Math.max(W*2.3,n*TILE*6+280);
+  const gy=Math.round(H*0.72);
+  const pipes=lv.procs.map((p,i)=>({
+    ...p, origIdx:i,
+    x:200+i*(worldW-260)/Math.max(n-1,1),
+    y:gy-PIPE_H, w:PIPE_W, h:PIPE_H,
+    pipeDef:PIPE_TYPES[p.pipeIdx%PIPE_TYPES.length],
+    remaining:p.bt,
+    turns:0,
+    firstStart:-1,
+    served:false,
+    completionT:-1,
+  }));
+  const mario={x:60,y:gy-MARIO_H,w:MARIO_W,h:MARIO_H,
+    vx:0,vy:0,onGround:true,facing:1,frame:0,frameKey:'stand',ft:0};
+  return{pipes,mario,worldW,gy,quantum:lv.quantum};
+}
+
+function startLevel(li){
+  resize();starBg=null;
+  const{pipes,mario,worldW,gy,quantum}=buildWorld(li);
+  G={
+    li,score:0,lives:3,clock:0,errors:0,
+    pipes,mario,worldW,gy,camX:0,
+    doneCount:0,particles:[],shake:0,
+    toastT:0,wrongF:0,idleT:0,running:true,
+    quantum,
+    queue:[], head:null,
+    quantumRemaining:0, execProgress:0,
+    ganttSegments:[],
+    marioState:'free',
+    actionPending:null,
+    arrivedSet:new Set(),
+  };
+  checkArrivals();
+  if(G.queue.length>0){ G.head=G.queue[0]; initQuantum(); }
+  showSc('sG');
+  document.getElementById('hLvl').textContent=`${LEVELS[li].name} (Q=${quantum})`;
+  updateHUD();updateSP();
+  lastT=0;requestAnimationFrame(loop);
+}
+
+function checkArrivals(){
+  G.pipes.forEach(c=>{
+    if(!c.served && !G.arrivedSet.has(c.name) && c.at<=G.clock){
+      G.queue.push(c.name);
+      G.arrivedSet.add(c.name);
+    }
+  });
+}
+
+function initQuantum(){
+  const head=G.pipes.find(c=>c.name===G.head);
+  if(!head) return;
+  G.quantumRemaining=Math.min(G.quantum,head.remaining);
+  G.execProgress=0;
+}
+
+function loop(ts){
+  if(!G.running)return;
+  const dt=Math.min((ts-lastT)/1000,.05);lastT=ts;
+  update(dt);draw();
+  requestAnimationFrame(loop);
+}
+
+function update(dt){
+  const{mario,gy,worldW}=G;
+  if(G.shake>0) G.shake-=dt;
+  if(G.wrongF>0) G.wrongF-=dt;
+  if(G.toastT>0){G.toastT-=dt;if(G.toastT<=0)hideTst();}
+  G.idleT+=dt;
+
+  G.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=450*dt;p.life-=dt;});
+  G.particles=G.particles.filter(p=>p.life>0);
+
+  /* EXECUTING = repairing */
+  if(G.marioState==='executing' && G.head){
+    const head=G.pipes.find(c=>c.name===G.head);
+    if(head){
+      const nearHead=Math.abs((mario.x+mario.w/2)-(head.x+head.w/2)) < TILE*2.2;
+      if(nearHead){
+        G.execProgress += dt / EXEC_UNIT_SEC;
+        // mario animates hammering
+        mario.ft+=dt;
+        if(mario.ft>.18){mario.ft=0;mario.frame=(mario.frame+1)%2;}
+        mario.frameKey=mario.frame===0?'fix1':'fix2';
+        mario.facing = head.x > mario.x ? 1 : -1;
+
+        if(G.execProgress >= 1){
+          G.execProgress=0;
+          G.clock++;
+          head.remaining--;
+          G.quantumRemaining--;
+          if(head.firstStart<0) head.firstStart=G.clock-1;
+
+          const last=G.ganttSegments[G.ganttSegments.length-1];
+          if(last && last.name===head.name && last.end===G.clock-1){
+            last.end=G.clock;
+          } else {
+            G.ganttSegments.push({name:head.name, start:G.clock-1, end:G.clock, color:head.pipeDef.pipeColor});
+          }
+          checkArrivals();
+          updateHUD();updateSP();
+
+          // spark burst on each repair tick
+          spawn(head.x+head.w/2, head.y+head.h/2, '#fde047', 6);
+
+          if(head.remaining<=0){
+            head.served=true;head.completionT=G.clock;G.doneCount++;
+            head.tat=head.completionT - head.at;
+            head.wt=head.tat - head.bt;
+            G.marioState='rotating';
+            G.actionPending='finish';
+            showTst('✅','¡Tubería reparada!',`Sella ${head.name} con SPACE para cerrarla.`);
+          } else if(G.quantumRemaining<=0){
+            head.turns++;
+            G.marioState='rotating';
+            G.actionPending='rotate';
+            showTst('🔧','¡Quantum expirado!',
+              `${head.name} va al final. Corre a la siguiente tubería.`);
+          }
+        }
+        return; // skip normal movement this frame
+      }
+    }
+  }
+
+  /* normal movement (free + executing-but-far + rotating) */
+  mario.vx=0;
+  if(keys['ArrowLeft']){mario.vx=-220;mario.facing=-1;}
+  if(keys['ArrowRight']){mario.vx=220;mario.facing=1;}
+  if(keys['ArrowUp']&&mario.onGround){mario.vy=-570;mario.onGround=false;mario.frameKey='jump';}
+  mario.vy+=1500*dt;
+  mario.x+=mario.vx*dt;mario.y+=mario.vy*dt;
+  if(mario.y>=gy-mario.h){mario.y=gy-mario.h;mario.vy=0;mario.onGround=true;
+    if(mario.frameKey==='jump')mario.frameKey='stand';}
+  mario.x=Math.max(0,Math.min(mario.x,worldW-mario.w));
+  mario.ft+=dt;
+  if(mario.ft>.12){mario.ft=0;mario.frame=(mario.frame+1)%2;}
+  if(mario.vx!==0&&mario.onGround) mario.frameKey=mario.frame===0?'run1':'run2';
+  else if(mario.onGround && mario.frameKey!=='fix1' && mario.frameKey!=='fix2') mario.frameKey='stand';
+  G.camX=Math.max(0,Math.min(mario.x-W*.35,worldW-W));
+}
+
+function doAction(){
+  if(!G.running) return;
+  const mario=G.mario;
+
+  if(G.marioState==='free'){
+    if(!G.head){
+      const next=G.pipes.filter(c=>!c.served).sort((a,b)=>a.at-b.at)[0];
+      if(!next)return;
+      G.clock=next.at;
+      checkArrivals();
+      if(G.queue.length>0){ G.head=G.queue[0]; initQuantum(); }
+      updateHUD();updateSP();
+    }
+    const head=G.pipes.find(c=>c.name===G.head);
+    if(!head)return;
+    const dist=Math.abs((mario.x+mario.w/2)-(head.x+head.w/2));
+    if(dist>TILE*2.2){
+      showTst('💨','¡Acércate a la tubería!',
+        `${head.name} necesita tus reparaciones.`);
+      return;
+    }
+    G.marioState='executing';
+    showTst('🔧',`Reparando ${head.name}`,
+      `Quantum=${G.quantum} | Trabajo restante=${head.remaining}. ¡No te alejes!`);
+    return;
+  }
+
+  if(G.marioState==='rotating'){
+    let closest=null,cd=Infinity;
+    G.pipes.forEach(c=>{
+      const d=Math.abs((mario.x+mario.w/2)-(c.x+c.w/2));
+      if(d<cd){cd=d;closest=c;}
+    });
+    if(!closest || cd>TILE*2.2){
+      showTst('💨','¡Acércate!',`Encuentra la tubería correcta.`);
+      return;
+    }
+
+    if(G.actionPending==='finish'){
+      const oldHead=G.head;
+      if(closest.name!==oldHead){
+        G.errors++;G.lives=Math.max(0,G.lives-1);G.shake=.35;G.wrongF=.5;
+        updateHUD();
+        showTst('❌','¡Primero sella la tubería reparada!',
+          `${oldHead} terminó. Acércate a ella y SPACE.`);
+        if(G.lives<=0)return setTimeout(gameOver,1100);
+        return;
+      }
+      G.score+=150;
+      spawn(closest.x+closest.w/2,closest.y+closest.h/2,'#fde047',24);
+      const idx=G.queue.indexOf(oldHead);
+      if(idx>=0) G.queue.splice(idx,1);
+      G.head=null;
+      showTst('🏁',`¡${oldHead} sellada!`,
+        `Turnos: ${closest.turns+1} | TAT=${closest.tat} WT=${closest.wt}`);
+      updateSP();updateHUD();
+
+      if(G.doneCount>=G.pipes.length){
+        setTimeout(showResults,1200);
+        return;
+      }
+      setTimeout(()=>{
+        checkArrivals();
+        if(G.queue.length>0){
+          G.head=G.queue[0];
+          initQuantum();
+          G.marioState='free';
+          updateSP();updateHUD();
+          const nh=G.pipes.find(c=>c.name===G.head);
+          showTst('🎯',`Siguiente: ${G.head}`,
+            `Acércate y SPACE (trabajo restante=${nh.remaining})`);
+        } else {
+          G.marioState='free';
+          const next=G.pipes.filter(c=>!c.served).sort((a,b)=>a.at-b.at)[0];
+          if(next){
+            showTst('⏸','Sin fugas nuevas…',`Próxima tubería en t=${next.at}.`);
+          }
+        }
+      },900);
+
+    } else if(G.actionPending==='rotate'){
+      const oldHead=G.head;
+      const idx=G.queue.indexOf(oldHead);
+      if(idx>=0) G.queue.splice(idx,1);
+      checkArrivals();
+      G.queue.push(oldHead);
+
+      const correctNextHead=G.queue[0];
+
+      if(closest.name!==correctNextHead){
+        G.errors++;G.lives=Math.max(0,G.lives-1);G.shake=.35;G.wrongF=.5;
+        updateHUD();
+        const popIdx=G.queue.indexOf(oldHead);
+        if(popIdx>=0) G.queue.splice(popIdx,1);
+        G.queue.unshift(oldHead);
+        showTst('❌',`Debe ser ${correctNextHead}`,
+          `Tras rotar, esa tubería queda al frente.`);
+        if(G.lives<=0)return setTimeout(gameOver,1100);
+        return;
+      }
+      G.score+=100;
+      spawn(closest.x+closest.w/2,closest.y+closest.h/2,closest.pipeDef.pipeColor,10);
+      G.head=correctNextHead;
+      initQuantum();
+      G.marioState='free';
+      const nh=G.pipes.find(c=>c.name===G.head);
+      showTst('🔄',`¡Cola rotada! Nueva tubería: ${G.head}`,
+        `${oldHead} al final. Repara ${G.head} (trabajo=${nh.remaining})`);
+      updateSP();updateHUD();
+    }
+  }
+}
+
+function spawn(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=100+Math.random()*200;
+    G.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-120,
+      r:2+Math.random()*4,color,life:.7+Math.random()*.6,maxLife:1.3});
+  }
+}
+
+function gameOver(){
+  G.running=false;
+  showTst('💀','¡El Reino se inundó!','Round Robin atiende por turnos. ¡Inténtalo de nuevo!',3);
+  setTimeout(()=>startLevel(G.li),3600);
+}
+
+/* HUD */
+function updateHUD(){
+  document.getElementById('hLives').textContent='❤️'.repeat(G.lives)||'💀';
+  document.getElementById('hScore').textContent=G.score;
+  document.getElementById('hClock').textContent=G.clock;
+  document.getElementById('hErr').textContent=G.errors;
+  document.getElementById('hHead').textContent=G.head||'—';
+  document.getElementById('hQtVal').textContent=
+    G.marioState==='executing'?G.quantumRemaining:G.quantum;
+  const fill=document.getElementById('hQtFill');
+  const pct = G.marioState==='executing' && G.quantum>0
+    ? ((G.quantumRemaining - G.execProgress) / G.quantum)*100
+    : 100;
+  fill.style.width=Math.max(0,pct)+'%';
+  fill.classList.toggle('danger',
+    G.marioState==='executing' && (G.quantumRemaining-G.execProgress)<=1);
+}
+
+function updateSP(){
+  const qEl=document.getElementById('spQ');qEl.innerHTML='';
+  G.queue.forEach((name,i)=>{
+    const c=G.pipes.find(x=>x.name===name);
+    const d=document.createElement('div');
+    const isHead=name===G.head;
+    d.className='sp-ch'+(isHead?' running':'')+(i===0?' head':'');
+    const pct=Math.round((1-c.remaining/c.bt)*100);
+    d.innerHTML=`
+      <span class="sp-qpos">${i===0?'🔧':i+1}</span>
+      <div class="sp-pipe" style="background:${c.pipeDef.pipeColor};border:1px solid ${c.pipeDef.pipeDark};border-radius:2px"></div>
+      <div class="sp-info">
+        <div class="sp-nm">${c.name}${isHead?' ◀ Mario':''}</div>
+        <div class="sp-bt">rest:${c.remaining}/${c.bt} · turnos:${c.turns}</div>
+        <div class="sp-rbar-wrap"><div class="sp-rbar" style="width:${pct}%"></div></div>
+      </div>`;
+    qEl.appendChild(d);
+  });
+  G.pipes.filter(c=>c.served).forEach(c=>{
+    const d=document.createElement('div');
+    d.className='sp-ch done';
+    d.innerHTML=`<div class="sp-pipe" style="background:${c.pipeDef.pipeColor};border-radius:2px"></div>
+      <div class="sp-info"><div class="sp-nm">${c.name} ✅ sellada</div>
+      <div class="sp-bt">CT:${c.completionT} TAT:${c.tat} WT:${c.wt}</div></div>`;
+    qEl.appendChild(d);
+  });
+  G.pipes.filter(c=>!c.served && !G.arrivedSet.has(c.name)).forEach(c=>{
+    const d=document.createElement('div');
+    d.className='sp-ch notyet';
+    d.innerHTML=`<div class="sp-pipe" style="background:${c.pipeDef.pipeColor};opacity:.5;border-radius:2px"></div>
+      <div class="sp-info"><div class="sp-nm">${c.name}</div>
+      <div class="sp-bt">aparece en t=${c.at}</div></div>`;
+    qEl.appendChild(d);
+  });
+
+  const gEl=document.getElementById('spG');gEl.innerHTML='';
+  G.ganttSegments.forEach(seg=>{
+    const d=document.createElement('div');d.className='sp-gseg';
+    d.style.cssText=`background:${seg.color}22;border-left:3px solid ${seg.color}`;
+    d.innerHTML=`<span style="color:${seg.color}">${seg.name}</span>
+      <span class="sp-gt">${seg.start}→${seg.end}</span>`;
+    gEl.appendChild(d);
+  });
+
+  const mEl=document.getElementById('spM');mEl.innerHTML='';
+  const sv=G.pipes.filter(c=>c.served);
+  const rows = sv.length
+    ? [['Reparadas',`${sv.length}/${G.pipes.length}`],
+       ['Avg TAT',(sv.reduce((a,c)=>a+c.tat,0)/sv.length).toFixed(1)],
+       ['Avg WT', (sv.reduce((a,c)=>a+c.wt,0)/sv.length).toFixed(1)],
+       ['Errores',G.errors],['Quantum',G.quantum]]
+    : [['Quantum',G.quantum],['Clock',G.clock],['Tubería',G.head||'—']];
+  rows.forEach(([k,v])=>{
+    const r=document.createElement('div');r.className='sp-row';
+    r.innerHTML=`<span class="k">${k}</span><span class="v">${v}</span>`;
+    mEl.appendChild(r);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DRAW
+═══════════════════════════════════════════════════════════ */
+function draw(){
+  const{mario,pipes,gy,worldW,camX,particles,shake}=G;
+  let sx=0,sy=0;
+  if(shake>0){sx=(Math.random()-.5)*7;sy=(Math.random()-.5)*4;}
+  ctx.save();ctx.translate(sx,sy);
+
+  // SKY — underground sewer gradient
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#020810');sky.addColorStop(.5,'#0a2030');sky.addColorStop(1,'#0a3a52');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+
+  // Faint stars / bubbles
+  if(!starBg){starBg=[];for(let i=0;i<100;i++)starBg.push({
+    x:Math.random()*6000,y:Math.random()*H*.65,
+    r:.5+Math.random()*1.5,a:.08+Math.random()*.4,p:.04+Math.random()*.22});}
+  starBg.forEach(s=>{
+    let sx2=(s.x-camX*s.p)%W;if(sx2<0)sx2+=W;
+    ctx.fillStyle=`rgba(147,197,253,${s.a})`;
+    ctx.beginPath();ctx.arc(sx2,s.y,s.r,0,Math.PI*2);ctx.fill();
+  });
+
+  // Water drops animated
+  for(let i=0;i<8;i++){
+    const dx = ((i*137 + G.idleT*30)%W);
+    const dy = ((i*91 + G.idleT*80)%H);
+    ctx.fillStyle='rgba(56,189,248,.18)';
+    ctx.fillRect(dx, dy, 1, 4);
+  }
+
+  ctx.save();ctx.translate(-camX,0);
+
+  // GROUND — dark brick floor (sewer style)
+  const gg=ctx.createLinearGradient(0,gy,0,H);
+  gg.addColorStop(0,'#0c4a6e');gg.addColorStop(1,'#04202f');
+  ctx.fillStyle=gg;ctx.fillRect(0,gy,worldW,H-gy);
+  ctx.strokeStyle='#38bdf8';ctx.lineWidth=3;
+  ctx.shadowBlur=14;ctx.shadowColor='#38bdf8';
+  ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(worldW,gy);ctx.stroke();
+  ctx.shadowBlur=0;
+  // brick pattern
+  ctx.strokeStyle='rgba(56,189,248,.15)';ctx.lineWidth=1;
+  const bw=TILE,bh=Math.round(TILE*.45);
+  for(let row=0;row*bh<H-gy+8;row++){
+    const off=row%2===0?0:bw/2;
+    for(let col=-1;col*bw<worldW+bw;col++) ctx.strokeRect(col*bw+off,gy+row*bh,bw,bh);
+  }
+
+  // Floor water puddles (near damaged pipes)
+  pipes.forEach(p=>{
+    if(p.served) return;
+    const damage=1-p.remaining/p.bt;
+    const baseDamage = 1 - (p.remaining/p.bt);
+    const puddleSize = 20 + (1-p.remaining/p.bt)*30;
+    ctx.fillStyle='rgba(56,189,248,.2)';
+    ctx.beginPath();
+    ctx.ellipse(p.x+p.w/2, gy-2, puddleSize, 5, 0, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Column highlight for head pipe
+  if(G.head){
+    const head=pipes.find(c=>c.name===G.head);
+    if(head){
+      const grad=ctx.createLinearGradient(head.x,0,head.x,gy);
+      grad.addColorStop(0,'rgba(253,224,71,0)');
+      grad.addColorStop(1,'rgba(253,224,71,.15)');
+      ctx.fillStyle=grad;
+      ctx.fillRect(head.x-8,0,head.w+16,gy);
+      // CPU/REPAIR badge
+      ctx.fillStyle='rgba(253,224,71,.95)';
+      ctx.fillRect(head.x+head.w/2-28,12,56,16);
+      ctx.fillStyle='#000';ctx.font='bold 10px Inter';ctx.textAlign='center';
+      ctx.fillText('🔧 CPU',head.x+head.w/2,23);
+    }
+  }
+
+  // Queue position badges
+  pipes.forEach(c=>{
+    if(c.served) return;
+    const qi=G.queue.indexOf(c.name);
+    ctx.fillStyle=G.arrivedSet.has(c.name)?'rgba(56,189,248,.65)':'rgba(100,130,160,.5)';
+    ctx.font='9px Inter';ctx.textAlign='center';
+    ctx.fillText(`llega t:${c.at}`,c.x+c.w/2,45);
+    if(qi>=0){
+      ctx.fillStyle=qi===0?'#fde047':'#38bdf8';
+      ctx.font=`bold 10px Inter`;
+      ctx.fillText(qi===0?'HEAD':`Q#${qi+1}`,c.x+c.w/2,58);
+    } else if(!G.arrivedSet.has(c.name)){
+      ctx.fillStyle='rgba(150,170,190,.6)';
+      ctx.font='9px Inter';
+      ctx.fillText(`(próxima)`,c.x+c.w/2,58);
+    }
+  });
+
+  // PIPES — all rendered
+  pipes.forEach(p=>{
+    const fix = 1 - p.remaining/p.bt; // 0..1
+    const repairing = G.marioState==='executing' && G.head===p.name;
+    drawPipe(ctx, p.x, p.y, p, fix, repairing, G.idleT);
+
+    // Name tag
+    ctx.fillStyle='rgba(0,0,0,.85)';
+    ctx.fillRect(p.x+p.w/2-26, p.y+p.h+6, 52, 14);
+    ctx.fillStyle=p.pipeDef.pipeColor;
+    ctx.font='bold 10px Inter';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText(p.name, p.x+p.w/2, p.y+p.h+8);
+
+    // Work remaining badge
+    if(!p.served){
+      ctx.fillStyle='rgba(0,0,0,.9)';
+      ctx.fillRect(p.x+p.w/2-20, p.y-20, 40, 14);
+      ctx.fillStyle=p.remaining<p.bt?'#38bdf8':'#fde047';
+      ctx.font='bold 9px Inter';ctx.textBaseline='top';
+      ctx.fillText(`${p.remaining}/${p.bt}`,p.x+p.w/2, p.y-18);
+    }
+
+    // HEALTH/FIX bar directly above
+    if(!p.served){
+      const bw=p.w-8, bx=p.x+4, by=p.y-5;
+      ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(bx-1,by-1,bw+2,5);
+      ctx.fillStyle=fix>0.66?'#34d399':fix>0.33?'#fde047':'#ef4444';
+      ctx.fillRect(bx,by,bw*fix,3);
+    }
+    ctx.textBaseline='alphabetic';
+  });
+
+  // MARIO
+  const m=mario;
+  drawMarioSprite(ctx,m.x,m.y,SCALE,m.frameKey,m.facing===-1);
+
+  // Wrench trail during fixing animation
+  if(G.marioState==='executing' && (m.frameKey==='fix1'||m.frameKey==='fix2')){
+    const wx = m.x + (m.facing===1 ? m.w+4 : -10);
+    const wy = m.y + 10 + (m.frameKey==='fix1' ? 2 : -4);
+    ctx.fillStyle='rgba(253,224,71,.3)';
+    ctx.beginPath();ctx.arc(wx,wy,10,0,Math.PI*2);ctx.fill();
+  }
+
+  // MARIO label
+  ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(m.x,m.y-16,MARIO_W,13);
+  ctx.fillStyle='#fde047';ctx.font='bold 9px Inter';ctx.textAlign='center';
+  ctx.fillText('MARIO 🔧',m.x+MARIO_W/2,m.y-5);
+
+  // Quantum bar above Mario during execute
+  if(G.marioState==='executing' && G.head){
+    const head=pipes.find(c=>c.name===G.head);
+    if(head){
+      const frac = (G.quantumRemaining - G.execProgress) / G.quantum;
+      const barW = 90, barX = m.x + m.w/2 - barW/2, barY = m.y - 36;
+      ctx.fillStyle='rgba(0,0,0,.8)';
+      ctx.fillRect(barX-2,barY-2,barW+4,14);
+      ctx.fillStyle=frac<=0.3?'#ef4444':'#fde047';
+      ctx.fillRect(barX,barY,barW*Math.max(0,frac),10);
+      ctx.fillStyle='#fff';ctx.font='bold 8px Inter';ctx.textAlign='center';
+      ctx.fillText(`🔧 Q: ${G.quantumRemaining}`,m.x+m.w/2,barY+7);
+    }
+  }
+
+  // Particles
+  G.particles.forEach(p=>{
+    ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+    ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  if(G.wrongF>0){ctx.fillStyle=`rgba(239,68,68,${G.wrongF*.28})`;ctx.fillRect(0,0,W,H);}
+
+  // Prompts
+  if(G.marioState==='free' && G.head){
+    const head=pipes.find(c=>c.name===G.head);
+    if(head){
+      const scx=head.x-camX+head.w/2;
+      if(scx>20&&scx<W-20){
+        ctx.globalAlpha=.5+.5*Math.sin(G.idleT*4);
+        ctx.fillStyle='#fde047';ctx.font='bold 11px Inter';ctx.textAlign='center';
+        ctx.fillText('SPACE',scx,head.y-34);ctx.globalAlpha=1;
+      }
+    }
+    ctx.fillStyle='rgba(56,189,248,.12)';ctx.fillRect(0,H-44,W,44);
+    ctx.fillStyle='#38bdf8';ctx.font='bold 16px Inter';ctx.textAlign='center';
+    ctx.fillText(`🔧 Acércate a la tubería ${G.head} y presiona SPACE para repararla`,W/2,H-16);
+  }
+
+  if(G.marioState==='rotating'){
+    let target=null;
+    if(G.actionPending==='finish'){
+      target=pipes.find(c=>c.name===G.head);
+    } else if(G.actionPending==='rotate'){
+      const oldHead=G.head;
+      const simQueue=G.queue.filter(n=>n!==oldHead).concat(oldHead);
+      target=pipes.find(c=>c.name===simQueue[0]);
+    }
+    if(target){
+      const scx=target.x-camX+target.w/2;
+      if(scx>0&&scx<W){
+        ctx.globalAlpha=.65+.35*Math.sin(G.idleT*5);
+        ctx.fillStyle='#fde047';ctx.font='bold 13px Inter';ctx.textAlign='center';
+        ctx.fillText('▼ AQUÍ',scx,target.y-38);
+        const dist=Math.abs((mario.x+mario.w/2)-(target.x+target.w/2));
+        ctx.font='9px Inter';ctx.fillStyle='#38bdf8';
+        ctx.fillText(`${Math.round(dist)}px`,scx,target.y-23);
+        ctx.globalAlpha=1;
+      }
+    }
+    ctx.fillStyle='rgba(253,224,71,.15)';ctx.fillRect(0,H-44,W,44);
+    ctx.fillStyle='#fde047';ctx.font='bold 16px Inter';ctx.textAlign='center';
+    const label=G.actionPending==='finish'
+      ?`✅ ${G.head} está reparada — acércate y SPACE para sellarla`
+      :`🔄 ¡Quantum expirado! Corre a la siguiente tubería de la cola`;
+    ctx.fillText(label,W/2,H-16);
+  }
+
+  if(G.marioState==='executing' && G.head){
+    ctx.fillStyle='rgba(34,211,153,.1)';ctx.fillRect(0,H-44,W,44);
+    ctx.fillStyle='#34d399';ctx.font='bold 16px Inter';ctx.textAlign='center';
+    ctx.fillText(`🔧 Reparando ${G.head} — quedan ${G.quantumRemaining} turnos. ¡No te alejes!`,W/2,H-16);
+  }
+
+  ctx.restore();
+}
+
+function showTst(icon,msg,sub,dur=2.4){
+  document.getElementById('tIcon').textContent=icon;
+  document.getElementById('tMsg').textContent=msg;
+  document.getElementById('tSub').textContent=sub;
+  document.getElementById('toast').classList.add('show');
+  G.toastT=dur;
+}
+function hideTst(){document.getElementById('toast').classList.remove('show');}
+
+function showResults(){
+  G.running=false;
+  const cs=G.pipes;
+  const sv=cs.filter(c=>c.served);
+  const aT=(sv.reduce((a,c)=>a+c.tat,0)/sv.length).toFixed(2);
+  const aW=(sv.reduce((a,c)=>a+c.wt,0)/sv.length).toFixed(2);
+  const ctxSwitches=Math.max(0,G.ganttSegments.length-1);
+
+  document.getElementById('rSB').innerHTML=`
+    <div class="rsi"><div class="rv">${G.score}</div><div class="rl">Score</div></div>
+    <div class="rsi"><div class="rv">${aT}</div><div class="rl">Avg TAT</div></div>
+    <div class="rsi"><div class="rv">${aW}</div><div class="rl">Avg WT</div></div>
+    <div class="rsi"><div class="rv">${ctxSwitches}</div><div class="rl">Cambios</div></div>
+    <div class="rsi"><div class="rv">${G.lives}</div><div class="rl">Vidas</div></div>`;
+
+  const gb=document.getElementById('rGBar'),gt=document.getElementById('rGTks');
+  gb.innerHTML='';gt.innerHTML='';gt.style.cssText='position:relative;height:18px';
+  G.ganttSegments.forEach((seg,i)=>{
+    const dur=seg.end-seg.start;
+    const el=document.createElement('div');el.className='rg-seg';
+    el.style.cssText=`width:${dur*GU}px;background:${seg.color}88;animation-delay:${i*.08}s`;
+    el.innerHTML=`<span style="padding:0 4px">${seg.name}</span>`;
+    gb.appendChild(el);
+    [seg.start,seg.end].forEach(t=>{
+      if(!document.getElementById(`rgt${t}`)){
+        const tk=document.createElement('div');tk.className='rg-tick';tk.id=`rgt${t}`;
+        tk.textContent=t;tk.style.left=`${t*GU}px`;gt.appendChild(tk);
+      }
+    });
+  });
+
+  const tb=document.getElementById('rTB');tb.innerHTML='';
+  sv.sort((a,b)=>a.completionT-b.completionT).forEach(c=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="color:${c.pipeDef.pipeColor};font-weight:700">${c.name}</td>
+      <td>${c.at}</td><td>${c.bt}</td>
+      <td style="color:#38bdf8;font-weight:700">${c.turns+1}</td>
+      <td style="color:#10b981">${c.completionT}</td>
+      <td style="color:#a78bfa">${c.tat}</td>
+      <td style="color:#fde047">${c.wt}</td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('rTF').innerHTML=`<tr style="color:#f43f5e;font-weight:700">
+    <td colspan="5" style="text-align:right;padding:7px 10px;font-size:.7rem">PROMEDIO →</td>
+    <td>${aT}</td><td>${aW}</td></tr>`;
+
+  let refl=`<div class="r-refl-t">🔧 ¿Qué aprendiste de Round Robin?</div>
+    <p>Mario reparó <strong>${sv.length}</strong> tuberías con Quantum=<strong>${G.quantum}</strong>,
+    generando <strong>${G.ganttSegments.length}</strong> visitas y
+    <strong>${ctxSwitches}</strong> cambios de tubería (context switches).</p>
+    <p style="margin-top:8px">RR garantiza que <strong>ninguna tubería se queda sin atención</strong> —
+    cada una recibe Q turnos antes de rotar. Avg WT = <strong>${aW}</strong>.</p>`;
+
+  if(G.quantum===1){
+    refl+=`<div class="r-rr-box">
+    ⚠️ <strong>Quantum=1 → Mario corre demasiado.</strong>
+    Muchos cambios de tubería significan que el plomero pasa más tiempo caminando
+    que reparando. En SO real, cada context switch tiene un costo.</div>`;
+  } else if(G.quantum>=4){
+    refl+=`<div class="r-rr-box">
+    💡 <strong>Quantum grande → se parece a FCFS.</strong>
+    Si Mario puede terminar casi toda la reparación sin rotar, los demás esperan demasiado.</div>`;
+  } else {
+    refl+=`<div class="r-rr-box">
+    ⚖️ <strong>Quantum equilibrado.</strong>
+    Buen trade-off entre responsividad (Q chico) y eficiencia (Q grande).</div>`;
+  }
+
+  if(G.errors===0){
+    refl+=`<p style="margin-top:10px;color:#34d399">🏆 ¡Cero errores! Entiendes la rotación circular.</p>`;
+  }
+  document.getElementById('rRefl').innerHTML=refl;
+
+  const perf=G.lives===3&&G.errors===0;
+  document.getElementById('rTro').textContent=perf?'🏆':'⭐';
+  document.getElementById('rTitle').textContent=perf?'¡Plomero Maestro!':'¡Tuberías Reparadas!';
+  document.getElementById('rSub').textContent=`${LEVELS[G.li].name} · Q=${G.quantum}`;
+
+  const hasN=G.li<LEVELS.length-1;
+  const bn=document.getElementById('bNxt');bn.style.display=hasN?'':'none';
+  bn.onclick=()=>startLevel(G.li+1);
+  document.getElementById('bRep').onclick=()=>startLevel(G.li);
+  document.getElementById('bMenu').onclick=goMenu;
+  showSc('sR');
+}
+
+function showSc(id){document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('off',s.id!==id));}
+function goMenu(){G.running=false;starBg=null;G.marioState='free';showSc('sT');}
+window.addEventListener('resize',()=>{if(G.running)resize();});
+</script>
+</body>
+</html>

@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HRRN — Mario Highest Response Ratio Next</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#060614;
+  font-family:'Inter', sans-serif;color:#f0f0f0;user-select:none}
+
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;transition:opacity .35s}
+.scr.off{opacity:0;pointer-events:none}
+
+/* ══ TITLE ══ */
+#sT{background:linear-gradient(180deg,#030a0f 0%,#061428 50%,#0a2a1a 100%);
+  overflow-y:auto;padding:24px 20px;gap:18px}
+.t-sky{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.t-star{position:absolute;border-radius:50%;background:#fff;
+  animation:tw var(--d) var(--dl) ease-in-out infinite alternate}
+@keyframes tw{from{opacity:.08}to{opacity:.92}}
+
+.tc{position:relative;z-index:2;display:flex;flex-direction:column;
+  align-items:center;gap:16px;width:100%;max-width:960px}
+.logo-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.logo-mario-canvas{display:block}
+.logo-title{font-size:clamp(1.3rem,4.5vw,2.8rem);color:#34d399;
+  letter-spacing:.14em;text-align:center;line-height:1.15;
+  text-shadow:0 0 22px rgba(52,211,153,.9),0 0 48px rgba(52,211,153,.4),3px 3px 0 #065f46;
+  animation:lp 2.5s ease-in-out infinite alternate}
+@keyframes lp{
+  from{text-shadow:0 0 18px rgba(52,211,153,.8),3px 3px 0 #065f46}
+  to  {text-shadow:0 0 38px #34d399,0 0 70px rgba(52,211,153,.5),3px 3px 0 #065f46}}
+.logo-sub{font-size:.72rem;letter-spacing:.28em;color:#6ee7b7;text-transform:uppercase}
+
+.hrrn-badge{background:linear-gradient(135deg,#064e3b,#065f46);
+  border:2px solid #34d399;border-radius:8px;padding:10px 20px;
+  font-size:.78rem;color:#d1fae5;text-align:center;max-width:580px;line-height:1.6}
+.hrrn-badge strong{color:#fde047}
+.hrrn-formula{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.3);
+  border-radius:8px;padding:10px 20px;text-align:center;font-size:.82rem;
+  color:#6ee7b7;letter-spacing:.05em}
+.hrrn-formula .f-eq{font-size:1.1rem;color:#fde047;font-weight:700;margin-top:4px}
+
+.lvl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:12px;width:100%;max-width:840px}
+.lc{background:rgba(255,255,255,.04);border:2px solid rgba(52,211,153,.2);
+  border-radius:10px;padding:14px 16px;cursor:pointer;transition:.22s;text-align:center}
+.lc:hover{border-color:#fde047;box-shadow:0 0 18px rgba(253,224,71,.28);
+  background:rgba(253,224,71,.05);transform:translateY(-3px)}
+.lc-num{font-size:1.8rem;font-weight:900;color:rgba(52,211,153,.2);
+  font-family:Impact,sans-serif;margin-bottom:4px}
+.lc-name{font-size:.8rem;font-weight:700;color:#34d399;margin-bottom:4px}
+.lc-desc{font-size:.62rem;color:#9090b0;line-height:1.4}
+.lc-tag{display:inline-block;margin-top:6px;font-size:.58rem;
+  background:rgba(52,211,153,.2);border:1px solid rgba(52,211,153,.4);
+  border-radius:99px;padding:2px 9px;color:#6ee7b7}
+
+.key-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.kh{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;padding:5px 11px;font-size:.7rem;color:#b8b8d0;
+  display:flex;align-items:center;gap:6px}
+.kb{background:#065f46;border-radius:4px;padding:2px 7px;
+  font-size:.66rem;color:#fff;font-weight:700;border-bottom:2px solid #022c22}
+
+/* ══ GAME ══ */
+#sG{background:#060614;flex-direction:column;align-items:stretch}
+.hud{display:flex;align-items:center;padding:10px 18px;gap:16px;flex-shrink:0;
+  background:rgba(0,0,0,.75);border-bottom:2px solid #34d399;z-index:100;min-height:52px;flex-wrap:wrap}
+.hi{display:flex;align-items:center;gap:6px;font-size:.85rem}
+.hl{color:#6ee7b7;letter-spacing:.08em;text-transform:uppercase;font-size:.72rem}
+.hv{color:#fde047;font-weight:700;font-size:1rem;
+  text-shadow:0 0 8px rgba(253,224,71,.5)}
+.hlvl{margin-left:auto;color:#34d399;font-size:.82rem;letter-spacing:.12em}
+
+.gw{flex:1;position:relative;overflow:hidden;display:flex}
+#gc{display:block;image-rendering:pixelated}
+
+/* SIDE PANEL */
+.sp{position:absolute;right:0;top:0;bottom:0;width:300px;
+  background:rgba(3,12,8,.97);border-left:2px solid #34d399;
+  padding:12px 10px;overflow-y:auto;z-index:50;
+  display:flex;flex-direction:column;gap:10px}
+.spt{font-size:.68rem;letter-spacing:.18em;color:#34d399;text-transform:uppercase;
+  border-bottom:1px solid rgba(52,211,153,.28);padding-bottom:5px;margin-bottom:1px}
+.sp-ch{display:flex;align-items:center;gap:7px;padding:7px 9px;
+  border-radius:6px;border:1px solid rgba(52,211,153,.2);
+  background:rgba(52,211,153,.04);font-size:.8rem;transition:.22s}
+.sp-ch.on{border-color:#fde047;background:rgba(253,224,71,.07);
+  box-shadow:0 0 8px rgba(253,224,71,.2)}
+.sp-ch.done{opacity:.25;filter:grayscale(.8)}
+.sp-ch.top{border-color:#34d399;background:rgba(52,211,153,.09);
+  box-shadow:0 0 8px rgba(52,211,153,.3)}
+.sp-ball{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sp-info{flex:1;min-width:0}
+.sp-nm{font-weight:700;color:#f0f0f0;font-size:.8rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-bt{color:#8080a0;font-size:.7rem}
+.sp-rr{font-size:.74rem;color:#fde047;font-weight:700;font-family:monospace;
+  white-space:nowrap}
+.sp-gseg{display:flex;align-items:center;padding:4px 6px;border-radius:4px;
+  font-size:.72rem;font-weight:700;margin-bottom:2px;animation:sgi .3s ease both}
+@keyframes sgi{from{transform:translateX(8px);opacity:0}to{opacity:1}}
+.sp-gt{margin-left:auto;font-size:.66rem;opacity:.6;font-family:monospace}
+.sp-row{display:flex;justify-content:space-between;font-size:.75rem;
+  padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sp-row .k{color:#9090b0}.sp-row .v{color:#fde047;font-weight:700;font-family:monospace}
+
+/* RATIO BAR inside each char card */
+.sp-rbar-wrap{width:100%;height:4px;background:rgba(255,255,255,.08);
+  border-radius:99px;margin-top:3px;overflow:hidden}
+.sp-rbar{height:100%;border-radius:99px;transition:width .4s ease;
+  background:linear-gradient(90deg,#34d399,#fde047)}
+
+/* TOAST */
+#toast{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(3,12,8,.97);border:2px solid #34d399;border-radius:10px;
+  padding:13px 20px;text-align:center;z-index:200;pointer-events:none;
+  opacity:0;transition:opacity .28s;max-width:340px;min-width:210px}
+#toast.show{opacity:1}
+.ti{font-size:1.6rem;display:block;margin-bottom:4px}
+.tm{font-size:1.35rem;color:#34d399;font-weight:800;margin-bottom:6px}
+.ts{font-size:.95rem;color:#b8b8d0;line-height:1.55}
+
+/* HRRN MODAL — shows all ratios, player picks */
+#hrrnModal{position:absolute;inset:0;background:rgba(0,0,0,.82);
+  display:flex;align-items:center;justify-content:center;z-index:300;
+  opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(5px)}
+#hrrnModal.show{opacity:1;pointer-events:all}
+.hm-box{background:#030c08;border:2px solid #34d399;border-radius:14px;
+  padding:22px 26px;max-width:500px;width:94%;text-align:center}
+.hm-title{font-size:1.4rem;color:#34d399;font-weight:800;margin-bottom:8px}
+.hm-sub{font-size:1.1rem;color:#b8b8d0;margin-bottom:12px;line-height:1.6}
+.hm-formula{font-size:.75rem;color:#6ee7b7;margin-bottom:16px;
+  background:rgba(52,211,153,.08);border-radius:6px;padding:5px 10px}
+.hm-formula strong{color:#fde047}
+.hm-options{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hm-opt{background:rgba(52,211,153,.1);border:2px solid rgba(52,211,153,.35);
+  border-radius:10px;padding:11px 14px;cursor:pointer;transition:.2s;
+  min-width:110px;text-align:center;font-family:inherit;position:relative}
+.hm-opt:hover:not(:disabled){border-color:#fde047;background:rgba(253,224,71,.1);
+  box-shadow:0 0 14px rgba(253,224,71,.35)}
+.hm-opt.correct{border-color:#34d399!important;background:rgba(52,211,153,.2)!important}
+.hm-opt.wrong  {border-color:#ef4444!important;background:rgba(239,68,68,.15)!important}
+.hm-opt:disabled{opacity:.35;cursor:not-allowed}
+.hm-name{font-size:1.2rem;font-weight:700;color:#f0f0f0}
+.hm-rr  {font-size:1.15rem;font-weight:900;color:#fde047;margin:8px 0}
+.hm-detail{font-size:.9rem;color:#9090b0;line-height:1.6}
+/* live ratio bar inside each option */
+.hm-bar-wrap{width:100%;height:5px;background:rgba(255,255,255,.1);
+  border-radius:99px;margin-top:6px;overflow:hidden}
+.hm-bar{height:100%;border-radius:99px;
+  background:linear-gradient(90deg,#34d399,#fde047);
+  transition:width .5s ease}
+.hm-crown{display:none}
+
+/* MOBILE */
+.mc{display:none;position:absolute;bottom:10px;left:0;right:0;
+  justify-content:space-between;padding:0 12px;z-index:150;pointer-events:none}
+.mcg{display:flex;gap:8px;pointer-events:all}
+.mb{width:52px;height:52px;border-radius:50%;background:rgba(52,211,153,.4);
+  border:2px solid rgba(110,231,183,.6);font-size:1.2rem;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@media(max-width:640px){.mc{display:flex}.sp{width:170px}}
+@media(pointer:coarse){.mc{display:flex}}
+
+/* ══ RESULTS ══ */
+#sR{background:radial-gradient(ellipse at 50% 0%,#022c22,#060614 70%);
+  overflow-y:auto;padding:28px 18px;gap:18px;align-items:center}
+.rtro{font-size:3.5rem;animation:spin 1s ease-out}
+@keyframes spin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+.rtitle{font-size:clamp(1.8rem,5vw,2.8rem);color:#34d399;
+  text-shadow:0 0 20px rgba(52,211,153,.6);margin:8px 0 6px;text-align:center}
+.rsub{font-size:1.1rem;color:#6ee7b7;letter-spacing:.2em;text-transform:uppercase}
+.rsb{background:rgba(52,211,153,.08);border:2px solid rgba(52,211,153,.3);
+  border-radius:12px;padding:20px 28px;display:flex;gap:32px;
+  justify-content:center;flex-wrap:wrap}
+.rsi .rv{font-size:2.8rem;font-weight:700;color:#fde047;
+  text-shadow:0 0 16px rgba(253,224,71,.5);font-family:monospace}
+.rsi .rl{font-size:1rem;color:#6ee7b7;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.rg-wrap{width:100%;max-width:850px;overflow-x:auto}
+.rg-bar{display:flex;height:65px}
+.rg-seg{display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;font-weight:700;overflow:hidden;flex-shrink:0;
+  border-left:2px solid rgba(255,255,255,.2);animation:revSeg .45s ease both}
+@keyframes revSeg{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.rg-ticks{position:relative;height:24px;margin-top:5px}
+.rg-tick{position:absolute;transform:translateX(-50%);
+  font-size:.85rem;color:#999;white-space:nowrap}
+.rg-tick::before{content:'';display:block;width:2px;height:6px;
+  background:#666;margin:0 auto 3px}
+.rtbl{width:100%;max-width:850px;border-collapse:collapse;font-size:1.05rem;margin-bottom:20px}
+.rtbl th{padding:12px 14px;color:#6ee7b7;font-size:.85rem;letter-spacing:.12em;
+  border-bottom:2px solid rgba(52,211,153,.3);text-align:center;text-transform:uppercase}
+.rtbl td{padding:12px 14px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05)}
+.r-refl{width:100%;max-width:850px;background:rgba(52,211,153,.05);
+  border:1px solid rgba(52,211,153,.25);border-radius:12px;
+  padding:20px 24px;font-size:1rem;color:#b0b0d0;line-height:1.6}
+.r-refl-t{color:#34d399;font-weight:700;font-size:1.2rem;margin-bottom:10px;
+  display:flex;gap:7px;align-items:center}
+.r-hrrn-box{background:rgba(58,130,246,.07);border:1px solid rgba(58,130,246,.25);
+  border-radius:7px;padding:9px 12px;margin-top:9px;font-size:.73rem;color:#93c5fd}
+.rbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.rb{padding:10px 22px;border-radius:8px;font-family:inherit;font-size:.78rem;
+  letter-spacing:.08em;cursor:pointer;border:2px solid;font-weight:700;
+  transition:.2s;text-transform:uppercase}
+.rb-p{background:#065f46;border-color:#34d399;color:#fff}
+.rb-p:hover{background:#047857;box-shadow:0 0 14px rgba(52,211,153,.5)}
+.rb-g{background:transparent;border-color:rgba(52,211,153,.38);color:#6ee7b7}
+.rb-g:hover{border-color:#34d399;background:rgba(52,211,153,.09)}
+
+.button {
+  --stone-50: #fafaf9;
+  --stone-800: #292524;
+  --yellow-400: #facc15;
+  font-size: 1rem;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+  font-weight: bold;
+  line-height: 1;
+  padding: 1px;
+  transform: translate(-4px, -4px);
+  outline: 2px solid transparent;
+  outline-offset: 5px;
+  border-radius: 9999px;
+  background-color: var(--stone-800);
+  color: var(--stone-800);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+  text-align: center;
+  box-shadow: 0.5px 0.5px 0 0 var(--stone-800), 1px 1px 0 0 var(--stone-800), 1.5px 1.5px 0 0 var(--stone-800), 2px 2px 0 0 var(--stone-800), 2.5px 2.5px 0 0 var(--stone-800), 3px 3px 0 0 var(--stone-800), 0 0 0 2px var(--stone-50), 0.5px 0.5px 0 2px var(--stone-50), 1px 1px 0 2px var(--stone-50), 1.5px 1.5px 0 2px var(--stone-50), 2px 2px 0 2px var(--stone-50), 2.5px 2.5px 0 2px var(--stone-50), 3px 3px 0 2px var(--stone-50), 3.5px 3.5px 0 2px var(--stone-50), 4px 4px 0 2px var(--stone-50);
+}
+.button:hover { transform: translate(0, 0); box-shadow: 0 0 0 2px var(--stone-50); }
+.button:active, .button:focus-visible { outline-color: var(--yellow-400); }
+.button:focus-visible { outline-style: dashed; }
+.button > div {
+  position: relative; pointer-events: none; background-color: var(--yellow-400); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 9999px;
+}
+.button > div::before {
+  content: ""; position: absolute; inset: 0; border-radius: 9999px; opacity: 0.5;
+  background-image: radial-gradient(rgb(255 255 255 / 80%) 20%, transparent 20%), radial-gradient(rgb(255 255 255 / 100%) 20%, transparent 20%);
+  background-position: 0 0, 4px 4px; background-size: 8px 8px; mix-blend-mode: hard-light; animation: btn-dots 0.5s infinite linear;
+}
+.button > div > span {
+  position: relative; display: flex; align-items: center; justify-content: center; padding: 0.75rem 1.25rem; gap: 0.25rem;
+  filter: drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.25));
+}
+.button > div > span:active { transform: translateY(2px); }
+@keyframes btn-dots { 0% { background-position: 0 0, 4px 4px; } 100% { background-position: 8px 0, 12px 4px; } }
+
+</style>
+</head>
+<body>
+
+<!-- ══ TITLE ══ -->
+<div class="scr" id="sT">
+  <div class="t-sky" id="tSky"></div>
+  <div class="tc">
+    <div class="logo-wrap">
+      <canvas id="logoMario" class="logo-mario-canvas" width="64" height="64"></canvas>
+      <div class="logo-title">HRRN SCHEDULER</div>
+      <div class="logo-sub">⭐ Highest Response Ratio Next · Mario Edition ⭐</div>
+    </div>
+
+    <div class="hrrn-badge">
+      <strong>HRRN</strong> elige el proceso con el mayor
+      <strong>Response Ratio</strong>. A diferencia de SJF, también premia a los que
+      llevan <strong>más tiempo esperando</strong> — así nadie muere de hambre.
+    </div>
+    <div class="hrrn-formula">
+      Fórmula del Response Ratio:<br>
+      <div class="f-eq">RR = (Waiting Time + Burst Time) / Burst Time</div>
+      <div style="font-size:.68rem;margin-top:4px;color:#a0c0b0">
+        = 1 + (Tiempo de espera / BT) — siempre ≥ 1
+      </div>
+    </div>
+
+    <div class="lvl-grid" id="lvlGrid"></div>
+    <a href="index.html" class="button" style="text-decoration: none; margin: 10px auto 25px auto; display: block; width: fit-content; max-width: 90%;">
+      <div><span>🏠 Regresar a Menú Principal</span></div>
+    </a>
+    <div class="key-row">
+      <div class="kh"><span class="kb">← →</span> Mover</div>
+      <div class="kh"><span class="kb">↑ / Z</span> Saltar</div>
+      <div class="kh"><span class="kb">SPACE</span> Interactuar</div>
+      <div class="kh"><span class="kb">ESC</span> Menú</div>
+    </div>
+    <p style="font-size:.62rem;color:#444;letter-spacing:.13em">Botones táctiles disponibles en móvil</p>
+  </div>
+</div>
+
+<!-- ══ GAME ══ -->
+<div class="scr off" id="sG">
+  <div class="hud">
+    <div class="hi"><span class="hl">❤</span><span class="hv" id="hLives">3</span></div>
+    <div class="hi"><span class="hl">Score</span><span class="hv" id="hScore">0</span></div>
+    <div class="hi"><span class="hl">CPU t</span><span class="hv" id="hClock">0</span></div>
+    <div class="hi"><span class="hl">Mayor RR</span><span class="hv" id="hOpt" style="color:#34d399">—</span></div>
+    <div class="hi"><span class="hl">Errores</span><span class="hv" id="hErr" style="color:#f87171">0</span></div>
+    <div class="hlvl" id="hLvl">NIVEL 1</div>
+  </div>
+  <div class="gw" id="gw">
+    <canvas id="gc"></canvas>
+    <div class="sp" id="sp">
+      <div class="spt">📊 Cola HRRN — Response Ratio</div>
+      <div id="spQ"></div>
+      <div class="spt" style="margin-top:5px">📈 Gantt</div>
+      <div id="spG"></div>
+      <div class="spt" style="margin-top:5px">⏱ Métricas</div>
+      <div id="spM"></div>
+    </div>
+    <div id="toast">
+      <span class="ti" id="tIcon">⭐</span>
+      <div class="tm" id="tMsg">—</div>
+      <div class="ts" id="tSub">—</div>
+    </div>
+    <div id="hrrnModal">
+      <div class="hm-box">
+        <div class="hm-title" id="hmTitle">¿Quién tiene el mayor Response Ratio?</div>
+        <div class="hm-sub"   id="hmSub">Selecciona el proceso con RR más alto</div>
+        <div class="hm-formula">
+          RR = (WT + BT) / BT &nbsp;=&nbsp;
+          <strong>(t_actual − AT + BT) / BT</strong>
+        </div>
+        <div class="hm-options" id="hmOpts"></div>
+      </div>
+    </div>
+    <div class="mc" id="mc">
+      <div class="mcg"><div class="mb" id="mcL">◀</div><div class="mb" id="mcR">▶</div></div>
+      <div class="mcg"><div class="mb" id="mcJ">↑</div><div class="mb" id="mcA">✋</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div class="scr off" id="sR">
+  <div class="rtro" id="rTro">🏆</div>
+  <div class="rtitle" id="rTitle">¡Completado!</div>
+  <div class="rsub"   id="rSub">HRRN MASTER</div>
+  <div class="rsb" id="rSB"></div>
+  <div class="rg-wrap">
+    <div style="font-size:.58rem;letter-spacing:.18em;color:#6ee7b7;margin-bottom:5px">DIAGRAMA DE GANTT</div>
+    <div class="rg-bar"   id="rGBar"></div>
+    <div class="rg-ticks" id="rGTks"></div>
+  </div>
+  <table class="rtbl"><thead><tr>
+    <th>Proceso</th><th>AT</th><th>BT</th><th>RR usado</th>
+    <th>Start</th><th>CT</th><th>TAT</th><th>WT</th>
+  </tr></thead><tbody id="rTB"></tbody><tfoot id="rTF"></tfoot></table>
+  <div class="r-refl" id="rRefl"></div>
+  <div class="rbtns">
+    <button class="rb rb-p" id="bNxt">Siguiente Nivel ▶</button>
+    <button class="rb rb-g" id="bRep">↺ Repetir</button>
+    <button class="rb rb-g" id="bMenu">🏠 Menú</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════
+   PIXEL ART MARIO — same sprite engine as SJF game
+═══════════════════════════════════════════════════════════ */
+const _ = null;
+const R = '#e52521';
+const S = '#fbd000';
+const B = '#5b3a1e';
+const O = '#f28030';
+
+const MARIO_FRAMES = {
+  stand:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,S,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,O,_,_,_,_,_,_,_,_],
+    [_,O,O,O,R,O,O,O,O,O,_,_,_,_,_,_],
+    [O,O,O,O,R,R,O,O,O,O,O,_,_,_,_,_],
+    [S,S,O,R,S,S,R,O,S,S,_,_,_,_,_,_],
+    [S,S,S,R,S,S,R,S,S,S,_,_,_,_,_,_],
+    [_,_,R,R,_,_,R,R,_,_,_,_,_,_,_,_],
+    [_,B,B,B,_,_,B,B,B,_,_,_,_,_,_,_],
+    [B,B,B,_,_,_,_,B,B,B,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  run1:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,_,_,_,_,_,_,_,_,_],
+    [_,O,O,O,R,O,O,O,O,_,_,_,_,_,_,_],
+    [O,O,O,O,R,R,O,O,O,O,_,_,_,_,_,_],
+    [S,S,O,R,S,S,R,O,S,_,_,_,_,_,_,_],
+    [S,S,R,S,S,R,S,S,_,_,_,_,_,_,_,_],
+    [_,R,R,_,R,R,_,_,_,_,_,_,_,_,_,_],
+    [R,B,B,_,B,B,R,_,_,_,_,_,_,_,_,_],
+    [B,B,_,_,_,B,B,B,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  run2:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],
+    [_,_,O,O,R,O,O,O,_,_,_,_,_,_,_,_],
+    [O,O,O,O,R,O,O,O,O,_,_,_,_,_,_,_],
+    [O,O,O,R,R,O,O,O,O,O,_,_,_,_,_,_],
+    [S,O,R,S,S,R,O,O,S,_,_,_,_,_,_,_],
+    [S,R,S,S,R,S,S,_,_,_,_,_,_,_,_,_],
+    [R,R,_,R,R,_,_,_,_,_,_,_,_,_,_,_],
+    [B,B,_,B,B,R,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,B,B,B,B,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+  jump:[
+    [_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],
+    [_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],
+    [_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],
+    [_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],
+    [_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],
+    [_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],
+    [_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],
+    [O,O,O,R,O,O,O,O,_,_,_,_,_,_,_,_],
+    [O,O,O,O,R,O,O,O,O,O,O,_,_,_,_,_],
+    [O,O,O,R,R,O,O,O,O,O,_,_,_,_,_,_],
+    [S,S,R,S,S,R,O,S,S,_,_,_,_,_,_,_],
+    [_,R,S,S,R,_,S,S,_,_,_,_,_,_,_,_],
+    [_,R,R,R,R,_,_,_,_,_,_,_,_,_,_,_],
+    [B,B,B,B,_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  ],
+};
+
+function drawMarioSprite(ctx,x,y,scale,frameKey,flipX){
+  const frame=MARIO_FRAMES[frameKey]||MARIO_FRAMES.stand;
+  const s=scale;
+  ctx.save();
+  if(flipX){ctx.translate(x+16*s,y);ctx.scale(-1,1);x=0;y=0;}
+  else{ctx.translate(x,y);x=0;y=0;}
+  for(let row=0;row<16;row++)
+    for(let col=0;col<16;col++){
+      const c=frame[row][col];
+      if(c===null)continue;
+      ctx.fillStyle=c;ctx.fillRect(col*s,row*s,s,s);
+    }
+  ctx.restore();
+}
+
+/* ── Process character sprites (same as SJF) ── */
+const CHARS=[
+  {name:'Toad',  color:'#e11d48',dark:'#9f1239',
+    draw(ctx,x,y,s){
+      ctx.fillStyle=this.color;ctx.fillRect(x+s,y,6*s,3*s);
+      ctx.fillStyle=this.dark;ctx.fillRect(x,y+s,8*s,2*s);
+      ctx.fillStyle='#fff';ctx.fillRect(x+2*s,y+3*s,4*s,3*s);
+      ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+4*s,s,s);ctx.fillRect(x+5*s,y+4*s,s,s);
+      ctx.fillStyle='#fff';ctx.fillRect(x+s,y+s,s,s);ctx.fillRect(x+5*s,y,s,s);
+    }},
+  {name:'Koopa', color:'#16a34a',dark:'#14532d',
+    draw(ctx,x,y,s){
+      ctx.fillStyle=this.color;ctx.fillRect(x+s,y+s,6*s,5*s);
+      ctx.fillStyle=this.dark;ctx.fillRect(x+2*s,y+2*s,4*s,2*s);
+      ctx.fillStyle='#fbbf24';ctx.fillRect(x+2*s,y,4*s,2*s);
+      ctx.fillStyle='#78350f';ctx.fillRect(x+2*s,y+5*s,s,2*s);ctx.fillRect(x+5*s,y+5*s,s,2*s);
+      ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+2*s,s,s);ctx.fillRect(x+5*s,y+2*s,s,s);
+    }},
+  {name:'Goomba',color:'#92400e',dark:'#451a03',
+    draw(ctx,x,y,s){
+      ctx.fillStyle=this.color;ctx.fillRect(x,y+s,8*s,4*s);
+      ctx.fillStyle=this.dark;ctx.fillRect(x,y+4*s,8*s,2*s);
+      ctx.fillStyle='#fbbf24';ctx.fillRect(x+s,y+s,2*s,2*s);ctx.fillRect(x+5*s,y+s,2*s,2*s);
+      ctx.fillStyle='#fff';ctx.fillRect(x+s,y+2*s,s,s);ctx.fillRect(x+5*s,y+2*s,s,s);
+      ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+2*s,s,s);ctx.fillRect(x+6*s,y+2*s,s,s);
+      ctx.fillStyle=this.dark;ctx.fillRect(x+s,y+5*s,2*s,2*s);ctx.fillRect(x+5*s,y+5*s,2*s,2*s);
+    }},
+  {name:'Boo',   color:'#e2e8f0',dark:'#94a3b8',
+    draw(ctx,x,y,s){
+      ctx.fillStyle=this.color;
+      ctx.fillRect(x+s,y,6*s,6*s);ctx.fillRect(x,y+2*s,8*s,3*s);
+      ctx.fillRect(x,y+5*s,2*s,2*s);ctx.fillRect(x+4*s,y+5*s,2*s,2*s);
+      ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+2*s,s,s);ctx.fillRect(x+5*s,y+2*s,s,s);
+      ctx.fillStyle=this.dark;ctx.fillRect(x+2*s,y+4*s,4*s,s);
+    }},
+  {name:'Pirhna',color:'#dc2626',dark:'#7f1d1d',
+    draw(ctx,x,y,s){
+      ctx.fillStyle='#16a34a';ctx.fillRect(x+2*s,y+4*s,4*s,4*s);
+      ctx.fillStyle='#14532d';ctx.fillRect(x+2*s,y+3*s,4*s,s);
+      ctx.fillStyle=this.color;ctx.fillRect(x,y,8*s,4*s);
+      ctx.fillStyle='#fff';ctx.fillRect(x+s,y+s,2*s,s);ctx.fillRect(x+5*s,y+s,2*s,s);
+      ctx.fillStyle=this.dark;ctx.fillRect(x,y+3*s,8*s,s);
+      ctx.fillStyle='#fde047';ctx.fillRect(x+2*s,y,s,s);ctx.fillRect(x+5*s,y,s,s);
+    }},
+  {name:'Star',  color:'#fde047',dark:'#ca8a04',
+    draw(ctx,x,y,s){
+      ctx.fillStyle=this.color;
+      ctx.fillRect(x+3*s,y,2*s,8*s);ctx.fillRect(x,y+3*s,8*s,2*s);
+      ctx.fillRect(x+s,y+s,2*s,2*s);ctx.fillRect(x+5*s,y+s,2*s,2*s);
+      ctx.fillRect(x+s,y+5*s,2*s,2*s);ctx.fillRect(x+5*s,y+5*s,2*s,2*s);
+      ctx.fillStyle=this.dark;ctx.fillRect(x+3*s,y+2*s,s,s);ctx.fillRect(x+4*s,y+5*s,s,s);
+      ctx.fillStyle='#fff';ctx.fillRect(x+3*s,y+3*s,s,s);
+    }},
+];
+
+/* ═══════════════════════════════════════════════════════════
+   LEVELS
+═══════════════════════════════════════════════════════════ */
+const LEVELS=[
+  { id:0, name:'Nivel 1 — Intro HRRN', tag:'Básico',
+    desc:'3 procesos. Todos llegan juntos. Aprende a calcular el RR.',
+    procs:[
+      {name:'P1',charIdx:0,at:0,bt:3},
+      {name:'P2',charIdx:1,at:0,bt:5},
+      {name:'P3',charIdx:2,at:0,bt:2},
+    ]},
+  { id:1, name:'Nivel 2 — La espera importa', tag:'Aging',
+    desc:'Un proceso con BT alto lleva mucho tiempo esperando. ¿Sube su RR?',
+    procs:[
+      {name:'P1',charIdx:3,at:0,bt:8},
+      {name:'P2',charIdx:0,at:1,bt:2},
+      {name:'P3',charIdx:1,at:2,bt:4},
+      {name:'P4',charIdx:2,at:3,bt:1},
+    ]},
+  { id:2, name:'Nivel 3 — Clase A/B/C/D', tag:'Ejercicio',
+    desc:'El ejercicio de la imagen con HRRN. Compara con FCFS y SJF.',
+    procs:[
+      {name:'A',charIdx:4,at:0,bt:3},
+      {name:'B',charIdx:5,at:0,bt:2},
+      {name:'C',charIdx:0,at:1,bt:4},
+      {name:'D',charIdx:1,at:3,bt:2},
+    ]},
+  { id:3, name:'Nivel 4 — HRRN vs Inanición', tag:'Starvation',
+    desc:'Un proceso largo al inicio: ¿HRRN lo atiende antes que SJF?',
+    procs:[
+      {name:'Bowser',charIdx:3,at:0,bt:7},
+      {name:'Koopa', charIdx:1,at:1,bt:1},
+      {name:'Goomba',charIdx:2,at:2,bt:1},
+      {name:'Star',  charIdx:5,at:3,bt:2},
+    ]},
+];
+
+/* ═══════════════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════════════ */
+const TILE=48, GU=40, SCALE=3;
+const MARIO_W=16*SCALE, MARIO_H=16*SCALE;
+const CHAR_PX=8;
+
+/* ═══════════════════════════════════════════════════════════
+   HRRN FORMULA
+   RR = (waitingTime + bt) / bt
+   waitingTime = currentTime - arrivalTime  (for available procs)
+═══════════════════════════════════════════════════════════ */
+function calcRR(proc, currentTime){
+  const wt = Math.max(0, currentTime - proc.at);
+  return (wt + proc.bt) / proc.bt;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TITLE SETUP
+═══════════════════════════════════════════════════════════ */
+(function buildTitle(){
+  const sky=document.getElementById('tSky');
+  for(let i=0;i<100;i++){
+    const d=document.createElement('div');d.className='t-star';
+    const sz=Math.random()<.12?3:1.5;
+    d.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;--d:${(2+Math.random()*4).toFixed(1)}s;--dl:${(Math.random()*5).toFixed(1)}s`;
+    sky.appendChild(d);
+  }
+  // Logo Mario animated
+  const lc=document.getElementById('logoMario');
+  lc.width=64;lc.height=64;
+  const lx=lc.getContext('2d');
+  lx.imageSmoothingEnabled=false;
+  drawMarioSprite(lx,0,0,4,'stand',false);
+  let lf=0;const lframes=['stand','run1','run2','run1'];
+  setInterval(()=>{lf=(lf+1)%4;lx.clearRect(0,0,64,64);drawMarioSprite(lx,0,0,4,lframes[lf],false);},200);
+
+  // Level cards
+  const grid=document.getElementById('lvlGrid');
+  LEVELS.forEach((lv,i)=>{
+    const c=document.createElement('div');c.className='lc';
+    c.innerHTML=`<div class="lc-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="lc-name">${lv.name}</div>
+      <div class="lc-desc">${lv.desc}</div>
+      <div class="lc-tag">${lv.tag}</div>`;
+    c.addEventListener('click',()=>startLevel(i));grid.appendChild(c);
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   ENGINE
+═══════════════════════════════════════════════════════════ */
+const canvas=document.getElementById('gc'),ctx=canvas.getContext('2d');
+const gw=document.getElementById('gw');
+let W,H,SP_W=300;
+
+function resize(){
+  SP_W=window.innerWidth<=640?170:300;
+  W=gw.clientWidth-SP_W;H=gw.clientHeight;
+  canvas.width=W;canvas.height=H;
+  ctx.imageSmoothingEnabled=false;
+}
+
+let G={running:false};
+const keys={};
+let starBg=null,lastT=0;
+
+/* INPUT */
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('sG').classList.contains('off'))return;
+  keys[e.code]=true;
+  if(e.code==='Space'){e.preventDefault();doAction();}
+  if(e.code==='KeyZ') keys['ArrowUp']=true;
+  if(e.code==='Escape') goMenu();
+});
+document.addEventListener('keyup',e=>{
+  keys[e.code]=false;
+  if(e.code==='KeyZ')keys['ArrowUp']=false;
+});
+['mcL','mcR','mcJ','mcA'].forEach(id=>{
+  const el=document.getElementById(id);
+  const cm={mcL:'ArrowLeft',mcR:'ArrowRight',mcJ:'ArrowUp',mcA:'Space'};
+  if(!el)return;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();if(id==='mcA')doAction();else keys[cm[id]]=true;});
+  el.addEventListener('pointerup',()=>keys[cm[id]]=false);
+  el.addEventListener('pointerleave',()=>keys[cm[id]]=false);
+});
+
+/* ── BUILD WORLD ── */
+function buildWorld(li){
+  const lv=LEVELS[li],n=lv.procs.length;
+  const worldW=Math.max(W*2.5,n*TILE*7+300);
+  const gy=Math.round(H*0.68);
+  const chars=lv.procs.map((p,i)=>({
+    ...p, origIdx:i,
+    x:220+i*(worldW-280)/Math.max(n-1,1),
+    y:gy-TILE, w:TILE, h:TILE,
+    served:false,serving:false,
+    bob:Math.random()*Math.PI*2,
+    charDef:CHARS[p.charIdx%CHARS.length],
+    s:0,e:0,tat:0,wt:0,rr:1,
+  }));
+  const mario={x:60,y:gy-MARIO_H,w:MARIO_W,h:MARIO_H,
+    vx:0,vy:0,onGround:true,facing:1,frame:0,frameKey:'stand',ft:0};
+  return{chars,mario,worldW,gy};
+}
+
+/* ── START LEVEL ── */
+function startLevel(li){
+  resize();starBg=null;
+  const{chars,mario,worldW,gy}=buildWorld(li);
+  G={
+    li,score:0,lives:3,clock:0,errors:0,
+    chars,mario,worldW,gy,camX:0,
+    doneCount:0,particles:[],shake:0,
+    toastT:0,wrongF:0,idleT:0,running:true,
+    marioState:'free',   // 'free'|'question'|'walking'|'celebrate'
+    target:null,celebT:0,triedWrong:[],optimal:null,
+  };
+  showSc('sG');
+  hideTst();
+  document.getElementById('hLvl').textContent=LEVELS[li].name;
+  updateHUD();updateSP();
+  lastT=0;requestAnimationFrame(loop);
+}
+
+/* ── LOOP ── */
+function loop(ts){
+  if(!G.running)return;
+  const dt=Math.min((ts-lastT)/1000,.05);lastT=ts;
+  update(dt);draw();
+  requestAnimationFrame(loop);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STATES:
+   'free'      — player moves Mario freely, SPACE opens question
+   'question'  — HRRN modal open, Mario frozen
+                 correct → 'walking'
+                 wrong   → option disabled, retry allowed
+   'walking'   — player moves Mario manually to target
+                 SPACE near target → 'celebrate'
+                 SPACE near wrong  → warning only
+   'celebrate' — bounce anim, auto-finalize
+═══════════════════════════════════════════════════════════ */
+
+function update(dt){
+  const{mario,gy,worldW}=G;
+  if(G.shake>0) G.shake-=dt;
+  if(G.wrongF>0) G.wrongF-=dt;
+  if(G.toastT>0){G.toastT-=dt;if(G.toastT<=0)hideTst();}
+  G.idleT+=dt;
+
+  G.chars.forEach(c=>c.bob+=dt*2.2);
+  G.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=450*dt;p.life-=dt;});
+  G.particles=G.particles.filter(p=>p.life>0);
+
+  if(G.marioState==='question') return;
+
+  if(G.marioState==='celebrate'){
+    G.celebT+=dt;
+    mario.y=gy-mario.h-Math.abs(Math.sin(G.celebT*9))*20;
+    mario.frameKey='jump';
+    if(Math.random()<.45) spawn(G.target.x+G.target.w/2,G.target.y,G.target.charDef.color,3);
+    G.camX=Math.max(0,Math.min(mario.x-W*.35,worldW-W));
+    // wait until mario interactT is 0
+    if(mario.interacting) {
+       mario.interactT -= dt;
+       if(mario.interactT <= 0) {
+          mario.interacting = false;
+          mario.y = gy - mario.h;
+          finalizeServe(G.target);
+       }
+    }
+    return;
+  }
+
+  /* FREE + WALKING: full manual movement */
+  mario.vx=0;
+  if(keys['ArrowLeft']){mario.vx=-220;mario.facing=-1;}
+  if(keys['ArrowRight']){mario.vx=220;mario.facing=1;}
+  if(keys['ArrowUp']&&mario.onGround){mario.vy=-570;mario.onGround=false;mario.frameKey='jump';}
+  mario.vy+=1500*dt;
+  mario.x+=mario.vx*dt;mario.y+=mario.vy*dt;
+  if(mario.y>=gy-mario.h){mario.y=gy-mario.h;mario.vy=0;mario.onGround=true;
+    if(mario.frameKey==='jump')mario.frameKey='stand';}
+  mario.x=Math.max(0,Math.min(mario.x,worldW-mario.w));
+  mario.ft+=dt;
+  if(mario.ft>.12){mario.ft=0;mario.frame=(mario.frame+1)%2;}
+  if(mario.vx!==0&&mario.onGround) mario.frameKey=mario.frame===0?'run1':'run2';
+  else if(mario.onGround) mario.frameKey='stand';
+  G.camX=Math.max(0,Math.min(mario.x-W*.35,worldW-W));
+
+
+
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HRRN MODAL
+═══════════════════════════════════════════════════════════ */
+function openHRRNModal(){
+  // advance clock if needed
+  const available=G.chars.filter(c=>!c.served&&c.at<=G.clock);
+  if(available.length===0){
+    const next=G.chars.filter(c=>!c.served).sort((a,b)=>a.at-b.at)[0];
+    if(next){G.clock=next.at;openHRRNModal();}
+    return;
+  }
+  // only one — no quiz
+  if(available.length===1){
+    G.target=available[0];
+    G.target.rr=calcRR(G.target,G.clock);
+    startWalking();
+    return;
+  }
+
+  // Safety: reset state only right before showing modal
+  G.marioState='question';
+
+  // Compute RR for all available at current clock
+  const withRR=available.map(c=>({...c,rrNow:calcRR(c,G.clock)}));
+  withRR.sort((a,b)=>b.rrNow-a.rrNow);
+  G.optimal=withRR[0]; // highest RR
+
+  // Find the max RR for normalizing bars
+  const maxRR=withRR[0].rrNow;
+
+  document.getElementById('hmTitle').textContent=`t=${G.clock} — Selecciona el próximo proceso`;
+  document.getElementById('hmSub').textContent=`Analiza el Response Ratio de las opciones disponibles y selecciona el mayor calculándolo como (Tiempo de Espera + Tiempo de Ráfaga) / Tiempo de Ráfaga.`;
+
+  const opts=document.getElementById('hmOpts');
+  opts.innerHTML='';
+
+  withRR.forEach(c=>{
+    const btn=document.createElement('button');
+    btn.className='hm-opt';
+    btn.dataset.name=c.name;
+    const wt=Math.max(0,G.clock-c.at);
+    const pct=Math.round((c.rrNow/maxRR)*100);
+
+    if(G.triedWrong&&G.triedWrong.includes(c.name)){
+      btn.disabled=true;btn.classList.add('wrong');
+    }
+
+    btn.innerHTML=`
+      <div class="hm-name">${c.name}</div>
+      <div class="hm-rr">Response Ratio = ${c.rrNow.toFixed(2)}</div>
+      <div class="hm-detail">
+        Tiempo Espera = ${wt} &nbsp; Tiempo Ráfaga = ${c.bt} &nbsp; Tiempo Llegada = ${c.at}<br>
+        (${wt} + ${c.bt}) / ${c.bt} = ${c.rrNow.toFixed(2)}
+      </div>
+      <div class="hm-bar-wrap">
+        <div class="hm-bar" style="width:${pct}%"></div>
+      </div>`;
+    btn.addEventListener('click',()=>handleHRRNChoice(c,withRR));
+    opts.appendChild(btn);
+  });
+
+  document.getElementById('hrrnModal').classList.add('show');
+}
+
+function handleHRRNChoice(chosen, withRR){
+  const isCorrect = chosen.name === G.optimal.name;
+
+  if(isCorrect){
+    // mark correct
+    document.querySelectorAll('.hm-opt').forEach(b=>{
+      if(b.dataset.name===chosen.name) b.classList.add('correct');
+    });
+    G.score+=200;
+    const wt=Math.max(0,G.clock-chosen.at);
+    showTst('✅',`¡Correcto! Response Ratio de ${chosen.name} = ${chosen.rrNow.toFixed(2)}`,
+      `Tiempo de Espera = ${wt} | Tiempo de Ráfaga = ${chosen.bt} → Calcula a: (${wt} + ${chosen.bt}) / ${chosen.bt} = ${chosen.rrNow.toFixed(2)}`, 8.0);
+    // store chosen char ref from G.chars (not withRR copy)
+    G.target = G.chars.find(c=>c.name===chosen.name);
+    G.target.rr = chosen.rrNow;
+    setTimeout(()=>{closeHRRNModal();startWalking();},900);
+
+  } else {
+    // wrong — disable that option, allow retry
+    G.errors++;G.lives=Math.max(0,G.lives-1);G.shake=.35;G.wrongF=.5;
+    updateHUD();
+    if(!G.triedWrong) G.triedWrong=[];
+    G.triedWrong.push(chosen.name);
+
+    document.querySelectorAll('.hm-opt').forEach(b=>{
+      if(b.dataset.name===chosen.name){b.classList.add('wrong');b.disabled=true;}
+    });
+    const correctRR=G.optimal.rrNow.toFixed(2);
+    const chosenRR=chosen.rrNow.toFixed(2);
+    const hint=G.lives<=0
+      ? '¡Sin vidas! Reiniciando…'
+      : `${chosen.name} tiene un Response Ratio de ${chosenRR}, pero ${G.optimal.name} tiene un Response Ratio de ${correctRR}. Intenta de nuevo.`;
+
+    showTst('❌',`${chosen.name} no tiene el mayor RR`,hint);
+    document.getElementById('hmSub').textContent=
+      `❌ Incorrecto (${G.lives} vida/s). ¡Vuelve a intentarlo!`;
+
+    if(G.lives<=0){setTimeout(()=>{closeHRRNModal();gameOver();},1500);}
+  }
+}
+
+function closeHRRNModal(){
+  document.getElementById('hrrnModal').classList.remove('show');
+  G.triedWrong=[];
+}
+
+/* ── WALKING state ── */
+function startWalking(){
+  G.marioState='walking';
+  G.target.serving=true;
+  const wt=Math.max(0,G.clock-G.target.at);
+  const rr=(G.target.rr||calcRR(G.target,G.clock)).toFixed(2);
+  showTst('🏃',`Ve con Mario hasta ${G.target.name}`,
+    `RR=${rr} | WT=${wt} BT=${G.target.bt} — Acércate y presiona SPACE`);
+  updateSP();
+}
+
+/* ── ACTION (SPACE) ── */
+function doAction(){
+  if(!G.running) return;
+
+  if(G.marioState==='free'){
+    G.triedWrong=[];
+    openHRRNModal();
+    return;
+  }
+
+  if(G.marioState==='walking'){
+    const REACH=TILE*2.2,mario=G.mario;
+    let closest=null,cd=Infinity;
+    G.chars.forEach(c=>{
+      if(c.served)return;
+      const d=Math.abs((mario.x+mario.w/2)-(c.x+c.w/2));
+      if(d<cd){cd=d;closest=c;}
+    });
+    if(!closest||cd>REACH){
+      showTst('💨','¡Acércate más!',`Camina hasta ${G.target.name} y presiona SPACE.`);
+      return;
+    }
+    if(closest.name===G.target.name){
+      // arrived at correct target!
+      G.marioState='celebrate';G.celebT=0;
+      const start=Math.max(G.clock,G.target.at);
+      G.target.s=start;G.target.e=start+G.target.bt;
+      G.target.tat=G.target.e-G.target.at;
+      G.target.wt=G.target.e-G.target.at-G.target.bt;
+      G.clock=G.target.e;
+      G.score+=100+(G.target.wt===0?50:0);
+      showTst('⚙️',`Ejecutando a ${G.target.name}...`, `Tiempo real de CPU: ${G.target.bt}s`, G.target.bt);
+      
+      G.mario.interacting = true;
+      G.mario.interactT = G.target.bt;
+
+      updateHUD();updateSP();
+    } else {
+      G.shake=.3;G.wrongF=.38;
+      showTst('⚠️',`Ese es ${closest.name}, no el objetivo`,
+        `Debes llegar a ${G.target.name} porque cuenta con el Response Ratio más alto. ¡Sigue buscando!`, 6.0);
+    }
+  }
+}
+
+/* ── finalize ── */
+function finalizeServe(c){
+  c.serving=false;c.served=true;G.doneCount++;
+  G.mario.frameKey='stand';
+  G.marioState='free';
+  spawn(c.x+c.w/2,c.y,c.charDef.color,18);
+  updateSP();updateHUD();
+  showTst('⭐',`¡${c.name} completado! Response Ratio: ${(c.rr||1).toFixed(2)}`,
+    `Inicio: ${c.s} | Fin: ${c.e} | Tiempo en Sistema: ${c.tat} | Tiempo de Espera: ${c.wt}`, 4.5);
+  if(G.doneCount>=G.chars.length){
+    setTimeout(showResults,1200);
+  } else {
+    // auto-open next question after completion toast
+    setTimeout(()=>{
+      if(G.running && G.marioState==='free') openHRRNModal();
+    }, 2000);
+  }
+}
+
+function spawn(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=100+Math.random()*200;
+    G.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-120,
+      r:2+Math.random()*4,color,life:.7+Math.random()*.6,maxLife:1.3});
+  }
+}
+
+function gameOver(){
+  G.running=false;
+  showTst('💀','¡Game Over!','HRRN siempre elige el proceso con el mayor Response Ratio.', 8.0);
+  setTimeout(()=>startLevel(G.li),3600);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HUD & SIDE PANEL
+═══════════════════════════════════════════════════════════ */
+function updateHUD(){
+  document.getElementById('hLives').textContent='❤️'.repeat(G.lives)||'💀';
+  document.getElementById('hScore').textContent=G.score;
+  document.getElementById('hClock').textContent=G.clock;
+  document.getElementById('hErr').textContent=G.errors;
+  const avail=G.chars.filter(c=>!c.served&&c.at<=G.clock);
+  if(avail.length){
+    const best=avail.map(c=>({c,rr:calcRR(c,G.clock)})).sort((a,b)=>b.rr-a.rr)[0];
+    document.getElementById('hOpt').textContent=`${best.c.name}(${best.rr.toFixed(2)})`;
+  } else {
+    document.getElementById('hOpt').textContent='—';
+  }
+}
+
+function updateSP(){
+  const avail=G.chars.filter(c=>!c.served&&c.at<=G.clock);
+  const withRR=avail.map(c=>({c,rr:calcRR(c,G.clock)})).sort((a,b)=>b.rr-a.rr);
+  const maxRR=withRR.length?withRR[0].rr:1;
+
+  const qEl=document.getElementById('spQ');qEl.innerHTML='';
+  // show all chars sorted by RR (available first)
+  const allSorted=[
+    ...withRR.map(x=>x.c),
+    ...G.chars.filter(c=>c.served),
+    ...G.chars.filter(c=>!c.served&&c.at>G.clock),
+  ];
+  allSorted.forEach((c,i)=>{
+    const d=document.createElement('div');
+    const isTop=withRR.length&&withRR[0].c.name===c.name;
+    d.className='sp-ch'+(c.serving?' on':'')+(c.served?' done':'')+(isTop?' top':'');
+    const rr=c.served?c.rr:calcRR(c,G.clock);
+    const pct=c.served?0:Math.round((rr/maxRR)*100);
+    const rrStr=c.served?`✓ ${c.rr.toFixed(2)}`:c.at>G.clock?`AT:${c.at}`:`${rr.toFixed(2)}`;
+    d.innerHTML=`<div class="sp-ball" style="background:${c.charDef.color}"></div>
+      <div class="sp-info">
+        <div class="sp-nm">${c.name}${isTop?' 👑':''}</div>
+        <div class="sp-bt">BT:${c.bt} AT:${c.at}</div>
+        <div class="sp-rr">RR=${rrStr}</div>
+        ${!c.served&&c.at<=G.clock?`<div class="sp-rbar-wrap"><div class="sp-rbar" style="width:${pct}%"></div></div>`:''}
+      </div>`;
+    qEl.appendChild(d);
+  });
+
+  // Gantt
+  const gEl=document.getElementById('spG');gEl.innerHTML='';
+  G.chars.filter(c=>c.served).sort((a,b)=>a.s-b.s).forEach(c=>{
+    const d=document.createElement('div');d.className='sp-gseg';
+    d.style.cssText=`background:${c.charDef.color}22;border-left:3px solid ${c.charDef.color}`;
+    d.innerHTML=`<span style="color:${c.charDef.color}">${c.name}</span>
+      <span class="sp-gt">${c.s}→${c.e}</span>`;
+    gEl.appendChild(d);
+  });
+
+  // Metrics
+  const mEl=document.getElementById('spM');mEl.innerHTML='';
+  const sv=G.chars.filter(c=>c.served);
+  if(sv.length){
+    const aT=(sv.reduce((a,c)=>a+c.tat,0)/sv.length).toFixed(1);
+    const aW=(sv.reduce((a,c)=>a+c.wt,0)/sv.length).toFixed(1);
+    [['Done',`${sv.length}/${G.chars.length}`],['Avg TAT',aT],['Avg WT',aW],
+     ['Errores',G.errors],['Clock',G.clock]].forEach(([k,v])=>{
+      const r=document.createElement('div');r.className='sp-row';
+      r.innerHTML=`<span class="k">${k}</span><span class="v">${v}</span>`;
+      mEl.appendChild(r);
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DRAW
+═══════════════════════════════════════════════════════════ */
+function draw(){
+  const{mario,chars,gy,worldW,camX,particles,shake}=G;
+  let sx=0,sy=0;
+  if(shake>0){sx=(Math.random()-.5)*7;sy=(Math.random()-.5)*4;}
+  ctx.save();ctx.translate(sx,sy);
+
+  // Sky gradient — teal/green tone for HRRN
+  const sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#020a06');sky.addColorStop(.5,'#041a10');sky.addColorStop(1,'#062218');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+
+  // Stars (parallax)
+  if(!starBg){starBg=[];for(let i=0;i<160;i++)starBg.push({
+    x:Math.random()*6000,y:Math.random()*H*.65,
+    r:.5+Math.random()*1.8,a:.1+Math.random()*.9,p:.04+Math.random()*.25});}
+  starBg.forEach(s=>{
+    let sx2=(s.x-camX*s.p)%W;if(sx2<0)sx2+=W;
+    ctx.fillStyle=`rgba(200,255,220,${s.a})`;
+    ctx.beginPath();ctx.arc(sx2,s.y,s.r,0,Math.PI*2);ctx.fill();
+  });
+
+  ctx.save();ctx.translate(-camX,0);
+
+  // Ground
+  const gg=ctx.createLinearGradient(0,gy,0,H);
+  gg.addColorStop(0,'#064e3b');gg.addColorStop(1,'#022c22');
+  ctx.fillStyle=gg;ctx.fillRect(0,gy,worldW,H-gy);
+  ctx.strokeStyle='#34d399';ctx.lineWidth=3;
+  ctx.shadowBlur=14;ctx.shadowColor='#34d399';
+  ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(worldW,gy);ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(52,211,153,.15)';ctx.lineWidth=1;
+  const bw=TILE,bh=Math.round(TILE*.4);
+  for(let row=0;row*bh<H-gy+8;row++){
+    const off=row%2===0?0:bw/2;
+    for(let col=-1;col*bw<worldW+bw;col++) ctx.strokeRect(col*bw+off,gy+row*bh,bw,bh);
+  }
+
+  // RR column highlights
+  const avail=G.chars.filter(c=>!c.served&&c.at<=G.clock);
+  const withRR=avail.map(c=>({c,rr:calcRR(c,G.clock)})).sort((a,b)=>b.rr-a.rr);
+  const maxRR=withRR.length?withRR[0].rr:1;
+
+  chars.forEach(c=>{
+    if(c.served)return;
+    const rr=calcRR(c,G.clock);
+    const isTop=withRR.length&&withRR[0].c.name===c.name;
+    const ready=c.at<=G.clock;
+    ctx.fillStyle=isTop
+      ?'rgba(52,211,153,.12)'
+      :ready?'rgba(253,224,71,.04)':'rgba(50,80,60,.04)';
+    ctx.fillRect(c.x-5,0,c.w+10,gy);
+    ctx.fillStyle=ready?`rgba(52,211,153,.65)`:'rgba(80,120,90,.4)';
+    ctx.font="9px 'Inter', sans-serif";ctx.textAlign='center';
+    ctx.fillText(`Arrival Time:${c.at}`,c.x+c.w/2,14);
+    if(ready){
+      ctx.fillStyle=isTop?'rgba(52,211,153,.9)':'rgba(253,224,71,.55)';
+      ctx.font=`bold 10px Courier New`;ctx.textAlign='center';
+      ctx.fillText(`RR:${rr.toFixed(2)}`,c.x+c.w/2,27);
+      if(isTop){
+        ctx.fillStyle='rgba(52,211,153,.9)';ctx.font="bold 10px 'Inter', sans-serif";
+        ctx.fillText('MAX RR ↑',c.x+c.w/2,40);
+      }
+      // RR bar on ground
+      const barW=(c.w-6)*(rr/maxRR);
+      ctx.fillStyle=isTop?'rgba(52,211,153,.7)':'rgba(253,224,71,.35)';
+      ctx.fillRect(c.x+3,gy-6,barW,4);
+    }
+  });
+
+  // Characters
+  chars.forEach(c=>{
+    const bob=Math.sin(c.bob)*4,cy=c.y+bob,cx=c.x+c.w/2;
+    if(c.served) ctx.globalAlpha=.22;
+    else if(c.serving){ctx.shadowBlur=24;ctx.shadowColor=c.charDef.color;}
+    c.charDef.draw(ctx,c.x+4,cy+4,CHAR_PX);
+    ctx.shadowBlur=0;
+    if(!c.served){
+      // name tag
+      ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(cx-26,cy+c.h*.82,52,15);
+      ctx.fillStyle=c.charDef.color;ctx.font="bold 10px 'Inter', sans-serif";
+      ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.fillText(c.name,cx,cy+c.h*.84);
+      // BT badge
+      ctx.fillStyle='rgba(0,0,0,.85)';ctx.fillRect(cx-18,cy-22,36,13);
+      ctx.fillStyle='#fde047';ctx.font="bold 9px 'Inter', sans-serif";
+      ctx.fillText(`Burst Time: ${c.bt}`,cx,cy-20);
+    }
+    ctx.globalAlpha=1;ctx.textBaseline='alphabetic';
+  });
+
+  // Mario
+  const m=mario;
+  drawMarioSprite(ctx,m.x,m.y,SCALE,m.frameKey,m.facing===-1);
+
+  // Particles
+  G.particles.forEach(p=>{
+    ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+    ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  // Wrong flash
+  if(G.wrongF>0){ctx.fillStyle=`rgba(239,68,68,${G.wrongF*.28})`;ctx.fillRect(0,0,W,H);}
+
+  // SPACE prompt (free state)
+  if(G.marioState==='free'){
+    const av2=G.chars.filter(c=>!c.served&&c.at<=G.clock);
+    if(av2.length>0){
+      const best=av2.map(c=>({c,rr:calcRR(c,G.clock)})).sort((a,b)=>b.rr-a.rr)[0];
+      const scx=best.c.x-camX+best.c.w/2;
+      if(scx>20&&scx<W-20){
+        ctx.globalAlpha=.5+.5*Math.sin(G.idleT*4);
+        ctx.fillStyle='#34d399';ctx.font='bold 11px Courier New';ctx.textAlign='center';
+        ctx.fillText('SPACE',scx,best.c.y-32);ctx.globalAlpha=1;
+      }
+    }
+  }
+
+  // TARGET arrow + distance (walking state)
+  if(G.marioState==='walking'&&G.target){
+    const tgt=G.target,scx=tgt.x-camX+tgt.w/2;
+    if(scx>0&&scx<W){
+      ctx.globalAlpha=.65+.35*Math.sin(G.idleT*5);
+      ctx.fillStyle='#34d399';ctx.font='bold 13px Courier New';ctx.textAlign='center';
+      ctx.fillText('▼ IR AQUÍ',scx,tgt.y-36);
+      const dist=Math.abs((mario.x+mario.w/2)-(tgt.x+tgt.w/2));
+      ctx.font="9px 'Inter', sans-serif";ctx.fillStyle='#fde047';
+      ctx.fillText(`dist: ${Math.round(dist)}px`,scx,tgt.y-21);
+      ctx.globalAlpha=1;
+    }
+    ctx.fillStyle='rgba(52,211,153,.1)';
+    ctx.fillRect(0,H-48,W,48);
+    ctx.strokeStyle='rgba(52,211,153,.5)';
+    ctx.lineWidth=2;
+    ctx.strokeRect(0,H-48,W,48);
+    ctx.fillStyle='#34d399';
+    ctx.font='bold 20px Courier New';
+    ctx.textAlign='center';
+    ctx.fillText(`🏃 Lleva a Mario hasta ${G.target.name} (Response Ratio=${(G.target.rr||1).toFixed(2)}) y presiona SPACE`,W/2,H-18);
+  }
+
+  // CPU execution countdown overlay  
+  if(G.mario.interacting && G.target && G.target.bt>0){
+    const remaining=Math.max(0,G.mario.interactT);
+    const total=G.target.bt;
+    const progress=1-(remaining/total); // 0→1 as time elapses
+    const baseCx = mario.x - camX + mario.w/2;
+    const cx2=Math.max(120, Math.min(W-120, baseCx)), cy2 = mario.y - 90;
+
+    // dark semi-transparent panel
+    ctx.fillStyle='rgba(0,0,0,0.62)';
+    ctx.beginPath();
+    ctx.roundRect(cx2-110,cy2-70,220,140,16);
+    ctx.fill();
+
+    // ⚙️  spinning gear indicator (simple rotating arc)
+    const ang=progress*Math.PI*2;
+    const pulse=0.85+0.15*Math.sin(G.idleT*8);
+    ctx.strokeStyle='rgba(253,224,71,0.25)';
+    ctx.lineWidth=8;
+    ctx.beginPath();
+    ctx.arc(cx2,cy2-10,36*pulse,0,Math.PI*2);
+    ctx.stroke();
+    ctx.strokeStyle='#fde047';
+    ctx.lineWidth=8;
+    ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.arc(cx2,cy2-10,36*pulse,-Math.PI/2,-Math.PI/2+ang);
+    ctx.stroke();
+    ctx.lineCap='butt';
+
+    // seconds remaining (big number)
+    ctx.fillStyle='#fde047';
+    ctx.font=`bold 28px 'JetBrains Mono',monospace`;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(`${Math.ceil(remaining)}s`, cx2, cy2-10);
+
+    // label
+    ctx.font=`11px 'JetBrains Mono',monospace`;
+    ctx.fillStyle='#a5f3fc';
+    ctx.fillText('CPU ejecutando...', cx2, cy2+34);
+    ctx.fillStyle='rgba(165,243,252,0.55)';
+    ctx.fillText(`Burst Time: ${total}s`, cx2, cy2+50);
+    ctx.textBaseline='alphabetic';
+  }
+
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+function showTst(icon,msg,sub,dur=2.2){
+  document.getElementById('tIcon').textContent=icon;
+  document.getElementById('tMsg').textContent=msg;
+  document.getElementById('tSub').textContent=sub;
+  document.getElementById('toast').classList.add('show');
+  G.toastT=dur;
+}
+function hideTst(){document.getElementById('toast').classList.remove('show');}
+
+/* ═══════════════════════════════════════════════════════════
+   RESULTS
+═══════════════════════════════════════════════════════════ */
+function showResults(){
+  G.running=false;
+  const cs=G.chars;
+  const served=cs.filter(c=>c.served).sort((a,b)=>a.s-b.s);
+  const aT=(served.reduce((a,c)=>a+c.tat,0)/served.length).toFixed(2);
+  const aW=(served.reduce((a,c)=>a+c.wt,0)/served.length).toFixed(2);
+
+  document.getElementById('rSB').innerHTML=`
+    <div class="rsi"><div class="rv">${G.score}</div><div class="rl">Score</div></div>
+    <div class="rsi"><div class="rv">${aT}</div><div class="rl">Avg TAT</div></div>
+    <div class="rsi"><div class="rv">${aW}</div><div class="rl">Avg WT</div></div>
+    <div class="rsi"><div class="rv">${G.lives}</div><div class="rl">Vidas</div></div>`;
+
+  // Gantt
+  const gb=document.getElementById('rGBar'),gt=document.getElementById('rGTks');
+  gb.innerHTML='';gt.innerHTML='';gt.style.cssText='position:relative;height:24px;margin-top:5px;';
+  served.forEach((c,i)=>{
+    const seg=document.createElement('div');seg.className='rg-seg';
+    seg.style.cssText=`width:${c.bt*GU}px;background:${c.charDef.color}88;animation-delay:${i*.14}s`;
+    seg.innerHTML=`<span style="padding:0 4px">${c.name}</span>`;
+    gb.appendChild(seg);
+    [c.s,c.e].forEach(t=>{
+      if(!document.getElementById(`rgt${t}`)){
+        const tk=document.createElement('div');tk.className='rg-tick';tk.id=`rgt${t}`;
+        tk.textContent=t;tk.style.left=`${t*GU}px`;gt.appendChild(tk);
+      }
+    });
+  });
+
+  // Table
+  const tb=document.getElementById('rTB');tb.innerHTML='';
+  served.forEach(c=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="color:${c.charDef.color};font-weight:700">${c.name}</td>
+      <td>${c.at}</td><td>${c.bt}</td>
+      <td style="color:#34d399;font-weight:700">${(c.rr||1).toFixed(2)}</td>
+      <td style="color:#3b82f6">${c.s}</td>
+      <td style="color:#10b981">${c.e}</td>
+      <td style="color:#a78bfa">${c.tat}</td>
+      <td style="color:#fde047">${c.wt}</td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('rTF').innerHTML=`<tr style="color:#f43f5e;font-weight:700">
+    <td colspan="6" style="text-align:right;padding:12px 14px;font-size:1.05rem">PROMEDIO →</td>
+    <td>${aT}</td><td>${aW}</td></tr>`;
+
+  // Reflection
+  const maxWT=Math.max(...served.map(c=>c.wt));
+  const maxWTProc=served.find(c=>c.wt===maxWT);
+  const starvationRisk=served.some(c=>c.wt===0&&c.bt>4);
+  let refl=`<div class="r-refl-t">🧠 ¿Qué aprendiste sobre HRRN?</div>
+    <p>HRRN usó la fórmula <strong>RR = (WT + BT) / BT</strong> para decidir el orden.
+    Avg WT = <strong>${aW}</strong> unidades.</p>
+    <p style="margin-top:8px">El RR <em>aumenta</em> con el tiempo de espera — esto previene
+    la <strong>inanición (starvation)</strong>: ningún proceso espera indefinidamente.</p>`;
+
+  refl+=`<div class="r-hrrn-box">
+    💡 <strong>HRRN vs SJF:</strong> SJF puede causar inanición en procesos largos si siempre
+    llegan procesos cortos. HRRN los rescata incrementando su RR con el tiempo.
+    Es el balance perfecto entre <em>eficiencia</em> (favorece BT corto) y
+    <em>equidad</em> (rescata procesos que esperan mucho).
+  </div>`;
+
+  if(G.errors===0){
+    refl+=`<p style="margin-top:10px;color:#34d399">🏆 ¡Cero errores! Dominaste el cálculo del Response Ratio.</p>`;
+  }
+  document.getElementById('rRefl').innerHTML=refl;
+
+  const perf=G.lives===3&&G.errors===0;
+  document.getElementById('rTro').textContent=perf?'🏆':'⭐';
+  document.getElementById('rTitle').textContent=perf?'¡HRRN Master!':'¡Nivel Completado!';
+  document.getElementById('rSub').textContent=LEVELS[G.li].name;
+
+  const hasN=G.li<LEVELS.length-1;
+  const bn=document.getElementById('bNxt');bn.style.display=hasN?'':'none';
+  bn.onclick=()=>startLevel(G.li+1);
+  document.getElementById('bRep').onclick=()=>startLevel(G.li);
+  document.getElementById('bMenu').onclick=goMenu;
+  showSc('sR');
+}
+
+function showSc(id){document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('off',s.id!==id));}
+function goMenu(){G.running=false;starBg=null;closeHRRNModal();G.marioState='free';G.triedWrong=[];showSc('sT');}
+window.addEventListener('resize',()=>{if(G.running)resize();});
+</script>
+</body>
+</html>
