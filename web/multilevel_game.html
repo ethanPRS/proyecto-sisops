@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Multilevel Queue — Mario Kingdom Scheduler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a1a;font-family:'Inter',sans-serif;color:#f0f0f0;user-select:none}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .35s}
+.scr.off{opacity:0;pointer-events:none}
+
+/* ══ TITLE ══ */
+#sT{background:radial-gradient(ellipse at 50% 30%,#7e22ce 0%,#1e1b4b 90%);overflow-y:auto;padding:24px 20px;gap:18px}
+.t-sky{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.t-star{position:absolute;border-radius:50%;background:#fff;animation:tw var(--d) var(--dl) ease-in-out infinite alternate}
+@keyframes tw{from{opacity:.08}to{opacity:.92}}
+.t-hills{position:fixed;bottom:0;left:0;right:0;height:30%;pointer-events:none}
+.tc{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:920px}
+.logo-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.logo-mario-canvas{display:block}
+.logo-title{font-size:clamp(1.4rem,5vw,3rem);color:#fde047;letter-spacing:.15em;text-align:center;line-height:1.1;
+  text-shadow:0 0 20px rgba(253,224,71,.9),0 0 45px rgba(253,224,71,.4),3px 3px 0 #92400e;
+  animation:logoPulse 2.5s ease-in-out infinite alternate}
+@keyframes logoPulse{from{text-shadow:0 0 18px rgba(253,224,71,.8),3px 3px 0 #92400e}to{text-shadow:0 0 35px #fde047,0 0 65px rgba(253,224,71,.5),3px 3px 0 #92400e}}
+.logo-sub{font-size:.72rem;letter-spacing:.28em;color:#a78bfa;text-transform:uppercase}
+.badge{background:linear-gradient(135deg,#7c3aed,#4f1a8a);border:2px solid #a78bfa;border-radius:8px;padding:10px 20px;font-size:.78rem;color:#e9d5ff;text-align:center;max-width:640px;line-height:1.6}
+.badge strong{color:#fde047}
+.queue-legend{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%;max-width:700px}
+.ql-item{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);border-radius:8px;padding:8px 14px;font-size:.75rem;border:1px solid rgba(255,255,255,.1)}
+.ql-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.ql-info{color:#ccc;line-height:1.4}
+.ql-info strong{color:#fde047}
+.lvl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;width:100%;max-width:820px}
+.lc{background:rgba(0,0,0,.25);border:2px solid rgba(167,139,250,.45);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.22s;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.lc:hover{border-color:#fde047;box-shadow:0 0 18px rgba(253,224,71,.5);background:rgba(253,224,71,.12);transform:translateY(-3px)}
+.lc-num{font-size:1.8rem;font-weight:900;color:rgba(253,224,71,.2);margin-bottom:4px}
+.lc-name{font-size:.82rem;font-weight:700;color:#fde047;margin-bottom:4px}
+.lc-desc{font-size:.62rem;color:#9090b0;line-height:1.4}
+.lc-tag{display:inline-block;margin-top:6px;font-size:.58rem;background:rgba(124,58,237,.35);border:1px solid rgba(167,139,250,.4);border-radius:99px;padding:2px 9px;color:#c4b5fd}
+.key-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.kh{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:5px 11px;font-size:.7rem;color:#b8b8d0;display:flex;align-items:center;gap:6px}
+.kb{background:#7c3aed;border-radius:4px;padding:2px 7px;font-size:.66rem;color:#fff;font-weight:700;border-bottom:2px solid #5b21b6}
+
+/* ══ GAME ══ */
+#sG{background:#060614;flex-direction:column;align-items:stretch}
+.hud{display:flex;align-items:center;padding:10px 18px;gap:14px;flex-shrink:0;background:rgba(0,0,0,.75);border-bottom:2px solid #7c3aed;z-index:100;min-height:52px;flex-wrap:wrap}
+.hi{display:flex;align-items:center;gap:6px;font-size:.85rem}
+.hl{color:#a78bfa;letter-spacing:.08em;text-transform:uppercase;font-size:.65rem}
+.hv{color:#fde047;font-weight:700;font-size:.95rem;text-shadow:0 0 8px rgba(253,224,71,.5)}
+.hlvl{margin-left:auto;color:#fde047;font-size:.78rem;letter-spacing:.12em}
+/* quantum indicator */
+.qt-wrap{display:flex;align-items:center;gap:7px;background:rgba(124,58,237,.15);border:1px solid rgba(167,139,250,.4);border-radius:6px;padding:3px 10px}
+.qt-label{font-size:.52rem;color:#a78bfa;letter-spacing:.1em;text-transform:uppercase}
+.qt-val{font-size:.9rem;font-weight:700;color:#fde047;font-family:'JetBrains Mono',monospace;min-width:22px;text-align:center}
+.qt-bar{width:50px;height:6px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
+.qt-fill{height:100%;background:linear-gradient(90deg,#a78bfa,#fde047);transition:width .15s linear}
+.qt-fill.danger{background:linear-gradient(90deg,#ef4444,#dc2626);animation:qpulse .4s ease-in-out infinite alternate}
+@keyframes qpulse{from{opacity:.7}to{opacity:1}}
+
+.gw{flex:1;position:relative;overflow:hidden;display:flex}
+#gc{display:block;image-rendering:pixelated}
+
+/* SIDE PANEL */
+.sp{position:absolute;right:0;top:0;bottom:0;width:300px;background:rgba(5,5,20,.96);border-left:2px solid #7c3aed;padding:12px 10px;overflow-y:auto;z-index:50;display:flex;flex-direction:column;gap:8px}
+.spt{font-size:.62rem;letter-spacing:.18em;color:#a78bfa;text-transform:uppercase;border-bottom:1px solid rgba(124,58,237,.28);padding-bottom:5px;margin-bottom:2px}
+.sp-ch{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.04);font-size:.75rem;transition:.22s;margin-bottom:2px}
+.sp-ch.on{border-color:#fde047;background:rgba(253,224,71,.07);box-shadow:0 0 8px rgba(253,224,71,.2)}
+.sp-ch.done{opacity:.25;filter:grayscale(.8)}
+.sp-ch.notyet{opacity:.5;border-color:rgba(100,100,140,.3)}
+.sp-ball{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.sp-info{flex:1;min-width:0}
+.sp-nm{font-weight:700;color:#f0f0f0;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-bt{color:#8080a0;font-size:.68rem}
+.sp-qbadge{font-size:.6rem;border-radius:99px;padding:1px 6px;font-weight:700;flex-shrink:0}
+.sp-gseg{display:flex;align-items:center;padding:3px 5px;border-radius:4px;font-size:.68rem;font-weight:700;margin-bottom:2px;animation:sgi .3s ease both}
+@keyframes sgi{from{transform:translateX(8px);opacity:0}to{opacity:1}}
+.sp-gt{margin-left:auto;font-size:.6rem;opacity:.6;font-family:'JetBrains Mono',monospace}
+.sp-row{display:flex;justify-content:space-between;font-size:.72rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sp-row .k{color:#9090b0}.sp-row .v{color:#fde047;font-weight:700;font-family:'JetBrains Mono',monospace}
+
+/* TOAST */
+#toast{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);background:rgba(5,5,20,.98);border:4px solid #fde047;border-radius:16px;padding:24px 36px;text-align:center;z-index:200;pointer-events:none;opacity:0;transition:opacity .35s;max-width:550px;min-width:300px;box-shadow:0 0 50px rgba(253,224,71,.25)}
+#toast.show{opacity:1}
+.ti{font-size:3.5rem;display:block;margin-bottom:8px}
+.tm{font-size:1.4rem;color:#fde047;font-weight:800;margin-bottom:6px;line-height:1.2}
+.ts{font-size:1rem;color:#e2e8f0;line-height:1.5}
+
+/* CHOICE MODAL */
+#choiceModal{position:absolute;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:300;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(4px)}
+#choiceModal.show{opacity:1;pointer-events:all}
+.cm-box{background:#0d0a2e;border:2px solid #7c3aed;border-radius:14px;padding:28px 30px;max-width:600px;width:95%;text-align:center}
+.cm-title{font-size:1.35rem;color:#fde047;font-weight:700;margin-bottom:8px}
+.cm-sub{font-size:.85rem;color:#b8b8d0;margin-bottom:16px;line-height:1.55}
+.cm-queues{display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.cm-q{border-radius:8px;padding:7px 12px;font-size:.72rem;text-align:center;min-width:130px}
+.cm-q-title{font-weight:700;margin-bottom:2px;font-size:.78rem}
+.cm-q-items{font-size:.68rem;opacity:.85}
+.cm-options{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.cm-opt{background:rgba(124,58,237,.15);border:2px solid rgba(167,139,250,.4);border-radius:10px;padding:14px 18px;cursor:pointer;transition:.2s;min-width:130px;text-align:center;font-family:inherit}
+.cm-opt:hover:not(:disabled){border-color:#fde047;background:rgba(253,224,71,.1);box-shadow:0 0 14px rgba(253,224,71,.3);transform:translateY(-2px)}
+.cm-opt.correct{border-color:#10b981!important;background:rgba(16,185,129,.15)!important}
+.cm-opt.wrong{border-color:#ef4444!important;background:rgba(239,68,68,.15)!important}
+.cm-opt:disabled{opacity:.35;cursor:not-allowed}
+.cm-name{font-size:1.25rem;font-weight:700;color:#f0f0f0;margin-bottom:4px}
+.cm-detail{font-size:.75rem;color:#a78bfa;line-height:1.4}
+
+/* MOBILE */
+.mc{display:none;position:absolute;bottom:10px;left:0;right:0;justify-content:space-between;padding:0 12px;z-index:150;pointer-events:none}
+.mcg{display:flex;gap:8px;pointer-events:all}
+.mb{width:52px;height:52px;border-radius:50%;background:rgba(124,58,237,.55);border:2px solid rgba(167,139,250,.65);font-size:1.2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@media(max-width:640px){.mc{display:flex}.sp{width:170px}}
+@media(pointer:coarse){.mc{display:flex}}
+
+/* ══ RESULTS ══ */
+#sR{background:radial-gradient(ellipse at 50% 0%,#1a0a3d,#060614 70%);overflow-y:auto;padding:28px 18px;gap:18px;align-items:center}
+.rtro{font-size:3.5rem;animation:spin 1s ease-out}
+@keyframes spin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+.rtitle{font-size:clamp(1.8rem,5vw,2.8rem);color:#fde047;text-shadow:0 0 20px rgba(253,224,71,.6);margin:8px 0 6px;text-align:center}
+.rsub{font-size:1.1rem;color:#a78bfa;letter-spacing:.2em;text-transform:uppercase}
+.rsb{background:rgba(124,58,237,.1);border:2px solid rgba(124,58,237,.32);border-radius:12px;padding:20px 28px;display:flex;gap:32px;justify-content:center;flex-wrap:wrap}
+.rsi .rv{font-size:2.8rem;font-weight:700;color:#fde047;text-shadow:0 0 16px rgba(253,224,71,.5);font-family:'JetBrains Mono',monospace}
+.rsi .rl{font-size:1rem;color:#a78bfa;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.rg-wrap{width:100%;max-width:900px;overflow-x:auto}
+.rg-bar{display:flex;height:65px}
+.rg-seg{display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;overflow:hidden;flex-shrink:0;border-left:2px solid rgba(255,255,255,.2);animation:revSeg .45s ease both;position:relative}
+@keyframes revSeg{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.rg-seg .seg-q{position:absolute;bottom:2px;right:3px;font-size:.55rem;opacity:.7;font-family:monospace}
+.rg-ticks{position:relative;height:24px;margin-top:5px}
+.rg-tick{position:absolute;transform:translateX(-50%);font-size:.75rem;color:#999;white-space:nowrap}
+.rg-tick::before{content:'';display:block;width:2px;height:6px;background:#666;margin:0 auto 3px}
+.rtbl{width:100%;max-width:900px;border-collapse:collapse;font-size:.95rem;margin-bottom:20px}
+.rtbl th{padding:10px 12px;color:#a78bfa;font-size:.78rem;letter-spacing:.12em;border-bottom:2px solid rgba(124,58,237,.3);text-align:center;text-transform:uppercase}
+.rtbl td{padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05);font-family:'JetBrains Mono',monospace}
+.r-refl{width:100%;max-width:900px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:12px;padding:20px 24px;font-size:.95rem;color:#b0b0d0;line-height:1.6}
+.r-refl-t{color:#10b981;font-weight:700;font-size:1.15rem;margin-bottom:10px;display:flex;gap:7px;align-items:center}
+.r-box{border-radius:7px;padding:10px 14px;margin-top:10px;font-size:.82rem;line-height:1.5}
+.rbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.rb{padding:10px 22px;border-radius:8px;font-family:inherit;font-size:.78rem;letter-spacing:.08em;cursor:pointer;border:2px solid;font-weight:700;transition:.2s;text-transform:uppercase}
+.rb-p{background:#7c3aed;border-color:#7c3aed;color:#fff}
+.rb-p:hover{background:#6d28d9;box-shadow:0 0 14px rgba(124,58,237,.5)}
+.rb-g{background:transparent;border-color:rgba(167,139,250,.38);color:#a78bfa}
+.rb-g:hover{border-color:#a78bfa;background:rgba(167,139,250,.09)}
+
+/* LOADER */
+.page-overlay-loader{position:fixed;inset:0;background:#020210;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s ease}
+.page-overlay-loader.hidden{opacity:0;pointer-events:none}
+.loader{width:fit-content;font-size:17px;font-family:monospace;line-height:1.4;font-weight:bold;padding:30px 2px 50px;background:linear-gradient(#fff 0 0) 0 0/100% 100% content-box padding-box no-repeat;position:relative;overflow:hidden;animation:l10-0 2s infinite cubic-bezier(1,175,.5,175)}
+.loader::before{content:"Loading";display:inline-block;animation:l10-2 2s infinite;color:#fff}
+.loader::after{content:"";position:absolute;width:34px;height:28px;top:110%;left:calc(50% - 16px);background:linear-gradient(90deg,#0000 12px,#f92033 0 22px,#0000 0 26px,#fdc98d 0 32px,#0000) bottom 26px left 50%,linear-gradient(90deg,#0000 10px,#f92033 0 28px,#fdc98d 0 32px,#0000 0) bottom 24px left 50%,linear-gradient(90deg,#0000 10px,#643700 0 16px,#fdc98d 0 20px,#000 0 22px,#fdc98d 0 24px,#000 0 26px,#f92033 0 32px,#0000 0) bottom 22px left 50%,linear-gradient(90deg,#0000 8px,#643700 0 10px,#fdc98d 0 12px,#643700 0 14px,#fdc98d 0 20px,#000 0 22px,#fdc98d 0 28px,#f92033 0 32px,#0000 0) bottom 20px left 50%,linear-gradient(90deg,#0000 8px,#643700 0 10px,#fdc98d 0 12px,#643700 0 16px,#fdc98d 0 22px,#000 0 24px,#fdc98d 0 30px,#f92033 0 32px,#0000 0) bottom 18px left 50%,linear-gradient(90deg,#0000 8px,#643700 0 12px,#fdc98d 0 20px,#000 0 28px,#f92033 0 30px,#0000 0) bottom 16px left 50%,linear-gradient(90deg,#0000 12px,#fdc98d 0 26px,#f92033 0 30px,#0000 0) bottom 14px left 50%,linear-gradient(90deg,#fdc98d 6px,#f92033 0 14px,#222a87 0 16px,#f92033 0 22px,#222a87 0 24px,#f92033 0 28px,#0000 0 32px,#643700 0) bottom 12px left 50%,linear-gradient(90deg,#fdc98d 6px,#f92033 0 16px,#222a87 0 18px,#f92033 0 24px,#f92033 0 26px,#0000 0 30px,#643700 0) bottom 10px left 50%,linear-gradient(90deg,#0000 10px,#f92033 0 16px,#222a87 0 24px,#feee49 0 26px,#222a87 0 30px,#643700 0) bottom 8px left 50%,linear-gradient(90deg,#0000 12px,#222a87 0 18px,#feee49 0 20px,#222a87 0 30px,#643700 0) bottom 6px left 50%,linear-gradient(90deg,#0000 8px,#643700 0 12px,#222a87 0 30px,#643700 0) bottom 4px left 50%,linear-gradient(90deg,#0000 6px,#643700 0 14px,#222a87 0 26px,#0000 0) bottom 2px left 50%,linear-gradient(90deg,#0000 6px,#643700 0 10px,#0000 0) bottom 0px left 50%;background-size:34px 2px;background-repeat:no-repeat;animation:inherit;animation-name:l10-1}
+@keyframes l10-0{0%,30%{background-position:0 0px}50%,100%{background-position:0 -0.1px}}
+@keyframes l10-1{50%,100%{top:109.5%}}
+@keyframes l10-2{0%,30%{transform:translateY(0)}80%,100%{transform:translateY(-260%)}}
+.button{--stone-50:#fafaf9;--stone-800:#292524;--yellow-400:#facc15;font-size:1rem;cursor:pointer;position:relative;font-family:inherit;font-weight:bold;line-height:1;padding:1px;transform:translate(-4px,-4px);outline:2px solid transparent;outline-offset:5px;border-radius:9999px;background-color:var(--stone-800);color:var(--stone-800);transition:transform 150ms ease,box-shadow 150ms ease;text-align:center;
+  box-shadow:.5px .5px 0 0 var(--stone-800),1px 1px 0 0 var(--stone-800),1.5px 1.5px 0 0 var(--stone-800),2px 2px 0 0 var(--stone-800),2.5px 2.5px 0 0 var(--stone-800),3px 3px 0 0 var(--stone-800),0 0 0 2px var(--stone-50),.5px .5px 0 2px var(--stone-50),1px 1px 0 2px var(--stone-50),1.5px 1.5px 0 2px var(--stone-50),2px 2px 0 2px var(--stone-50),2.5px 2.5px 0 2px var(--stone-50),3px 3px 0 2px var(--stone-50),3.5px 3.5px 0 2px var(--stone-50),4px 4px 0 2px var(--stone-50)}
+.button:hover{transform:translate(0,0);box-shadow:0 0 0 2px var(--stone-50)}
+.button>div{position:relative;pointer-events:none;background-color:var(--yellow-400);border:2px solid rgba(255,255,255,.3);border-radius:9999px}
+.button>div::before{content:"";position:absolute;inset:0;border-radius:9999px;opacity:.5;background-image:radial-gradient(rgb(255 255 255/80%) 20%,transparent 20%),radial-gradient(rgb(255 255 255/100%) 20%,transparent 20%);background-position:0 0,4px 4px;background-size:8px 8px;mix-blend-mode:hard-light;animation:btn-dots .5s infinite linear}
+.button>div>span{position:relative;display:flex;align-items:center;justify-content:center;padding:.75rem 1.25rem;gap:.25rem;filter:drop-shadow(0 -1px 0 rgba(255,255,255,.25))}
+.button>div>span:active{transform:translateY(2px)}
+@keyframes btn-dots{0%{background-position:0 0,4px 4px}100%{background-position:8px 0,12px 4px}}
+</style>
+</head>
+<body>
+<div id="page-loader" class="page-overlay-loader"><div class="loader"></div></div>
+<script>window.addEventListener('load',()=>{setTimeout(()=>{const l=document.getElementById('page-loader');if(l)l.classList.add('hidden');},500);});</script>
+
+<!-- ══ TITLE ══ -->
+<div class="scr" id="sT">
+  <div class="t-sky" id="tSky"></div>
+  <canvas id="tHills" class="t-hills" style="position:fixed;bottom:0;left:0;width:100%;pointer-events:none;z-index:1"></canvas>
+  <div class="tc">
+    <div class="logo-wrap">
+      <canvas id="logoMario" class="logo-mario-canvas" width="64" height="64"></canvas>
+      <div class="logo-title">MULTILEVEL QUEUE</div>
+      <div class="logo-sub">🏰 Colas de Prioridad Fija · Mario Edition 🏰</div>
+    </div>
+    <div class="badge">
+      <strong>Multilevel Queue:</strong> Cada proceso tiene una <strong>cola fija y permanente</strong>.<br>
+      La CPU siempre atiende la cola de mayor prioridad que tenga procesos disponibles.<br>
+      A diferencia de MLFQ, los procesos <strong>nunca cambian de cola</strong>.
+    </div>
+    <div class="queue-legend">
+      <div class="ql-item"><div class="ql-dot" style="background:#ef4444"></div><div class="ql-info"><strong>Q1 — Sistema (alta)</strong><br>Round Robin q=2</div></div>
+      <div class="ql-item"><div class="ql-dot" style="background:#f59e0b"></div><div class="ql-info"><strong>Q2 — Interactivo (media)</strong><br>Round Robin q=4</div></div>
+      <div class="ql-item"><div class="ql-dot" style="background:#22c55e"></div><div class="ql-info"><strong>Q3 — Batch (baja)</strong><br>FCFS (sin quantum)</div></div>
+    </div>
+    <div class="lvl-grid" id="lvlGrid"></div>
+    <a href="index.html" class="button" style="text-decoration:none;margin:4px auto;display:block;width:fit-content">
+      <div><span>🏠 Regresar a Menú Principal</span></div>
+    </a>
+    <div class="key-row">
+      <div class="kh"><span class="kb">← →</span> Mover</div>
+      <div class="kh"><span class="kb">↑ / Z</span> Saltar</div>
+      <div class="kh"><span class="kb">SPACE</span> Interactuar</div>
+      <div class="kh"><span class="kb">ESC</span> Menú</div>
+    </div>
+    <p style="font-size:.62rem;color:#444;letter-spacing:.13em">Botones táctiles disponibles en móvil</p>
+  </div>
+</div>
+
+<!-- ══ GAME ══ -->
+<div class="scr off" id="sG">
+  <div class="hud">
+    <div class="hi"><span class="hl">❤</span><span class="hv" id="hLives">3</span></div>
+    <div class="hi"><span class="hl">Score</span><span class="hv" id="hScore">0</span></div>
+    <div class="hi"><span class="hl">CPU t</span><span class="hv" id="hClock">0</span></div>
+    <div class="qt-wrap">
+      <div>
+        <div class="qt-label">Cola Activa</div>
+        <div class="qt-val" id="hActiveQ">—</div>
+      </div>
+      <div class="qt-bar"><div class="qt-fill" id="hQtFill" style="width:100%"></div></div>
+    </div>
+    <div class="hi"><span class="hl">Próximo</span><span class="hv" id="hNext" style="color:#a78bfa">—</span></div>
+    <div class="hi"><span class="hl">Errores</span><span class="hv" id="hErr" style="color:#f87171">0</span></div>
+    <div class="hlvl" id="hLvl">NIVEL 1</div>
+  </div>
+  <div class="gw" id="gw">
+    <canvas id="gc"></canvas>
+    <div class="sp" id="sp">
+      <div class="spt">🔴 Q1 — Sistema (RR q=2)</div>
+      <div id="spQ1"></div>
+      <div class="spt" style="margin-top:4px">🟡 Q2 — Interactivo (RR q=4)</div>
+      <div id="spQ2"></div>
+      <div class="spt" style="margin-top:4px">🟢 Q3 — Batch (FCFS)</div>
+      <div id="spQ3"></div>
+      <div class="spt" style="margin-top:4px">⏳ No llegaron aún</div>
+      <div id="spWait"></div>
+      <div class="spt" style="margin-top:4px">📊 Gantt (últimos 10)</div>
+      <div id="spG"></div>
+      <div class="spt" style="margin-top:4px">⏱ Métricas</div>
+      <div id="spM"></div>
+    </div>
+    <div id="toast"><span class="ti" id="tIcon">⭐</span><div class="tm" id="tMsg">—</div><div class="ts" id="tSub">—</div></div>
+    <div id="choiceModal">
+      <div class="cm-box">
+        <div class="cm-title" id="cmTitle">¿A quién atiende la CPU?</div>
+        <div class="cm-sub" id="cmSub">Recuerda: la cola de mayor prioridad disponible va primero</div>
+        <div class="cm-queues" id="cmQueues"></div>
+        <div class="cm-options" id="cmOpts"></div>
+      </div>
+    </div>
+    <div class="mc" id="mc">
+      <div class="mcg"><div class="mb" id="mcL">◀</div><div class="mb" id="mcR">▶</div></div>
+      <div class="mcg"><div class="mb" id="mcJ">↑</div><div class="mb" id="mcA">✋</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div class="scr off" id="sR">
+  <div class="rtro" id="rTro">🏆</div>
+  <div class="rtitle" id="rTitle">¡Completado!</div>
+  <div class="rsub" id="rSub">MULTILEVEL MASTER</div>
+  <div class="rsb" id="rSB"></div>
+  <div class="rg-wrap">
+    <div style="font-size:.58rem;letter-spacing:.18em;color:#a78bfa;margin-bottom:5px">GANTT — EJECUCIÓN (color = proceso, etiqueta = cola)</div>
+    <div class="rg-bar" id="rGBar"></div>
+    <div class="rg-ticks" id="rGTks"></div>
+  </div>
+  <table class="rtbl"><thead><tr>
+    <th>Proceso</th><th>Cola</th><th>AT</th><th>BT</th><th>1er Inicio</th><th>CT</th><th>TAT</th><th>WT</th>
+  </tr></thead><tbody id="rTB"></tbody><tfoot id="rTF"></tfoot></table>
+  <div class="r-refl" id="rRefl"></div>
+  <div class="rbtns">
+    <button class="rb rb-p" id="bNxt">Siguiente Nivel ▶</button>
+    <button class="rb rb-g" id="bRep">↺ Repetir</button>
+    <button class="rb rb-g" id="bMenu">🏠 Menú</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════ MARIO SPRITE ═══════════════ */
+const _=null,R='#e52521',S='#ffcc99',B='#5b3a1e',O='#f28030';
+const MARIO_FRAMES={
+  stand:[[_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],[_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],[_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],[_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],[_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],[_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],[_,_,_,S,S,S,S,S,S,S,_,_,_,_,_,_],[_,_,O,O,R,O,O,O,_,_,_,_,_,_,_,_],[_,O,O,O,R,O,O,O,O,O,_,_,_,_,_,_],[O,O,O,O,R,R,O,O,O,O,O,_,_,_,_,_],[S,S,O,R,S,S,R,O,S,S,_,_,_,_,_,_],[S,S,S,R,S,S,R,S,S,S,_,_,_,_,_,_],[_,_,R,R,_,_,R,R,_,_,_,_,_,_,_,_],[_,B,B,B,_,_,B,B,B,_,_,_,_,_,_,_],[B,B,B,_,_,_,_,B,B,B,_,_,_,_,_,_],[_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]],
+  run1:[[_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],[_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],[_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],[_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],[_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],[_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],[_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],[_,_,O,O,R,O,O,_,_,_,_,_,_,_,_,_],[_,O,O,O,R,O,O,O,O,_,_,_,_,_,_,_],[O,O,O,O,R,R,O,O,O,O,_,_,_,_,_,_],[S,S,O,R,S,S,R,O,S,_,_,_,_,_,_,_],[S,S,R,S,S,R,S,S,_,_,_,_,_,_,_,_],[_,R,R,_,R,R,_,_,_,_,_,_,_,_,_,_],[R,B,B,_,B,B,R,_,_,_,_,_,_,_,_,_],[B,B,_,_,_,B,B,B,_,_,_,_,_,_,_,_],[_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]],
+  run2:[[_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],[_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],[_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],[_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],[_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],[_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],[_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],[_,_,O,O,R,O,O,O,_,_,_,_,_,_,_,_],[O,O,O,O,R,O,O,O,O,_,_,_,_,_,_,_],[O,O,O,R,R,O,O,O,O,O,_,_,_,_,_,_],[S,O,R,S,S,R,O,O,S,_,_,_,_,_,_,_],[S,R,S,S,R,S,S,_,_,_,_,_,_,_,_,_],[R,R,_,R,R,_,_,_,_,_,_,_,_,_,_,_],[B,B,_,B,B,R,_,_,_,_,_,_,_,_,_,_],[_,_,_,B,B,B,B,_,_,_,_,_,_,_,_,_],[_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]],
+  jump:[[_,_,_,R,R,R,R,R,_,_,_,_,_,_,_,_],[_,_,R,R,R,R,R,R,R,R,R,_,_,_,_,_],[_,_,B,B,B,S,S,B,S,_,_,_,_,_,_,_],[_,B,S,B,S,S,S,B,S,S,S,_,_,_,_,_],[_,B,S,B,B,S,S,S,B,S,S,S,_,_,_,_],[_,B,B,S,S,S,S,B,B,B,B,_,_,_,_,_],[_,_,_,S,S,S,S,S,S,_,_,_,_,_,_,_],[O,O,O,R,O,O,O,O,_,_,_,_,_,_,_,_],[O,O,O,O,R,O,O,O,O,O,O,_,_,_,_,_],[O,O,O,R,R,O,O,O,O,O,_,_,_,_,_,_],[S,S,R,S,S,R,O,S,S,_,_,_,_,_,_,_],[_,R,S,S,R,_,S,S,_,_,_,_,_,_,_,_],[_,R,R,R,R,_,_,_,_,_,_,_,_,_,_,_],[B,B,B,B,_,_,_,_,_,_,_,_,_,_,_,_],[_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],[_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]]
+};
+function drawMarioSprite(ctx,x,y,scale,frameKey,flipX){
+  const frame=MARIO_FRAMES[frameKey]||MARIO_FRAMES.stand,s=scale;
+  ctx.save();
+  if(flipX){ctx.translate(x+16*s,y);ctx.scale(-1,1);x=0;y=0;}
+  else{ctx.translate(x,y);x=0;y=0;}
+  for(let row=0;row<16;row++)for(let col=0;col<16;col++){const c=frame[row][col];if(c){ctx.fillStyle=c;ctx.fillRect(col*s,row*s,s,s);}}
+  ctx.restore();
+}
+
+/* ═══════════════ PROCESS CHARACTERS ═══════════════ */
+const CHARS=[
+  {name:'Toad',  color:'#e11d48',dark:'#9f1239',draw(ctx,x,y,s){ctx.fillStyle=this.color;ctx.fillRect(x+s,y,6*s,3*s);ctx.fillStyle=this.dark;ctx.fillRect(x,y+s,8*s,2*s);ctx.fillStyle='#fff';ctx.fillRect(x+2*s,y+3*s,4*s,3*s);ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+4*s,s,s);ctx.fillRect(x+5*s,y+4*s,s,s);ctx.fillStyle='#fff';ctx.fillRect(x+s,y+s,s,s);ctx.fillRect(x+5*s,y,s,s);}},
+  {name:'Koopa', color:'#16a34a',dark:'#14532d',draw(ctx,x,y,s){ctx.fillStyle=this.color;ctx.fillRect(x+s,y+s,6*s,5*s);ctx.fillStyle=this.dark;ctx.fillRect(x+2*s,y+2*s,4*s,2*s);ctx.fillStyle='#fbbf24';ctx.fillRect(x+2*s,y,4*s,2*s);ctx.fillStyle='#78350f';ctx.fillRect(x+2*s,y+5*s,s,2*s);ctx.fillRect(x+5*s,y+5*s,s,2*s);ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+2*s,s,s);ctx.fillRect(x+5*s,y+2*s,s,s);}},
+  {name:'Goomba',color:'#92400e',dark:'#451a03',draw(ctx,x,y,s){ctx.fillStyle=this.color;ctx.fillRect(x,y+s,8*s,4*s);ctx.fillStyle=this.dark;ctx.fillRect(x,y+4*s,8*s,2*s);ctx.fillStyle='#fbbf24';ctx.fillRect(x+s,y+s,2*s,2*s);ctx.fillRect(x+5*s,y+s,2*s,2*s);ctx.fillStyle='#fff';ctx.fillRect(x+s,y+2*s,s,s);ctx.fillRect(x+5*s,y+2*s,s,s);ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+2*s,s,s);ctx.fillRect(x+6*s,y+2*s,s,s);ctx.fillStyle=this.dark;ctx.fillRect(x+s,y+5*s,2*s,2*s);ctx.fillRect(x+5*s,y+5*s,2*s,2*s);}},
+  {name:'Boo',   color:'#e2e8f0',dark:'#94a3b8',draw(ctx,x,y,s){ctx.fillStyle=this.color;ctx.fillRect(x+s,y,6*s,6*s);ctx.fillRect(x,y+2*s,8*s,3*s);ctx.fillRect(x,y+5*s,2*s,2*s);ctx.fillRect(x+4*s,y+5*s,2*s,2*s);ctx.fillStyle='#222';ctx.fillRect(x+2*s,y+2*s,s,s);ctx.fillRect(x+5*s,y+2*s,s,s);ctx.fillStyle=this.dark;ctx.fillRect(x+2*s,y+4*s,4*s,s);}},
+  {name:'Piranha',color:'#dc2626',dark:'#7f1d1d',draw(ctx,x,y,s){ctx.fillStyle='#16a34a';ctx.fillRect(x+2*s,y+4*s,4*s,4*s);ctx.fillStyle='#14532d';ctx.fillRect(x+2*s,y+3*s,4*s,s);ctx.fillStyle=this.color;ctx.fillRect(x,y,8*s,4*s);ctx.fillStyle='#fff';ctx.fillRect(x+s,y+s,2*s,s);ctx.fillRect(x+5*s,y+2*s,2*s,s);ctx.fillStyle=this.dark;ctx.fillRect(x,y+3*s,8*s,s);ctx.fillStyle='#fde047';ctx.fillRect(x+2*s,y,s,s);ctx.fillRect(x+5*s,y,s,s);}},
+  {name:'Star',  color:'#fde047',dark:'#ca8a04',draw(ctx,x,y,s){ctx.fillStyle=this.color;ctx.fillRect(x+3*s,y,2*s,8*s);ctx.fillRect(x,y+3*s,8*s,2*s);ctx.fillRect(x+s,y+s,2*s,2*s);ctx.fillRect(x+5*s,y+s,2*s,2*s);ctx.fillRect(x+s,y+5*s,2*s,2*s);ctx.fillRect(x+5*s,y+5*s,2*s,2*s);ctx.fillStyle=this.dark;ctx.fillRect(x+3*s,y+2*s,s,s);ctx.fillRect(x+4*s,y+5*s,s,s);ctx.fillStyle='#fff';ctx.fillRect(x+3*s,y+3*s,s,s);}},
+];
+
+/* ═══════════════ CONFIG ═══════════════ */
+const Q_COLORS=['#ef4444','#f59e0b','#22c55e'];
+const Q_QUANTUM=[2,4,999]; // Q3 FCFS
+const Q_NAMES=['Q1-Sistema','Q2-Interactivo','Q3-Batch'];
+
+/* ═══════════════ LEVELS ═══════════════
+   Diferencia clave vs MLFQ: queue es FIJO, nunca cambia
+═══════════════════════════════════════ */
+const LEVELS=[
+  { id:0, name:'Nivel 1 — Tres clases', tag:'Prioridad Fija',
+    desc:'Procesos en cada cola. La CPU prioriza Q1 → Q2 → Q3 sin excepción.',
+    procs:[
+      {name:'P1',charIdx:0,at:0,bt:5,queue:0},
+      {name:'P2',charIdx:1,at:0,bt:3,queue:1},
+      {name:'P3',charIdx:2,at:0,bt:4,queue:2},
+    ]},
+  { id:1, name:'Nivel 2 — Llegadas mixtas', tag:'Arrival Mixto',
+    desc:'Procesos llegan en distintos tiempos. Q1 interrumpe a Q2/Q3 cuando llega.',
+    procs:[
+      {name:'A',charIdx:3,at:0,bt:6,queue:0},
+      {name:'B',charIdx:0,at:1,bt:3,queue:1},
+      {name:'C',charIdx:1,at:2,bt:5,queue:0},
+      {name:'D',charIdx:2,at:4,bt:2,queue:2},
+    ]},
+  { id:2, name:'Nivel 3 — Prioridad estricta', tag:'Jerarquía',
+    desc:'Un proceso Q3 espera aunque llegue primero si hay algo en Q1 o Q2.',
+    procs:[
+      {name:'P1',charIdx:4,at:0,bt:4,queue:1},
+      {name:'P2',charIdx:0,at:0,bt:2,queue:0},
+      {name:'P3',charIdx:1,at:1,bt:3,queue:2},
+      {name:'P4',charIdx:3,at:3,bt:2,queue:1},
+    ]},
+  { id:3, name:'Nivel 4 — Desafío Total', tag:'Experto',
+    desc:'Mezcla compleja. Identifica qué cola domina en cada instante.',
+    procs:[
+      {name:'X',charIdx:2,at:0,bt:5,queue:0},
+      {name:'Y',charIdx:3,at:1,bt:4,queue:1},
+      {name:'Z',charIdx:4,at:2,bt:2,queue:2},
+      {name:'W',charIdx:0,at:3,bt:3,queue:0},
+      {name:'V',charIdx:1,at:5,bt:3,queue:1},
+    ]},
+];
+
+/* ═══════════════ SIMULATOR ═══════════════
+   MLQ: prioridad de cola fija, RR dentro de cada cola, no hay descenso.
+   Genera lista de segmentos {name, queue, start, end}
+═══════════════════════════════════════ */
+function simulateMlq(procs){
+  // Construir colas con orden FCFS de llegada dentro de cada una
+  const ps=procs.map(p=>({...p,rem:p.bt,firstStart:-1,served:false,ct:0}));
+  // Mantener cola circular por cada nivel
+  const rrIdx=[0,0,0]; // índice rotación dentro de cada cola
+  let clock=0,segs=[],iter=0;
+  while(ps.some(p=>!p.served)&&iter++<3000){
+    // Encontrar proceso activo: menor cola con algo disponible
+    let chosen=null;
+    for(let q=0;q<3;q++){
+      const avail=ps.filter(p=>!p.served&&p.queue===q&&p.at<=clock);
+      if(avail.length===0) continue;
+      // RR dentro de la cola: usar índice rotatorio
+      const idx=rrIdx[q]%avail.length;
+      chosen={proc:avail[idx],q,avail};
+      break;
+    }
+    if(!chosen){
+      // Avanzar al próximo arrival
+      const next=ps.filter(p=>!p.served).sort((a,b)=>a.at-b.at)[0];
+      if(next) clock=next.at;
+      continue;
+    }
+    const {proc,q,avail}=chosen;
+    const qt=Q_QUANTUM[q];
+    const exec=Math.min(qt,proc.rem);
+    if(proc.firstStart<0) proc.firstStart=clock;
+    // Merge consecutive segments del mismo proceso
+    const last=segs[segs.length-1];
+    if(last&&last.name===proc.name&&last.end===clock) last.end=clock+exec;
+    else segs.push({name:proc.name,queue:q,start:clock,end:clock+exec});
+    clock+=exec;
+    proc.rem-=exec;
+    // Avanzar índice RR solo si hay más de uno en la cola (para RR justo)
+    if(avail.length>1) rrIdx[q]=(rrIdx[q]+1)%avail.length;
+    if(proc.rem<=0){proc.served=true;proc.ct=clock;}
+  }
+  return segs;
+}
+
+/* ═══════════════ TITLE ═══════════════ */
+(function buildTitle(){
+  const sky=document.getElementById('tSky');
+  for(let i=0;i<100;i++){const d=document.createElement('div');d.className='t-star';const sz=Math.random()<.12?3:1.5;d.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;--d:${(2+Math.random()*4).toFixed(1)}s;--dl:${(Math.random()*5).toFixed(1)}s`;sky.appendChild(d);}
+  const hc=document.getElementById('tHills');hc.width=window.innerWidth;hc.height=200;
+  const hx=hc.getContext('2d');
+  function drawHills(){hc.width=window.innerWidth;hx.clearRect(0,0,hc.width,hc.height);[[0.3,60,80,'#1a0538'],[0.55,40,120,'#2d1060'],[0.75,25,180,'#3d1a78']].forEach(([a,h,w,c])=>{hx.fillStyle=c;hx.beginPath();hx.moveTo(0,hc.height);for(let x=0;x<=hc.width+w;x+=w)hx.bezierCurveTo(x-w/2,hc.height-h*2,x,hc.height-h*a*3,x+w,hc.height-h);hx.lineTo(hc.width,hc.height);hx.closePath();hx.fill();});}
+  drawHills();window.addEventListener('resize',drawHills);
+  const lc=document.getElementById('logoMario'),lx=lc.getContext('2d');lx.imageSmoothingEnabled=false;drawMarioSprite(lx,0,0,4,'stand',false);
+  let lf=0;setInterval(()=>{lf=(lf+1)%4;lx.clearRect(0,0,64,64);drawMarioSprite(lx,0,0,4,['stand','run1','run2','run1'][lf],false);},200);
+  const grid=document.getElementById('lvlGrid');
+  LEVELS.forEach((lv,i)=>{const c=document.createElement('div');c.className='lc';c.innerHTML=`<div class="lc-num">${String(i+1).padStart(2,'0')}</div><div class="lc-name">${lv.name}</div><div class="lc-desc">${lv.desc}</div><div class="lc-tag">${lv.tag}</div>`;c.addEventListener('click',()=>startLevel(i));grid.appendChild(c);});
+})();
+
+/* ═══════════════ ENGINE ═══════════════ */
+const canvas=document.getElementById('gc'),ctx=canvas.getContext('2d');
+const gwEl=document.getElementById('gw');
+let W,H,SP_W=300;
+function resize(){SP_W=window.innerWidth<=640?170:300;W=gwEl.clientWidth-SP_W;H=gwEl.clientHeight;canvas.width=W;canvas.height=H;ctx.imageSmoothingEnabled=false;}
+
+let G={running:false},keys={},starBg=null,lastT=0;
+
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('sG').classList.contains('off'))return;
+  keys[e.code]=true;
+  if(e.code==='Space'){e.preventDefault();doAction();}
+  if(e.code==='KeyZ')keys['ArrowUp']=true;
+  if(e.code==='Escape')goMenu();
+});
+document.addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyZ')keys['ArrowUp']=false;});
+['mcL','mcR','mcJ','mcA'].forEach(id=>{
+  const el=document.getElementById(id);const cm={mcL:'ArrowLeft',mcR:'ArrowRight',mcJ:'ArrowUp',mcA:'Space'};
+  if(!el)return;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();if(id==='mcA')doAction();else keys[cm[id]]=true;});
+  el.addEventListener('pointerup',()=>keys[cm[id]]=false);
+  el.addEventListener('pointerleave',()=>keys[cm[id]]=false);
+});
+
+/* ═══════════════ BUILD WORLD ═══════════════ */
+function buildWorld(li){
+  const lv=LEVELS[li],n=lv.procs.length;
+  const worldW=Math.max(W*2.5,n*48*7+300),gy=Math.round(H*0.68);
+  const chars=lv.procs.map((p,i)=>({
+    ...p,origIdx:i,
+    x:220+i*(worldW-280)/Math.max(n-1,1),
+    y:gy-48,w:48,h:48,
+    rem:p.bt,served:false,serving:false,
+    firstStart:-1,ct:0,tat:0,wt:0,
+    bob:Math.random()*Math.PI*2,
+    charDef:CHARS[p.charIdx%CHARS.length],
+  }));
+  const mario={x:60,y:gy-48,w:48,h:48,vx:0,vy:0,onGround:true,facing:1,frame:0,frameKey:'stand',ft:0,interacting:false,interactT:0};
+  return{chars,mario,worldW,gy};
+}
+
+function startLevel(li){
+  resize();starBg=null;
+  const{chars,mario,worldW,gy}=buildWorld(li);
+  const optimalSegs=simulateMlq(LEVELS[li].procs);
+  G={
+    li,score:0,lives:3,clock:0,errors:0,
+    chars,mario,worldW,gy,camX:0,
+    doneCount:0,particles:[],shake:0,
+    toastT:0,wrongF:0,idleT:0,running:true,
+    marioState:'free',
+    target:null,celebT:0,triedWrong:[],
+    gantt:[],
+    optimalSegs,segIdx:0,
+    currentSeg:null,
+  };
+  showSc('sG');hideTst();
+  document.getElementById('hLvl').textContent=LEVELS[li].name;
+  updateHUD();updateSP();
+  lastT=0;requestAnimationFrame(loop);
+  setTimeout(()=>{if(G.running&&G.marioState==='free')tryOpenModal();},600);
+}
+
+function loop(ts){if(!G.running)return;const dt=Math.min((ts-lastT)/1000,.05);lastT=ts;update(dt);draw();requestAnimationFrame(loop);}
+
+function update(dt){
+  const{mario,gy,worldW}=G;
+  if(G.shake>0)G.shake-=dt;if(G.wrongF>0)G.wrongF-=dt;
+  if(G.toastT>0){G.toastT-=dt;if(G.toastT<=0)hideTst();}G.idleT+=dt;
+  G.chars.forEach(c=>c.bob+=dt*2.2);
+  G.particles=G.particles.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=450*dt;p.life-=dt;return p.life>0;});
+  if(G.marioState==='question')return;
+  if(G.marioState==='celebrate'){
+    G.celebT+=dt;mario.y=gy-mario.h-Math.abs(Math.sin(G.celebT*9))*20;mario.frameKey='jump';
+    if(Math.random()<.45)spawn(G.target.x+G.target.w/2,G.target.y,G.target.charDef.color,3);
+    G.camX=Math.max(0,Math.min(mario.x-W*.35,worldW-W));
+    if(mario.interacting){mario.interactT-=dt;if(mario.interactT<=0){mario.interacting=false;mario.y=gy-mario.h;finalizeServe(G.target);}}
+    return;
+  }
+  mario.vx=0;
+  if(keys['ArrowLeft']){mario.vx=-220;mario.facing=-1;}if(keys['ArrowRight']){mario.vx=220;mario.facing=1;}
+  if(keys['ArrowUp']&&mario.onGround){mario.vy=-570;mario.onGround=false;mario.frameKey='jump';}
+  mario.vy+=1500*dt;mario.x+=mario.vx*dt;mario.y+=mario.vy*dt;
+  if(mario.y>=gy-mario.h){mario.y=gy-mario.h;mario.vy=0;mario.onGround=true;if(mario.frameKey==='jump')mario.frameKey='stand';}
+  mario.x=Math.max(0,Math.min(mario.x,worldW-mario.w));
+  mario.ft+=dt;if(mario.ft>.12){mario.ft=0;mario.frame=(mario.frame+1)%2;}
+  if(mario.vx!==0&&mario.onGround)mario.frameKey=mario.frame===0?'run1':'run2';
+  else if(mario.onGround)mario.frameKey='stand';
+  G.camX=Math.max(0,Math.min(mario.x-W*.35,worldW-W));
+}
+
+/* ═══════════════ MODAL LOGIC ═══════════════ */
+function tryOpenModal(){
+  if(!G.running)return;
+  if(G.doneCount>=G.chars.length){setTimeout(showResults,800);return;}
+  const seg=G.optimalSegs[G.segIdx];
+  if(!seg){setTimeout(showResults,800);return;}
+  // Advance clock if needed
+  if(G.clock<seg.start) G.clock=seg.start;
+  const available=G.chars.filter(c=>!c.served&&c.at<=G.clock);
+  if(available.length===0){
+    const next=G.chars.filter(c=>!c.served).sort((a,b)=>a.at-b.at)[0];
+    if(next){G.clock=next.at;tryOpenModal();}
+    return;
+  }
+  G.optimalNext=G.chars.find(c=>c.name===seg.name);
+  if(!G.optimalNext){G.segIdx++;tryOpenModal();return;}
+  if(available.length===1){
+    G.target=available[0];startWalking(seg);return;
+  }
+  G.marioState='question';
+  buildChoiceModal(available,seg);
+  document.getElementById('choiceModal').classList.add('show');
+}
+
+function buildChoiceModal(avail,seg){
+  document.getElementById('cmTitle').textContent=`t=${G.clock} — ¿Quién ejecuta la CPU ahora?`;
+  // Show queue state
+  const q0=avail.filter(c=>c.queue===0),q1=avail.filter(c=>c.queue===1),q2=avail.filter(c=>c.queue===2);
+  const qEl=document.getElementById('cmQueues');qEl.innerHTML='';
+  [['🔴 Q1 Sistema',q0,'#ef4444'],['🟡 Q2 Interactivo',q1,'#f59e0b'],['🟢 Q3 Batch',q2,'#22c55e']].forEach(([label,arr,col])=>{
+    const d=document.createElement('div');d.className='cm-q';
+    d.style.cssText=`background:${col}18;border:1px solid ${col}55`;
+    d.innerHTML=`<div class="cm-q-title" style="color:${col}">${label}</div><div class="cm-q-items">${arr.length?arr.map(c=>`${c.name}(rem=${c.rem})`).join(', '):'— vacía'}</div>`;
+    qEl.appendChild(d);
+  });
+  const opts=document.getElementById('cmOpts');opts.innerHTML='';
+  avail.forEach(c=>{
+    const btn=document.createElement('button');btn.className='cm-opt';btn.dataset.name=c.name;
+    const qCol=Q_COLORS[c.queue];
+    if(G.triedWrong&&G.triedWrong.includes(c.name)){btn.disabled=true;btn.classList.add('wrong');}
+    const qtLabel=Q_QUANTUM[c.queue]===999?'FCFS':Q_QUANTUM[c.queue];
+    btn.innerHTML=`<div class="cm-name">${c.name}</div><div class="cm-detail" style="color:${qCol}">${Q_NAMES[c.queue]} | Q=${qtLabel} | Rem=${c.rem}</div>`;
+    btn.addEventListener('click',()=>handleChoice(c,seg));opts.appendChild(btn);
+  });
+  document.getElementById('cmSub').textContent='Regla MLQ: Cola 1 > Cola 2 > Cola 3. Las colas son FIJAS — los procesos nunca cambian de cola.';
+}
+
+function handleChoice(chosen,seg){
+  const isCorrect=chosen.name===G.optimalNext.name;
+  if(isCorrect){
+    G.score+=150;
+    document.querySelectorAll('.cm-opt').forEach(b=>{if(b.dataset.name===chosen.name)b.classList.add('correct');});
+    const qCol=Q_COLORS[chosen.queue];const qName=Q_NAMES[chosen.queue];
+    const execTime=seg.end-seg.start;
+    showTst('✅',`¡Correcto! ${chosen.name} es el siguiente`,`${qName} (mayor prioridad disponible). Ejecutará ${execTime} unidades (Q=${Q_QUANTUM[chosen.queue]===999?'FCFS':Q_QUANTUM[chosen.queue]})`,6);
+    setTimeout(()=>{closeChoiceModal();G.target=chosen;startWalking(seg);},800);
+  } else {
+    G.errors++;G.lives=Math.max(0,G.lives-1);G.shake=.4;G.wrongF=.55;updateHUD();
+    if(!G.triedWrong)G.triedWrong=[];G.triedWrong.push(chosen.name);
+    document.querySelectorAll('.cm-opt').forEach(b=>{if(b.dataset.name===chosen.name){b.classList.add('wrong');b.disabled=true;}});
+    const correctQ=Q_NAMES[G.optimalNext.queue];const chosenQ=Q_NAMES[chosen.queue];
+    showTst('❌',`${chosen.name} no es correcto`,
+      `${chosen.name} está en ${chosenQ}, pero ${G.optimalNext.name} está en ${correctQ} (mayor prioridad). Intenta de nuevo.`,7);
+    document.getElementById('cmSub').textContent=`❌ Incorrecto (${G.lives} vida/s). Revisa las colas e intenta de nuevo.`;
+    if(G.lives<=0)setTimeout(()=>{closeChoiceModal();gameOver();},1500);
+  }
+}
+
+function closeChoiceModal(){document.getElementById('choiceModal').classList.remove('show');G.triedWrong=[];G.marioState='free';}
+
+function startWalking(seg){
+  G.marioState='walking';G.currentSeg=seg;G.target.serving=true;
+  const execTime=seg.end-seg.start;const qName=Q_NAMES[G.target.queue];
+  showTst('🏃',`Ve con Mario hasta ${G.target.name}`,`${qName} | Ejecutará ${execTime}u (Q=${Q_QUANTUM[G.target.queue]===999?'FCFS':Q_QUANTUM[G.target.queue]})`,6);
+  updateSP();
+}
+
+/* ═══════════════ ACTION ═══════════════ */
+function doAction(){
+  if(!G.running||G.marioState!=='walking')return;
+  const REACH=48*2.2,mario=G.mario;
+  let closest=null,cd=Infinity;
+  G.chars.forEach(c=>{if(c.served)return;const d=Math.abs((mario.x+mario.w/2)-(c.x+c.w/2));if(d<cd){cd=d;closest=c;}});
+  if(!closest||cd>REACH){showTst('💨','¡Acércate más!',`Camina hasta ${G.target.name} y presiona SPACE.`,4);return;}
+  if(closest.name!==G.target.name){G.shake=.3;G.wrongF=.4;showTst('⚠️',`Ese es ${closest.name}`,`Debes llegar a ${G.target.name}. ¡Sigue buscando!`,5);return;}
+
+  // Arrived at correct target
+  const seg=G.currentSeg,execTime=seg.end-seg.start;
+  G.marioState='celebrate';G.celebT=0;
+  if(G.target.firstStart<0) G.target.firstStart=G.clock;
+  G.target.rem-=execTime;
+  G.clock=seg.end;
+  G.gantt.push({name:G.target.name,queue:G.target.queue,start:seg.start,end:seg.end,color:G.target.charDef.color,qColor:Q_COLORS[G.target.queue]});
+  G.score+=100;
+  const isFinished=G.target.rem<=0;
+  if(isFinished){
+    G.target.ct=G.clock;G.target.tat=G.target.ct-G.target.at;G.target.wt=G.target.tat-G.target.bt;
+    showTst('⚙️',`Ejecutando ${G.target.name} — ¡completado!`,`CT=${G.clock} | TAT=${G.target.tat} | WT=${G.target.wt}`,execTime);
+  } else {
+    const qName=Q_NAMES[G.target.queue];
+    showTst('⚙️',`Ejecutando ${G.target.name}`,`${qName} | Quantum=${execTime} agotado | Rem=${G.target.rem} — vuelve al final de ${qName}`,execTime);
+  }
+  G.mario.interacting=true;G.mario.interactT=execTime;
+  G.segIdx++;
+  updateHUD();updateSP();
+}
+
+function finalizeServe(c){
+  c.serving=false;G.marioState='free';
+  if(c.rem<=0){
+    c.served=true;G.doneCount++;
+    spawn(c.x+c.w/2,c.y,c.charDef.color,18);
+    showTst('⭐',`¡${c.name} completado!`,`${Q_NAMES[c.queue]} | TAT=${c.tat} | WT=${c.wt}`,4.5);
+    updateSP();updateHUD();
+    if(G.doneCount>=G.chars.length){setTimeout(showResults,1200);return;}
+  } else {
+    showTst('🔄',`${c.name} regresa al final de ${Q_NAMES[c.queue]}`,`Cola fija — rem=${c.rem}`,3);
+    updateSP();updateHUD();
+  }
+  setTimeout(()=>{if(G.running&&G.marioState==='free')tryOpenModal();},1400);
+}
+
+function spawn(x,y,color,n){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=100+Math.random()*200;G.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-120,r:2+Math.random()*4,color,life:.7+Math.random()*.6,maxLife:1.3});}}
+function gameOver(){G.running=false;showTst('💀','¡Game Over!','MLQ: Q1 > Q2 > Q3 siempre. Las colas son FIJAS — los procesos nunca bajan.',8);setTimeout(()=>startLevel(G.li),3600);}
+
+/* ═══════════════ HUD & SIDE PANEL ═══════════════ */
+function updateHUD(){
+  document.getElementById('hLives').textContent='❤️'.repeat(G.lives)||'💀';
+  document.getElementById('hScore').textContent=G.score;
+  document.getElementById('hClock').textContent=G.clock;
+  document.getElementById('hErr').textContent=G.errors;
+  const seg=G.optimalSegs[G.segIdx];
+  if(seg){
+    const c=G.chars.find(x=>x.name===seg.name);
+    document.getElementById('hNext').textContent=c?`${c.name}(${Q_NAMES[c.queue].split('-')[0]})`:'—';
+    document.getElementById('hActiveQ').textContent=c?`Q${c.queue+1}`:'—';
+    const fill=document.getElementById('hQtFill');
+    const qt=Q_QUANTUM[c?c.queue:0];
+    const execTime=seg.end-seg.start;
+    fill.style.width=(qt===999?100:(execTime/qt*100))+'%';
+    fill.classList.toggle('danger',c&&c.queue===0&&execTime>=2);
+  } else {
+    document.getElementById('hNext').textContent='🏁';
+    document.getElementById('hActiveQ').textContent='—';
+  }
+}
+
+function updateSP(){
+  const renderQ=(arr,elId,emptyMsg)=>{
+    const el=document.getElementById(elId);el.innerHTML='';
+    if(!arr.length){el.innerHTML=`<div style="font-size:.65rem;color:#444;padding:3px 8px">${emptyMsg}</div>`;return;}
+    arr.forEach(c=>{
+      const d=document.createElement('div');
+      d.className='sp-ch'+(G.target&&G.target.name===c.name?' on':'')+(c.served?' done':'');
+      const qCol=Q_COLORS[c.queue];
+      const pct=Math.round((1-c.rem/c.bt)*100);
+      d.innerHTML=`<div class="sp-ball" style="background:${c.charDef.color}"></div>
+        <div class="sp-info"><div class="sp-nm">${c.name}</div>
+        <div class="sp-bt">Rem:${c.rem}/${c.bt} · AT:${c.at}</div>
+        <div style="width:100%;height:3px;background:rgba(255,255,255,.1);border-radius:99px;margin-top:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${qCol};border-radius:99px"></div></div></div>
+        <span class="sp-qbadge" style="background:${qCol}22;color:${qCol};border:1px solid ${qCol}55">Q${c.queue+1}</span>`;
+      el.appendChild(d);
+    });
+  };
+  const avail=G.chars.filter(c=>!c.served&&c.at<=G.clock);
+  renderQ(avail.filter(c=>c.queue===0),'spQ1','vacía');
+  renderQ(avail.filter(c=>c.queue===1),'spQ2','vacía');
+  renderQ(avail.filter(c=>c.queue===2),'spQ3','vacía');
+  // Waiting
+  const waitEl=document.getElementById('spWait');waitEl.innerHTML='';
+  G.chars.filter(c=>!c.served&&c.at>G.clock).forEach(c=>{
+    const d=document.createElement('div');d.className='sp-ch notyet';
+    d.innerHTML=`<div class="sp-ball" style="background:${c.charDef.color}77"></div>
+      <div class="sp-info"><div class="sp-nm">${c.name} → Q${c.queue+1}</div><div class="sp-bt">llega en t=${c.at} · BT=${c.bt}</div></div>`;
+    waitEl.appendChild(d);
+  });
+  if(!G.chars.some(c=>!c.served&&c.at>G.clock))waitEl.innerHTML=`<div style="font-size:.65rem;color:#444;padding:3px 8px">todos llegaron</div>`;
+  // Gantt
+  const gEl=document.getElementById('spG');gEl.innerHTML='';
+  G.gantt.slice(-10).forEach(seg=>{
+    const d=document.createElement('div');d.className='sp-gseg';
+    d.style.cssText=`background:${seg.color}22;border-left:3px solid ${seg.qColor}`;
+    d.innerHTML=`<span style="color:${seg.color}">${seg.name}</span><span style="color:${seg.qColor};font-size:.6rem;margin-left:4px">Q${seg.queue+1}</span><span class="sp-gt">${seg.start}→${seg.end}</span>`;
+    gEl.appendChild(d);
+  });
+  // Metrics
+  const mEl=document.getElementById('spM');mEl.innerHTML='';
+  const sv=G.chars.filter(c=>c.served);
+  if(sv.length){
+    const aT=(sv.reduce((a,c)=>a+c.tat,0)/sv.length).toFixed(1);
+    const aW=(sv.reduce((a,c)=>a+c.wt,0)/sv.length).toFixed(1);
+    [['Done',`${sv.length}/${G.chars.length}`],['Avg TAT',aT],['Avg WT',aW],['Errores',G.errors],['Clock',G.clock]].forEach(([k,v])=>{
+      const r=document.createElement('div');r.className='sp-row';r.innerHTML=`<span class="k">${k}</span><span class="v">${v}</span>`;mEl.appendChild(r);
+    });
+  }else{[['Segmentos',G.gantt.length],['Clock',G.clock],['Pendientes',G.optimalSegs.length-G.segIdx]].forEach(([k,v])=>{const r=document.createElement('div');r.className='sp-row';r.innerHTML=`<span class="k">${k}</span><span class="v">${v}</span>`;mEl.appendChild(r);});}
+}
+
+/* ═══════════════ DRAW ═══════════════ */
+function draw(){
+  const{mario,chars,gy,worldW,camX,particles,shake}=G;
+  let sx=0,sy=0;if(shake>0){sx=(Math.random()-.5)*7;sy=(Math.random()-.5)*4;}
+  ctx.save();ctx.translate(sx,sy);
+  const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#020210');sky.addColorStop(.5,'#0d0628');sky.addColorStop(1,'#1e0845');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+  if(!starBg){starBg=[];for(let i=0;i<160;i++)starBg.push({x:Math.random()*6000,y:Math.random()*H*.65,r:.5+Math.random()*1.8,a:.1+Math.random()*.9,p:.04+Math.random()*.25});}
+  starBg.forEach(s=>{let sx2=(s.x-camX*s.p)%W;if(sx2<0)sx2+=W;ctx.fillStyle=`rgba(255,255,255,${s.a})`;ctx.beginPath();ctx.arc(sx2,s.y,s.r,0,Math.PI*2);ctx.fill();});
+  ctx.save();ctx.translate(-camX,0);
+  const gg=ctx.createLinearGradient(0,gy,0,H);gg.addColorStop(0,'#3d1a78');gg.addColorStop(1,'#140630');
+  ctx.fillStyle=gg;ctx.fillRect(0,gy,worldW,H-gy);
+  ctx.strokeStyle='#7c3aed';ctx.lineWidth=3;ctx.shadowBlur=14;ctx.shadowColor='#7c3aed';
+  ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(worldW,gy);ctx.stroke();ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(124,58,237,.15)';ctx.lineWidth=1;
+  const bw=48,bh=Math.round(48*.4);
+  for(let row=0;row*bh<H-gy+8;row++){const off=row%2===0?0:bw/2;for(let col=-1;col*bw<worldW+bw;col++)ctx.strokeRect(col*bw+off,gy+row*bh,bw,bh);}
+
+  // Column highlight per queue
+  chars.forEach(c=>{
+    if(c.served)return;
+    const qCol=Q_COLORS[c.queue];const ready=c.at<=G.clock;
+    ctx.fillStyle=ready?`rgba(${hexRgb(qCol)},.08)`:`rgba(100,100,180,.03)`;
+    ctx.fillRect(c.x-5,0,c.w+10,gy);
+    if(ready){
+      ctx.fillStyle=qCol;ctx.globalAlpha=.7;ctx.font="bold 9px 'Inter',sans-serif";ctx.textAlign='center';
+      ctx.fillText(`Q${c.queue+1}`,c.x+c.w/2,18);ctx.fillText(`AT:${c.at}`,c.x+c.w/2,31);ctx.globalAlpha=1;
+    }else{
+      ctx.fillStyle='rgba(150,150,180,.5)';ctx.font="9px 'Inter',sans-serif";ctx.textAlign='center';ctx.fillText(`AT:${c.at}`,c.x+c.w/2,18);
+    }
+  });
+
+  // Characters
+  chars.forEach(c=>{
+    const bob=Math.sin(c.bob)*4,cy=c.y+bob,cx=c.x+c.w/2;
+    if(c.served)ctx.globalAlpha=.22;
+    else if(c.serving){ctx.shadowBlur=24;ctx.shadowColor=c.charDef.color;}
+    c.charDef.draw(ctx,c.x+4,cy+4,8);ctx.shadowBlur=0;ctx.globalAlpha=1;
+    if(!c.served){
+      ctx.fillStyle='rgba(0,0,0,.8)';ctx.fillRect(cx-25,cy+c.h*.82,50,14);
+      ctx.fillStyle=c.charDef.color;ctx.font="bold 10px 'Inter',sans-serif";ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.fillText(c.name,cx,cy+c.h*.84);
+      const qCol=Q_COLORS[c.queue];
+      ctx.fillStyle='rgba(0,0,0,.88)';ctx.fillRect(cx-22,cy-22,44,13);
+      ctx.fillStyle=qCol;ctx.font="bold 9px 'Inter',sans-serif";
+      ctx.fillText(`rem:${c.rem}/${c.bt}`,cx,cy-20);
+      // Progress bar
+      ctx.fillStyle=qCol+'44';ctx.fillRect(cx-20,cy-28,40,5);
+      ctx.fillStyle=qCol;ctx.fillRect(cx-20,cy-28,40*(1-c.rem/c.bt),5);
+    }
+    ctx.textBaseline='alphabetic';
+  });
+
+  // Mario
+  const m=mario;
+  drawMarioSprite(ctx,m.x,m.y,3,m.frameKey,m.facing===-1);
+  ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(m.x,m.y-16,48,13);
+  ctx.fillStyle='#fde047';ctx.font="bold 9px 'Inter',sans-serif";ctx.textAlign='center';ctx.fillText('MARIO',m.x+24,m.y-5);
+
+  // CPU overlay
+  if(m.interacting&&G.target&&G.currentSeg){
+    const remaining=Math.max(0,m.interactT);
+    const total=G.currentSeg.end-G.currentSeg.start;
+    const progress=1-(remaining/total);
+    const baseCx=mario.x-camX+mario.w/2;
+    const cx2=Math.max(120,Math.min(W-120,baseCx)),cy2=mario.y-90;
+    ctx.fillStyle='rgba(0,0,0,.62)';ctx.beginPath();ctx.roundRect(cx2-110,cy2-70,220,140,16);ctx.fill();
+    const qCol=G.target?Q_COLORS[G.target.queue]:'#fde047';
+    ctx.strokeStyle='rgba(253,224,71,.25)';ctx.lineWidth=8;ctx.beginPath();ctx.arc(cx2,cy2-10,36,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle=qCol;ctx.lineWidth=8;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(cx2,cy2-10,36,-Math.PI/2,-Math.PI/2+progress*Math.PI*2);ctx.stroke();ctx.lineCap='butt';
+    ctx.fillStyle='#fde047';ctx.font="bold 28px 'JetBrains Mono',monospace";ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(`${Math.ceil(remaining)}s`,cx2,cy2-10);
+    ctx.font="11px 'JetBrains Mono',monospace";ctx.fillStyle='#a5f3fc';
+    ctx.fillText('CPU ejecutando...',cx2,cy2+34);
+    ctx.fillStyle='rgba(165,243,252,.55)';
+    ctx.fillText(`${Q_NAMES[G.target.queue]} | Q=${Q_QUANTUM[G.target.queue]===999?'FCFS':Q_QUANTUM[G.target.queue]}`,cx2,cy2+50);
+    ctx.textBaseline='alphabetic';
+  }
+
+  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});
+  ctx.globalAlpha=1;ctx.restore();
+  if(G.wrongF>0){ctx.fillStyle=`rgba(239,68,68,${G.wrongF*.28})`;ctx.fillRect(0,0,W,H);}
+
+  // SPACE prompt
+  if(G.marioState==='free'){
+    const seg=G.optimalSegs[G.segIdx];if(seg){const c=G.chars.find(x=>x.name===seg.name);if(c){const scx=c.x-camX+c.w/2;if(scx>20&&scx<W-20){ctx.globalAlpha=.5+.5*Math.sin(G.idleT*4);ctx.fillStyle='#fde047';ctx.font="bold 11px 'JetBrains Mono',monospace";ctx.textAlign='center';ctx.fillText('SPACE',scx,c.y-32);ctx.globalAlpha=1;}}}
+  }
+  // Walking arrow
+  if(G.marioState==='walking'&&G.target){
+    const tgt=G.target,scx=tgt.x-camX+tgt.w/2;
+    if(scx>0&&scx<W){
+      ctx.globalAlpha=.65+.35*Math.sin(G.idleT*5);
+      const qCol=Q_COLORS[tgt.queue];
+      ctx.fillStyle=qCol;ctx.font="bold 13px 'Inter',sans-serif";ctx.textAlign='center';
+      ctx.fillText('▼ IR AQUÍ',scx,tgt.y-38);
+      const dist=Math.abs((mario.x+mario.w/2)-(tgt.x+tgt.w/2));
+      ctx.font="9px 'Inter',sans-serif";ctx.fillStyle='#fde047';ctx.fillText(`dist:${Math.round(dist)}px`,scx,tgt.y-23);
+      ctx.globalAlpha=1;
+    }
+    ctx.fillStyle='rgba(124,58,237,.15)';ctx.fillRect(0,H-46,W,46);
+    ctx.strokeStyle='rgba(124,58,237,.5)';ctx.lineWidth=2;ctx.strokeRect(0,H-46,W,46);
+    ctx.fillStyle='#a78bfa';ctx.font="bold 18px 'JetBrains Mono',monospace";ctx.textAlign='center';
+    ctx.fillText(`🏃 Lleva a Mario hasta ${G.target.name} (${Q_NAMES[G.target.queue]}) y presiona SPACE`,W/2,H-16);
+  }
+  ctx.restore();
+}
+
+function hexRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`${r},${g},${b}`;}
+
+/* ═══════════════ TOAST ═══════════════ */
+function showTst(icon,msg,sub,dur=4){
+  document.getElementById('tIcon').textContent=icon;document.getElementById('tMsg').textContent=msg;
+  document.getElementById('tSub').textContent=sub;document.getElementById('toast').classList.add('show');G.toastT=dur;
+}
+function hideTst(){document.getElementById('toast').classList.remove('show');}
+
+/* ═══════════════ RESULTS ═══════════════ */
+function showResults(){
+  G.running=false;
+  const served=G.chars.filter(c=>c.served).sort((a,b)=>a.ct-b.ct);
+  const aT=(served.reduce((a,c)=>a+c.tat,0)/served.length).toFixed(2);
+  const aW=(served.reduce((a,c)=>a+c.wt,0)/served.length).toFixed(2);
+  const ctxSw=Math.max(0,G.gantt.length-1);
+  document.getElementById('rSB').innerHTML=`
+    <div class="rsi"><div class="rv">${G.score}</div><div class="rl">Score</div></div>
+    <div class="rsi"><div class="rv">${aT}</div><div class="rl">Avg TAT</div></div>
+    <div class="rsi"><div class="rv">${aW}</div><div class="rl">Avg WT</div></div>
+    <div class="rsi"><div class="rv">${ctxSw}</div><div class="rl">Cambios</div></div>
+    <div class="rsi"><div class="rv">${G.lives}</div><div class="rl">Vidas</div></div>`;
+  const GU=40;
+  const gb=document.getElementById('rGBar'),gt=document.getElementById('rGTks');
+  gb.innerHTML='';gt.innerHTML='';gt.style.cssText='position:relative;height:24px;margin-top:5px';
+  G.gantt.forEach((seg,i)=>{
+    const dur=seg.end-seg.start;const el=document.createElement('div');el.className='rg-seg';
+    el.style.cssText=`width:${dur*GU}px;background:${seg.qColor}88;animation-delay:${i*.1}s`;
+    el.innerHTML=`<span style="padding:0 3px;font-size:.65rem;color:#000">${seg.name}</span><span class="seg-q">Q${seg.queue+1}</span>`;
+    gb.appendChild(el);
+    [seg.start,seg.end].forEach(t=>{
+      if(!document.getElementById(`rgt${t}`)){const tk=document.createElement('div');tk.className='rg-tick';tk.id=`rgt${t}`;tk.textContent=t;tk.style.left=`${t*GU}px`;gt.appendChild(tk);}
+    });
+  });
+  const tb=document.getElementById('rTB');tb.innerHTML='';
+  served.forEach(c=>{
+    const qCol=Q_COLORS[c.queue];const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="color:${c.charDef.color};font-weight:700">${c.name}</td>
+      <td style="color:${qCol};font-weight:700">Q${c.queue+1}</td>
+      <td>${c.at}</td><td>${c.bt}</td>
+      <td style="color:#3b82f6">${c.firstStart<0?'—':c.firstStart}</td>
+      <td style="color:#10b981">${c.ct}</td>
+      <td style="color:#a78bfa">${c.tat}</td>
+      <td style="color:#fde047">${c.wt}</td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('rTF').innerHTML=`<tr style="color:#f43f5e;font-weight:700"><td colspan="6" style="text-align:right;padding:7px 10px;font-size:.7rem">PROMEDIO →</td><td>${aT}</td><td>${aW}</td></tr>`;
+  // Check starvation
+  const q3procs=served.filter(c=>c.queue===2);const q1procs=served.filter(c=>c.queue===0);
+  const hasStarvation=q3procs.some(c=>c.wt>8);
+  let refl=`<div class="r-refl-t">🏰 ¿Qué aprendiste de Multilevel Queue?</div>
+    <p>La CPU atendió <strong>${served.length}</strong> procesos con <strong>${G.gantt.length}</strong> segmentos y <strong>${ctxSw}</strong> cambios de contexto.</p>
+    <p style="margin-top:8px">La prioridad de cola fue estricta: <span style="color:#ef4444">Q1</span> (Sistema) siempre primero, luego <span style="color:#f59e0b">Q2</span> (Interactivo), finalmente <span style="color:#22c55e">Q3</span> (Batch).</p>`;
+  if(hasStarvation){
+    refl+=`<div class="r-box" style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);color:#fca5a5">
+      ⚠️ <strong>Inanición detectada:</strong> Los procesos de Q3 esperaron mucho tiempo porque Q1 y Q2 siempre tuvieron prioridad. MLQ puede causar starvation — MLFQ lo soluciona con el Priority Boost.</div>`;
+  }
+  refl+=`<div class="r-box" style="background:rgba(124,58,237,.07);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;margin-top:8px">
+    💡 <strong>MLQ vs MLFQ:</strong> En MLQ las colas son <em>fijas</em> — un proceso batch siempre es batch. En MLFQ los procesos pueden <em>subir o bajar</em> según su comportamiento. MLQ es más predecible; MLFQ es más adaptable.</div>`;
+  if(G.errors===0)refl+=`<p style="margin-top:10px;color:#10b981">🏆 ¡Cero errores! Dominaste la prioridad de colas fijas.</p>`;
+  document.getElementById('rRefl').innerHTML=refl;
+  document.getElementById('rTro').textContent=G.errors===0&&G.lives===3?'🏆':'⭐';
+  document.getElementById('rTitle').textContent=G.errors===0&&G.lives===3?'¡Maestro de Colas!':'¡Nivel Completado!';
+  document.getElementById('rSub').textContent=LEVELS[G.li].name;
+  const hasN=G.li<LEVELS.length-1;const bn=document.getElementById('bNxt');bn.style.display=hasN?'':'none';
+  bn.onclick=()=>startLevel(G.li+1);
+  document.getElementById('bRep').onclick=()=>startLevel(G.li);
+  document.getElementById('bMenu').onclick=goMenu;
+  showSc('sR');
+}
+
+function showSc(id){document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('off',s.id!==id));}
+function goMenu(){G.running=false;starBg=null;document.getElementById('choiceModal').classList.remove('show');G.marioState='free';showSc('sT');}
+window.addEventListener('resize',()=>{if(G.running)resize();});
+</script>
+</body>
+</html>
