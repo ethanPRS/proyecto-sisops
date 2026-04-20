@@ -293,6 +293,11 @@ function updateSchedulingStats(result) {
       stickyLink.href = 'rr_game.html';
       document.getElementById('sticky-game-text').textContent = 'Jugar Round Robin (Mario)';
       document.getElementById('sticky-game-icon').className = 'ph ph-arrows-clockwise';
+    } else if (result.algorithm === 'MLFQ') {
+      stickyLink.style.display = 'flex';
+      stickyLink.href = 'mlfq_game.html';
+      document.getElementById('sticky-game-text').textContent = 'Jugar MLFQ (Mario)';
+      document.getElementById('sticky-game-icon').className = 'ph ph-arrows-clockwise';
     } else {
       stickyLink.style.display = 'none';
     }
