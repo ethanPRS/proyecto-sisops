@@ -1,5 +1,6 @@
 /**
  * gantt.js — Animated Gantt Chart with Canvas + step-by-step playback
+ *            + Mario Bros pixel-art sprite walking across processes
  *
  * Features:
  *   - Left-to-right reveal animation (play mode)
@@ -8,6 +9,7 @@
  *   - Keyboard shortcuts (Space, arrows, R)
  *   - Live sync with state diagram + CPU + ready queue
  *   - Hover tooltips
+ *   - 🍄 Mario pixel sprite that runs on bars and jumps on context switches
  */
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -27,7 +29,196 @@ const GanttPlayer = {
   canvasEl: null,
   containerEl: null,
   renderFn: null,
+  lastDt: 0,              // delta time for Mario physics
 };
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   🍄 MARIO SPRITE — High-quality 16×16 pixel art (from HRRN game)
+   ═══════════════════════════════════════════════════════════════════════ */
+const MARIO_SCALE = 3;   // each pixel = 3 canvas px → 48×48 sprite
+const _m = null;
+const _R = '#e52521';    // red — hat, shirt
+const _S = '#fbd000';    // skin / yellow buttons
+const _B = '#5b3a1e';    // brown — hair, shoes
+const _O = '#f28030';    // orange — overalls
+
+const MARIO_SPRITE_FRAMES = {
+  stand: [
+    [_m,_m,_m,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_R,_R,_R,_R,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m],
+    [_m,_m,_B,_B,_B,_S,_S,_B,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m],
+    [_m,_B,_B,_S,_S,_S,_S,_B,_B,_B,_B,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_S,_S,_S,_S,_S,_S,_S,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_O,_O,_R,_O,_O,_O,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_O,_O,_O,_R,_O,_O,_O,_O,_O,_m,_m,_m,_m,_m,_m],
+    [_O,_O,_O,_O,_R,_R,_O,_O,_O,_O,_O,_m,_m,_m,_m,_m],
+    [_S,_S,_O,_R,_S,_S,_R,_O,_S,_S,_m,_m,_m,_m,_m,_m],
+    [_S,_S,_S,_R,_S,_S,_R,_S,_S,_S,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_R,_R,_m,_m,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_B,_B,_B,_m,_m,_B,_B,_B,_m,_m,_m,_m,_m,_m,_m],
+    [_B,_B,_B,_m,_m,_m,_m,_B,_B,_B,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+  ],
+  run1: [
+    [_m,_m,_m,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_R,_R,_R,_R,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m],
+    [_m,_m,_B,_B,_B,_S,_S,_B,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m],
+    [_m,_B,_B,_S,_S,_S,_S,_B,_B,_B,_B,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_S,_S,_S,_S,_S,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_O,_O,_R,_O,_O,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_O,_O,_O,_R,_O,_O,_O,_O,_m,_m,_m,_m,_m,_m,_m],
+    [_O,_O,_O,_O,_R,_R,_O,_O,_O,_O,_m,_m,_m,_m,_m,_m],
+    [_S,_S,_O,_R,_S,_S,_R,_O,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_S,_S,_R,_S,_S,_R,_S,_S,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_R,_R,_m,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_R,_B,_B,_m,_B,_B,_R,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_B,_B,_m,_m,_m,_B,_B,_B,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+  ],
+  run2: [
+    [_m,_m,_m,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_R,_R,_R,_R,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m],
+    [_m,_m,_B,_B,_B,_S,_S,_B,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m],
+    [_m,_B,_B,_S,_S,_S,_S,_B,_B,_B,_B,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_S,_S,_S,_S,_S,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_O,_O,_R,_O,_O,_O,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_O,_O,_O,_O,_R,_O,_O,_O,_O,_m,_m,_m,_m,_m,_m,_m],
+    [_O,_O,_O,_R,_R,_O,_O,_O,_O,_O,_m,_m,_m,_m,_m,_m],
+    [_S,_O,_R,_S,_S,_R,_O,_O,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_S,_R,_S,_S,_R,_S,_S,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_R,_R,_m,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_B,_B,_m,_B,_B,_R,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_B,_B,_B,_B,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+  ],
+  jump: [
+    [_m,_m,_m,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_R,_R,_R,_R,_R,_R,_R,_R,_R,_m,_m,_m,_m,_m],
+    [_m,_m,_B,_B,_B,_S,_S,_B,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m,_m],
+    [_m,_B,_S,_B,_B,_S,_S,_S,_B,_S,_S,_S,_m,_m,_m,_m],
+    [_m,_B,_B,_S,_S,_S,_S,_B,_B,_B,_B,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_S,_S,_S,_S,_S,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_O,_O,_O,_R,_O,_O,_O,_O,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_O,_O,_O,_O,_R,_O,_O,_O,_O,_O,_O,_m,_m,_m,_m,_m],
+    [_O,_O,_O,_R,_R,_O,_O,_O,_O,_O,_m,_m,_m,_m,_m,_m],
+    [_S,_S,_R,_S,_S,_R,_O,_S,_S,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_R,_S,_S,_R,_m,_S,_S,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_R,_R,_R,_R,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_B,_B,_B,_B,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+  ],
+};
+
+const MARIO_RUN_KEYS = ['stand', 'run1', 'run2', 'run1'];
+const MARIO_W = 16 * MARIO_SCALE;   // 48px
+const MARIO_H = 16 * MARIO_SCALE;   // 48px
+
+/* Mario state object */
+const Mario = {
+  x: 0, y: 0,
+  frame: 0, frameTimer: 0, FPS: 8,
+  jumping: false, jumpVel: 0,
+  baseY: 0, lastBlockPid: null,
+  visible: false,
+};
+
+function resetMarioState() {
+  Mario.x = 0; Mario.y = 0;
+  Mario.frame = 0; Mario.frameTimer = 0;
+  Mario.jumping = false; Mario.jumpVel = 0;
+  Mario.baseY = 0; Mario.lastBlockPid = null;
+  Mario.visible = false;
+}
+
+function drawMarioSprite(ctx, mx, my, jumping) {
+  const frameKey = jumping ? 'jump' : MARIO_RUN_KEYS[Mario.frame % MARIO_RUN_KEYS.length];
+  const grid = MARIO_SPRITE_FRAMES[frameKey] || MARIO_SPRITE_FRAMES.stand;
+  const s = MARIO_SCALE;
+  for (let row = 0; row < 16; row++) {
+    for (let col = 0; col < 16; col++) {
+      const c = grid[row][col];
+      if (c === null) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(
+        Math.round(mx + col * s),
+        Math.round(my + row * s),
+        s, s
+      );
+    }
+  }
+}
+
+function updateMarioState(dt, tick, gantt, pidToRow, pids, LEFT_MARGIN, TOP_MARGIN, BAR_HEIGHT, ROW_GAP, scale, axisY) {
+  if (tick <= 0 || pids.length === 0) { Mario.visible = false; return; }
+  Mario.visible = true;
+
+  // Find the currently running block
+  let runningBlock = null;
+  for (const entry of gantt) {
+    if (entry.pid < 0) continue;
+    if (tick > entry.start && tick < entry.end) { runningBlock = entry; break; }
+  }
+
+  // Target X — follow the front edge of the running block
+  let targetX;
+  if (runningBlock) {
+    const endT = Math.min(runningBlock.end, tick);
+    targetX = LEFT_MARGIN + endT * scale - MARIO_W / 2;
+  } else {
+    targetX = LEFT_MARGIN + tick * scale - MARIO_W / 2;
+  }
+  Mario.x += (targetX - Mario.x) * Math.min(1, dt * 14);
+
+  // Target Y — on top of the process row bar
+  let targetY;
+  if (runningBlock) {
+    const row = pidToRow[runningBlock.pid] ?? 0;
+    targetY = TOP_MARGIN + row * (BAR_HEIGHT + ROW_GAP) - MARIO_H;
+  } else {
+    targetY = axisY - MARIO_H - 2;
+  }
+  Mario.baseY = targetY;
+
+  // Detect context switch → trigger jump
+  if (runningBlock) {
+    if (runningBlock.pid !== Mario.lastBlockPid && Mario.lastBlockPid !== null && !Mario.jumping) {
+      Mario.jumping = true;
+      Mario.jumpVel = -120;
+    }
+    Mario.lastBlockPid = runningBlock.pid;
+  }
+
+  // Jump physics
+  if (Mario.jumping) {
+    Mario.y += Mario.jumpVel * dt;
+    Mario.jumpVel += 320 * dt;
+    if (Mario.y >= Mario.baseY) {
+      Mario.y = Mario.baseY;
+      Mario.jumping = false;
+      Mario.jumpVel = 0;
+    }
+  } else {
+    Mario.y = Mario.baseY;
+  }
+
+  // Cycle run frames
+  if (!Mario.jumping) {
+    Mario.frameTimer += dt;
+    if (Mario.frameTimer >= 1 / Mario.FPS) {
+      Mario.frameTimer = 0;
+      Mario.frame = (Mario.frame + 1) % 4;   // cycles through stand→run1→run2→run1
+    }
+  }
+}
 
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -55,11 +246,15 @@ function drawGanttChart(result) {
   GanttPlayer.canvasCtx = ctx;
   GanttPlayer.canvasEl = canvas;
   GanttPlayer.containerEl = container;
+  GanttPlayer.lastDt = 0;
 
-  // Layout constants
+  // Reset Mario for this new simulation
+  resetMarioState();
+
+  // Layout constants — TOP_MARGIN increased for Mario jump headroom
   const LEFT_MARGIN = 60;
   const RIGHT_MARGIN = 24;
-  const TOP_MARGIN = 16;
+  const TOP_MARGIN = 56;    // extra space for the 48px Mario sprite + jump arc
   const BOTTOM_MARGIN = 40;
   const BAR_HEIGHT = 36;
   const ROW_GAP = 8;
@@ -77,10 +272,12 @@ function drawGanttChart(result) {
 
   const chartW = width - LEFT_MARGIN - RIGHT_MARGIN;
   const scale = chartW / totalTime;
+  const axisY = TOP_MARGIN + rowCount * (BAR_HEIGHT + ROW_GAP) + 4;
 
   let hoveredEntry = null;
 
-  function render() {
+  function render(dt) {
+    dt = dt || 0;
     ctx.clearRect(0, 0, width, neededHeight);
 
     ctx.fillStyle = 'rgba(248, 250, 252, 0.9)';
@@ -185,6 +382,15 @@ function drawGanttChart(result) {
       }
     }
 
+    // 🍄 MARIO — update + draw on top of everything
+    if (revealedTime > 0 && pids.length > 0) {
+      updateMarioState(dt, revealedTime, gantt, pidToRow, pids,
+        LEFT_MARGIN, TOP_MARGIN, BAR_HEIGHT, ROW_GAP, scale, axisY);
+      if (Mario.visible) {
+        drawMarioSprite(ctx, Mario.x, Mario.y, Mario.jumping);
+      }
+    }
+
     // Update step counter + tick label
     const counter = document.getElementById('gantt-step-counter');
     if (counter) counter.textContent = `${Math.floor(revealedTime)} / ${totalTime}`;
@@ -229,26 +435,26 @@ function drawGanttChart(result) {
         tooltip.style.top = (e.clientY - 10) + 'px';
         tooltip.classList.add('visible');
         canvas.style.cursor = 'pointer';
-        render();
+        render(0);
         return;
       }
     }
 
     tooltip.classList.remove('visible');
     canvas.style.cursor = 'default';
-    render();
+    render(0);
   };
 
   canvas.onmouseleave = () => {
     hoveredEntry = null;
     tooltip.classList.remove('visible');
-    render();
+    render(0);
   };
 
   // Auto-play desde el inicio
   stopGantt();
   GanttPlayer.currentTick = 0;
-  render();
+  render(0);
   playGantt();
 }
 
@@ -260,6 +466,7 @@ function playGantt() {
   if (!GanttPlayer.result || !GanttPlayer.renderFn) return;
   if (GanttPlayer.currentTick >= GanttPlayer.totalTime) {
     GanttPlayer.currentTick = 0;
+    resetMarioState();
   }
   GanttPlayer.playing = true;
   GanttPlayer.lastFrame = performance.now();
@@ -269,6 +476,7 @@ function playGantt() {
     if (!GanttPlayer.playing) return;
     const dt = (now - GanttPlayer.lastFrame) / 1000;
     GanttPlayer.lastFrame = now;
+    GanttPlayer.lastDt = dt;
     // Unidades: tiempo virtual por segundo = 2 ticks/s a 1x
     GanttPlayer.currentTick += dt * 2 * GanttPlayer.speed;
     if (GanttPlayer.currentTick >= GanttPlayer.totalTime) {
@@ -276,7 +484,7 @@ function playGantt() {
       GanttPlayer.playing = false;
       updatePlayButton();
     }
-    GanttPlayer.renderFn();
+    GanttPlayer.renderFn(dt);
     if (GanttPlayer.playing) {
       GanttPlayer.rafId = requestAnimationFrame(step);
     }
@@ -303,19 +511,20 @@ function stepGantt(delta) {
   if (!GanttPlayer.result) return;
   pauseGantt();
   GanttPlayer.currentTick = Math.max(0, Math.min(GanttPlayer.totalTime, Math.floor(GanttPlayer.currentTick) + delta));
-  GanttPlayer.renderFn();
+  GanttPlayer.renderFn(0);
 }
 
 function resetGantt() {
   pauseGantt();
   GanttPlayer.currentTick = 0;
-  if (GanttPlayer.renderFn) GanttPlayer.renderFn();
+  resetMarioState();
+  if (GanttPlayer.renderFn) GanttPlayer.renderFn(0);
 }
 
 function endGantt() {
   pauseGantt();
   GanttPlayer.currentTick = GanttPlayer.totalTime;
-  if (GanttPlayer.renderFn) GanttPlayer.renderFn();
+  if (GanttPlayer.renderFn) GanttPlayer.renderFn(0);
 }
 
 function setGanttSpeed(v) {

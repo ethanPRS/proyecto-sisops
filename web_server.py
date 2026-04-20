@@ -31,7 +31,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, static_folder="web", static_url_path="")
+WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+app = Flask(__name__, static_folder=WEB_DIR, static_url_path="")
 CORS(app)
 
 
@@ -41,12 +42,14 @@ CORS(app)
 
 @app.route("/")
 def serve_index():
-    return send_from_directory("web", "index.html")
+    return send_from_directory(WEB_DIR, "index.html")
 
 
 @app.route("/<path:path>")
 def serve_static(path):
-    return send_from_directory("web", path)
+    if os.path.exists(os.path.join(WEB_DIR, path)):
+        return send_from_directory(WEB_DIR, path)
+    return "Not Found", 404
 
 
 # ═══════════════════════════════════════════════════════════════════════

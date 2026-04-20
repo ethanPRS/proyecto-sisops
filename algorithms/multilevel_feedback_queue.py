@@ -23,8 +23,15 @@ class MultilevelFeedbackQueueScheduler(Scheduler):
     name = "MLFQ"
     preemptive = True
 
-    QUEUE_QUANTA = {0: 2, 1: 4, 2: 10**9}
     NUM_QUEUES = 3
+
+    def __init__(self, quantum: int = 2):
+        self.base_quantum = max(1, quantum)
+        self.queue_quanta = {
+            0: self.base_quantum,
+            1: self.base_quantum * 2,
+            2: 10**9,
+        }
 
     def schedule(self, processes: List[Process]) -> ScheduleResult:
         procs = self._clone_processes(processes)
@@ -75,7 +82,7 @@ class MultilevelFeedbackQueueScheduler(Scheduler):
                 continue
 
             proc = queues[active_q].popleft()
-            quantum = self.QUEUE_QUANTA[active_q]
+            quantum = self.queue_quanta[active_q]
 
             ready_snapshots[current_time] = [
                 p.pid for q in range(self.NUM_QUEUES) for p in queues[q]
