@@ -293,6 +293,11 @@ function updateSchedulingStats(result) {
       stickyLink.href = 'rr_game.html';
       document.getElementById('sticky-game-text').textContent = 'Jugar Round Robin (Mario)';
       document.getElementById('sticky-game-icon').className = 'ph ph-arrows-clockwise';
+    } else if (result.algorithm === 'Multilevel Queue') {
+      stickyLink.style.display = 'flex';
+      stickyLink.href = 'multilevel_game.html';
+      document.getElementById('sticky-game-text').textContent = 'Jugar Multilevel Queue (Mario)';
+      document.getElementById('sticky-game-icon').className = 'ph ph-arrows-clockwise';
     } else if (result.algorithm === 'MLFQ') {
       stickyLink.style.display = 'flex';
       stickyLink.href = 'mlfq_game.html';
@@ -423,16 +428,18 @@ function updateQuantumVisibility() {
 
   const fcfsContainer = document.getElementById('fcfs-game-link-container');
   if (fcfsContainer) {
-    fcfsContainer.style.display = (algo === 'FCFS' || algo === 'SJF' || algo === 'HRRN' || algo === 'Round Robin' || algo === 'MLFQ') ? 'flex' : 'none';
+    fcfsContainer.style.display = (algo === 'FCFS' || algo === 'SJF' || algo === 'HRRN' || algo === 'Round Robin' || algo === 'Multilevel Queue' || algo === 'MLFQ') ? 'flex' : 'none';
     const btnFCFS = document.getElementById('btn-fcfs-game');
     const btnSJF = document.getElementById('btn-sjf-game');
     const btnHRRN = document.getElementById('btn-hrrn-game');
     const btnRR = document.getElementById('btn-rr-game');
+    const btnmulti = document.getElementById('btn-multi-game');
     const btnMLFQ = document.getElementById('btn-mlfq-game')
     if (btnFCFS) btnFCFS.style.display = algo === 'FCFS' ? 'flex' : 'none';
     if (btnSJF) btnSJF.style.display = algo === 'SJF' ? 'flex' : 'none';
     if (btnHRRN) btnHRRN.style.display = algo === 'HRRN' ? 'flex' : 'none';
     if (btnRR) btnRR.style.display = algo === 'Round Robin' ? 'flex' : 'none';
+    if (btnmulti) btnmulti.style.display = algo === 'Multilevel Queue' ? 'flex' : 'none';
     if (btnMLFQ) btnMLFQ.style.display = algo === 'MLFQ' ? 'flex' : 'none';
   }
 }
