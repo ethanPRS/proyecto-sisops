@@ -432,6 +432,7 @@ function updateQuantumVisibility() {
     if (btnSJF) btnSJF.style.display = algo === 'SJF' ? 'flex' : 'none';
     if (btnHRRN) btnHRRN.style.display = algo === 'HRRN' ? 'flex' : 'none';
     if (btnRR) btnRR.style.display = algo === 'Round Robin' ? 'flex' : 'none';
+    if (btnRR) btnRR.style.display = algo === 'MLFQ' ? 'flex' : 'none';
   }
 }
 
