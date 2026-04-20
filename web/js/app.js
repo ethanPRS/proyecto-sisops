@@ -423,16 +423,17 @@ function updateQuantumVisibility() {
 
   const fcfsContainer = document.getElementById('fcfs-game-link-container');
   if (fcfsContainer) {
-    fcfsContainer.style.display = (algo === 'FCFS' || algo === 'SJF' || algo === 'HRRN' || algo === 'Round Robin') ? 'flex' : 'none';
+    fcfsContainer.style.display = (algo === 'FCFS' || algo === 'SJF' || algo === 'HRRN' || algo === 'Round Robin' || algo === 'MLFQ') ? 'flex' : 'none';
     const btnFCFS = document.getElementById('btn-fcfs-game');
     const btnSJF = document.getElementById('btn-sjf-game');
     const btnHRRN = document.getElementById('btn-hrrn-game');
     const btnRR = document.getElementById('btn-rr-game');
+    const btnMLFQ = document.getElementById('btn-mlfq-game')
     if (btnFCFS) btnFCFS.style.display = algo === 'FCFS' ? 'flex' : 'none';
     if (btnSJF) btnSJF.style.display = algo === 'SJF' ? 'flex' : 'none';
     if (btnHRRN) btnHRRN.style.display = algo === 'HRRN' ? 'flex' : 'none';
     if (btnRR) btnRR.style.display = algo === 'Round Robin' ? 'flex' : 'none';
-    if (btnRR) btnRR.style.display = algo === 'MLFQ' ? 'flex' : 'none';
+    if (btnMLFQ) btnMLFQ.style.display = algo === 'MLFQ' ? 'flex' : 'none';
   }
 }
 
