@@ -1,0 +1,2887 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luigi Memory Desk — Paginación</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #3b2b22;
+        --ink-soft: #6d5a4f;
+        --parchment: #fbf3ea;
+        --paper: #fff9f2;
+        --panel: #f3e6d7;
+        --panel2: #e7d3bf;
+        --desk: #c69a79;
+        --desk-d: #a87759;
+        --wood: #b88667;
+        --wood-d: #8c6248;
+        --bg: #1d1a2f;
+        --bg2: #2a2342;
+        --green: #7daf8d;
+        --green-l: #abd4b5;
+        --mint: #d9eddc;
+        --yellow: #f1d18d;
+        --yellow-d: #c29a4b;
+        --red: #cf8585;
+        --red-l: #efb3b3;
+        --purple: #c6b7ea;
+        --purple-d: #9886cf;
+        --blue: #bfd4eb;
+        --blue-d: #7f9fca;
+        --pink: #edc8d7;
+        --peach: #f0cdbd;
+        --muted: #8e786b;
+        --muted2: #b39f90;
+        --shadow: rgba(59, 43, 34, 0.16);
+        --radius: 12px;
+        --px: 3px;
+        --slot: 80px;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        user-select: none;
+      }
+      body {
+        font-family: "Nunito", sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        cursor: none;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+      }
+      .screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .px-card {
+        background: var(--parchment);
+        border: var(--px) solid var(--ink);
+        box-shadow:
+          0 var(--px) 0 var(--ink),
+          0 10px 24px var(--shadow);
+        border-radius: 10px;
+      }
+      .asset-img {
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+
+      /* ── TITLE ── */
+      #scTitle {
+        background: radial-gradient(ellipse at 55% 35%, #2f254f, var(--bg) 72%);
+        flex-direction: column;
+        gap: 20px;
+        overflow-y: auto;
+        padding: 20px;
+      }
+      .ghost-bg {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 0;
+      }
+      .g-float {
+        position: absolute;
+        bottom: -120px;
+        opacity: 0.1;
+        animation: floatUp var(--d, 8s) var(--dl, 0s) linear infinite;
+      }
+      @keyframes floatUp {
+        0% {
+          transform: translateY(0) rotate(-6deg);
+          opacity: 0.06;
+        }
+        50% {
+          opacity: 0.14;
+        }
+        100% {
+          transform: translateY(-110vh) rotate(6deg);
+          opacity: 0;
+        }
+      }
+      .title-wrap {
+        position: relative;
+        z-index: 1;
+        width: min(1080px, 100%);
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 860px) {
+        .title-wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+      .title-left {
+        padding: 28px 30px 24px;
+      }
+      .t-eyebrow {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.5rem;
+        letter-spacing: 0.18em;
+        color: var(--green);
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      .t-main {
+        font-family: "Press Start 2P", monospace;
+        font-size: clamp(1.1rem, 3.3vw, 1.7rem);
+        line-height: 1.55;
+        color: var(--yellow);
+        text-shadow:
+          0 0 22px rgba(241, 209, 141, 0.5),
+          0 0 44px rgba(241, 209, 141, 0.22);
+        margin-bottom: 10px;
+      }
+      .t-sub {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+      .t-lead {
+        font-size: 0.92rem;
+        line-height: 1.75;
+        margin-bottom: 20px;
+        max-width: 58ch;
+      }
+      .t-lead strong {
+        color: var(--green);
+      }
+      .concept-row {
+        display: grid;
+        gap: 9px;
+        margin-bottom: 22px;
+      }
+      .concept-pill {
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: linear-gradient(180deg, var(--panel), #f8ecdf);
+        border: 2px dashed var(--muted2);
+        font-size: 0.85rem;
+        line-height: 1.55;
+      }
+      .concept-pill b {
+        color: #557b61;
+      }
+      .level-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 11px;
+      }
+      .lv-btn {
+        text-align: left;
+        min-height: 102px;
+        padding: 14px;
+        background: linear-gradient(170deg, #e7f2e7, #cfe4cf);
+        border: var(--px) solid var(--ink);
+        border-radius: 10px;
+        box-shadow: 0 4px 0 var(--ink);
+        font-size: 0.82rem;
+        font-weight: 900;
+        color: var(--ink);
+        transition:
+          transform 0.1s,
+          box-shadow 0.1s,
+          filter 0.12s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .lv-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0 var(--ink);
+        filter: brightness(1.02);
+      }
+      .lv-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 var(--ink);
+      }
+      .lv-btn.boss-btn {
+        background: linear-gradient(170deg, #eadff8, #d3c1ef);
+      }
+      .lv-btn-text small {
+        display: block;
+        font-weight: 700;
+        color: var(--muted);
+        margin-top: 5px;
+        font-size: 0.68rem;
+      }
+      .lv-tag {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.58rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        font-weight: 900;
+        background: rgba(59, 43, 34, 0.08);
+        margin-bottom: 4px;
+      }
+      .lv-tag.boss {
+        background: rgba(152, 134, 207, 0.18);
+        color: #6d55b4;
+      }
+      .title-right {
+        padding: 20px;
+        background: linear-gradient(
+          180deg,
+          #f6eee5 0 30%,
+          var(--wood) 30% 66%,
+          var(--wood-d) 66% 100%
+        );
+        border: var(--px) solid var(--ink);
+        box-shadow: 0 var(--px) 0 var(--ink);
+        border-radius: 10px;
+        min-height: 390px;
+        position: relative;
+        overflow: hidden;
+      }
+      .desk-preview-board {
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: 8%;
+        background: linear-gradient(180deg, #f5ecdf, #ead8c5);
+        border: var(--px) solid var(--ink);
+        border-radius: 8px;
+        padding: 12px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .desk-preview-slot {
+        height: 62px;
+        border-radius: 8px 8px 4px 4px;
+        background: linear-gradient(180deg, #dcb897, #b98867 68%, #95684f 100%);
+        border: 2px solid #8c6248;
+        position: relative;
+      }
+      .desk-preview-slot::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 22%;
+        transform: translateX(-50%);
+        width: 48%;
+        height: 34%;
+        border: 1.5px solid rgba(59, 43, 34, 0.2);
+        border-radius: 4px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.15),
+          rgba(255, 255, 255, 0.03)
+        );
+      }
+      .desk-preview-slot::after {
+        content: "";
+        position: absolute;
+        right: 18%;
+        top: 62%;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #f1d18d;
+        border: 1.5px solid #3b2b22;
+      }
+      .desk-preview-slot.filled {
+        border-style: solid;
+      }
+      .desk-preview-paper {
+        position: absolute;
+        left: 12%;
+        width: 38%;
+        height: 28%;
+        bottom: 32%;
+        background: var(--paper);
+        border: var(--px) solid var(--ink);
+        border-radius: 8px;
+        transform: rotate(-4deg);
+        box-shadow: 0 8px 0 rgba(59, 43, 34, 0.12);
+      }
+      .preview-door {
+        position: absolute;
+        right: 11%;
+        bottom: 14%;
+        width: 132px;
+        height: 170px;
+        border: var(--px) solid var(--ink);
+        border-radius: 10px 10px 6px 6px;
+        background: linear-gradient(180deg, #dcb897, #b98867 68%, #95684f 100%);
+        box-shadow: 0 8px 0 rgba(59, 43, 34, 0.15);
+      }
+      .preview-door::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 16px;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 78px;
+        border-radius: 8px;
+        border: 2px solid rgba(59, 43, 34, 0.28);
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.14),
+          rgba(255, 255, 255, 0.03)
+        );
+      }
+      .preview-door::after {
+        content: "";
+        position: absolute;
+        right: 20px;
+        top: 88px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--yellow);
+        border: 2px solid var(--ink);
+      }
+
+      /* ── GAME SCREEN ── */
+      #scGame {
+        background: radial-gradient(
+          ellipse at 50% 0%,
+          var(--bg2),
+          var(--bg) 72%
+        );
+        flex-direction: column;
+        padding: 0;
+        align-items: stretch;
+      }
+
+      .hud {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 14px;
+        flex-shrink: 0;
+        background: rgba(251, 243, 234, 0.95);
+        backdrop-filter: blur(4px);
+        border-bottom: var(--px) solid var(--ink);
+        flex-wrap: wrap;
+        z-index: 10;
+      }
+      .hud-stat {
+        padding: 5px 11px;
+        background: linear-gradient(180deg, var(--panel), #f9eee2);
+        border: 2px solid var(--panel2);
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .hud-stat span {
+        color: #648f70;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .hud-lvl {
+        margin-left: auto;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.5rem;
+        color: var(--muted);
+        letter-spacing: 0.1em;
+      }
+      .hud-timer {
+        padding: 5px 11px;
+        background: linear-gradient(180deg, var(--yellow), #e7bf74);
+        border: 2px solid var(--ink);
+        border-radius: 8px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.86rem;
+        font-weight: 700;
+        min-width: 66px;
+        text-align: center;
+      }
+      .hud-timer.warn {
+        background: linear-gradient(180deg, #e5a18a, #cf8570);
+        color: #fff;
+      }
+      .hud-btn {
+        padding: 5px 11px;
+        border: 2px solid var(--ink);
+        border-radius: 8px;
+        font-size: 0.74rem;
+        font-weight: 800;
+        background: var(--panel2);
+        box-shadow: 0 2px 0 var(--ink);
+      }
+      .hud-btn:active {
+        transform: translateY(2px);
+        box-shadow: none;
+      }
+
+      /* ── DESK ── */
+      .desk-area {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 12px;
+        padding: 10px 12px;
+        min-height: 0;
+        background: linear-gradient(
+          180deg,
+          transparent 0 76%,
+          rgba(184, 136, 103, 0.14) 76% 82%,
+          rgba(140, 98, 72, 0.22) 82% 100%
+        );
+      }
+      @media (max-width: 1000px) {
+        .desk-area {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ── LEFT: memory board as hotel doors ── */
+      .board-col {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+      }
+      .board-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: rgba(251, 243, 234, 0.92);
+        border-bottom: 2px solid var(--panel2);
+      }
+      .board-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.52rem;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+      }
+      .board-legend {
+        font-size: 0.74rem;
+        font-weight: 800;
+        color: var(--muted);
+      }
+      .usage-bar-wrap {
+        height: 7px;
+        background: var(--panel2);
+        border-radius: 4px;
+        overflow: hidden;
+        flex: 1;
+        max-width: 130px;
+        margin: 0 8px;
+      }
+      .usage-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--green), var(--green-l));
+        border-radius: 4px;
+        transition: width 0.4s ease;
+      }
+      .memory-board {
+        flex: 1;
+        padding: 14px 12px;
+        min-height: 0;
+        overflow-y: auto;
+        background: linear-gradient(180deg, #f9f0e5, #f1e3d2);
+        border: var(--px) solid var(--ink);
+        border-radius: 10px;
+        box-shadow:
+          inset 0 3px 12px rgba(59, 43, 34, 0.06),
+          0 var(--px) 0 var(--ink);
+      }
+      .slots {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 4), var(--slot));
+        gap: 10px;
+        justify-content: start;
+      }
+
+      /* Hotel door slot */
+      .slot {
+        width: var(--slot);
+        height: calc(var(--slot) * 1.48);
+        border: 3px solid #8c6248;
+        border-radius: 10px 10px 5px 5px;
+        background: linear-gradient(180deg, #dcb897, #b98867 68%, #95684f 100%);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        padding-bottom: 7px;
+        text-align: center;
+        font-weight: 900;
+        color: rgba(255, 255, 255, 0.6);
+        box-shadow:
+          0 4px 0 rgba(59, 43, 34, 0.45),
+          inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        overflow: hidden;
+        transition:
+          background 0.2s,
+          border-color 0.2s,
+          transform 0.15s,
+          box-shadow 0.15s;
+      }
+      .slot::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 19%;
+        transform: translateX(-50%);
+        width: 56%;
+        height: 34%;
+        border: 2px solid rgba(59, 43, 34, 0.22);
+        border-radius: 5px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.16),
+          rgba(255, 255, 255, 0.04)
+        );
+      }
+      .slot::after {
+        content: "";
+        position: absolute;
+        right: 16%;
+        top: 61%;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #f1d18d;
+        border: 1.5px solid #3b2b22;
+      }
+      .slot .slot-id {
+        position: absolute;
+        left: 5px;
+        top: 4px;
+        font-size: 0.5rem;
+        color: rgba(255, 255, 255, 0.65);
+        font-weight: 900;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .slot .slot-pid {
+        font-size: 0.52rem;
+        font-weight: 900;
+        line-height: 1.3;
+        font-family: "JetBrains Mono", monospace;
+        background: rgba(255, 255, 255, 0.55);
+        color: var(--ink);
+        padding: 2px 5px;
+        border-radius: 4px;
+        margin-top: 2px;
+      }
+      .slot.occupied::before,
+      .slot.occupied::after {
+        display: none;
+      }
+      .slot.occupied {
+        border-style: solid;
+        border-width: 3px;
+        transform: translateY(-1px);
+      }
+      .slot-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding-bottom: 2px;
+        z-index: 1;
+      }
+      .slot.drop-ok {
+        background: linear-gradient(180deg, #d4edda, #a8d8b2) !important;
+        border: 3px solid var(--green) !important;
+        box-shadow:
+          0 0 16px rgba(125, 175, 141, 0.4),
+          0 4px 0 rgba(59, 43, 34, 0.3);
+        animation: slotPulse 0.5s ease infinite alternate;
+      }
+      .slot.drop-bad {
+        background: linear-gradient(180deg, #f5dfdf, #eac7c7) !important;
+        border: 3px solid var(--red) !important;
+        box-shadow: 0 0 12px rgba(207, 133, 133, 0.3);
+      }
+      @keyframes slotPulse {
+        from {
+          transform: scale(1) translateY(-1px);
+        }
+        to {
+          transform: scale(1.05) translateY(-2px);
+        }
+      }
+
+      /* ── RIGHT COLUMN: papers-please inline layout ── */
+      .right-col {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      /* PROCESS CARD — inline, always visible */
+      .process-section {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      .process-inner {
+        flex: 1;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      /* Header row: who's at the counter */
+      .counter-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .counter-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.5rem;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+      }
+      .counter-remaining {
+        font-size: 0.76rem;
+        font-weight: 900;
+        color: #648f70;
+      }
+
+      /* The actual paper/card on the counter */
+      .counter-paper {
+        background: var(--paper);
+        border: var(--px) solid var(--ink);
+        border-radius: 10px;
+        box-shadow: 0 6px 0 rgba(59, 43, 34, 0.12);
+        padding: 12px 14px;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .counter-paper.boss-paper {
+        border-color: var(--purple-d);
+        box-shadow:
+          0 6px 0 rgba(152, 134, 207, 0.3),
+          0 0 24px rgba(152, 134, 207, 0.12);
+      }
+      .stamp {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        width: 76px;
+        height: 76px;
+        border-radius: 8px;
+        border: 4px solid transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.42rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        pointer-events: none;
+        opacity: 0;
+        transform: rotate(-15deg) scale(0.8);
+        transition:
+          opacity 0.25s,
+          transform 0.25s;
+        z-index: 10;
+        text-align: center;
+        line-height: 1.4;
+      }
+      .stamp.show {
+        opacity: 0.88;
+        transform: rotate(-10deg) scale(1);
+      }
+      .stamp.ok {
+        border-color: #5f8f6b;
+        color: #5f8f6b;
+        background: rgba(217, 237, 220, 0.55);
+      }
+      .stamp.no {
+        border-color: #b06f6f;
+        color: #b06f6f;
+        background: rgba(239, 179, 179, 0.5);
+      }
+
+      .proc-tag {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 20px;
+        font-size: 0.64rem;
+        font-weight: 900;
+        border: 2px solid var(--ink);
+        background: var(--panel);
+        margin-bottom: 7px;
+      }
+      .proc-tag.boss-tag {
+        background: linear-gradient(90deg, #e8ddf5, #d3c1ef);
+        border-color: var(--purple-d);
+        color: #6e58aa;
+      }
+      .proc-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .proc-portrait {
+        width: 64px;
+        height: 64px;
+        border: var(--px) solid var(--ink);
+        border-radius: 8px;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: var(--panel);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        image-rendering: pixelated;
+      }
+      .proc-portrait img {
+        width: 54px;
+        height: 54px;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .proc-name {
+        font-size: 1rem;
+        font-weight: 900;
+      }
+      .data-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 9px;
+      }
+      .data-box {
+        background: linear-gradient(180deg, var(--panel), #f8ece0);
+        border: 2px solid var(--panel2);
+        border-radius: 7px;
+        padding: 6px 9px;
+      }
+      .data-box .k {
+        display: block;
+        font-size: 0.6rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 2px;
+      }
+      .data-box .v {
+        font-size: 0.88rem;
+        font-weight: 900;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .pages-label {
+        font-weight: 900;
+        font-size: 0.78rem;
+        margin-bottom: 5px;
+      }
+      .pages-row {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+
+      /* Page chips */
+      .page-chip {
+        width: 60px;
+        height: 70px;
+        border: var(--px) solid var(--ink);
+        border-radius: 9px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 0.74rem;
+        gap: 2px;
+        box-shadow: 0 3px 0 rgba(59, 43, 34, 0.12);
+        cursor: grab;
+        touch-action: none;
+        transition:
+          transform 0.12s,
+          box-shadow 0.12s,
+          opacity 0.2s,
+          outline 0.12s;
+        position: relative;
+      }
+      .page-chip:hover:not(.placed) {
+        transform: translateY(-3px) rotate(-2deg);
+        box-shadow: 0 7px 0 rgba(59, 43, 34, 0.18);
+        outline: 3px solid var(--yellow);
+        outline-offset: 2px;
+      }
+      .page-chip.placed {
+        opacity: 0.3;
+        filter: grayscale(0.35);
+        cursor: not-allowed;
+        transform: none !important;
+        outline: none !important;
+      }
+      .page-chip.dragging-src {
+        opacity: 0.18;
+      }
+      .chip-sprite {
+        image-rendering: pixelated;
+        display: block;
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+      }
+      .chip-label {
+        font-size: 0.62rem;
+        font-weight: 900;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .chip-bytes {
+        font-size: 0.54rem;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .frag-note {
+        padding: 8px 11px;
+        border-radius: 7px;
+        background: linear-gradient(180deg, #fff4e6, #f7e8d4);
+        border: 2px dashed #d3b17c;
+        font-size: 0.76rem;
+        line-height: 1.55;
+      }
+      .frag-note strong {
+        color: #a0762f;
+      }
+
+      /* Stamp action buttons */
+      .stamp-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 7px;
+        flex-shrink: 0;
+        padding: 8px 10px;
+        border-top: 2px solid var(--panel2);
+        background: rgba(251, 243, 234, 0.95);
+      }
+      .s-btn {
+        min-height: 42px;
+        padding: 6px;
+        font-size: 0.7rem;
+        font-weight: 900;
+        border: var(--px) solid var(--ink);
+        border-radius: 8px;
+        box-shadow: 0 4px 0 var(--ink);
+        transition:
+          transform 0.08s,
+          box-shadow 0.08s;
+      }
+      .s-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 0 var(--ink);
+      }
+      .s-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 var(--ink);
+      }
+      .s-btn:disabled {
+        opacity: 0.42;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: 0 4px 0 var(--ink);
+      }
+      .s-btn.accept {
+        background: linear-gradient(180deg, #dcecdf, #bfd8c5);
+      }
+      .s-btn.reject {
+        background: linear-gradient(180deg, #f0d2d2, #ddb4b4);
+      }
+      .s-btn.release {
+        background: linear-gradient(180deg, #f7e4b5, #eccc84);
+      }
+
+      /* PAGE TABLE — compact */
+      .pt-panel {
+        flex-shrink: 0;
+        padding: 8px 12px 10px;
+        background: rgba(251, 243, 234, 0.95);
+        border-top: 2px solid var(--panel2);
+      }
+      .pt-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.46rem;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .pt-grid {
+        display: grid;
+        gap: 3px;
+      }
+      .pt-row {
+        display: grid;
+        grid-template-columns: 1fr 20px 1fr;
+        align-items: center;
+        gap: 3px;
+        padding: 4px 7px;
+        border-radius: 5px;
+        background: var(--panel);
+        border: 1px solid var(--panel2);
+        font-size: 0.7rem;
+        font-weight: 800;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .pt-row.hdr {
+        background: var(--panel2);
+        font-size: 0.6rem;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .pt-row.done {
+        background: linear-gradient(
+          90deg,
+          rgba(171, 212, 181, 0.28),
+          var(--panel)
+        );
+        border-color: #9fc1a8;
+      }
+      .pt-row .arrow {
+        color: var(--muted2);
+        text-align: center;
+        font-size: 0.88rem;
+      }
+      .pt-row .pg {
+        color: #597aa5;
+      }
+      .pt-row .fr {
+        color: #648f70;
+        font-weight: 900;
+      }
+      .pt-row .fr.empty {
+        color: var(--muted2);
+      }
+
+      /* QUEUE BAR — compact horizontal strip */
+      .queue-strip {
+        flex-shrink: 0;
+        padding: 7px 12px;
+        background: rgba(251, 243, 234, 0.9);
+        border-top: 2px solid var(--panel2);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        overflow-x: auto;
+      }
+      .queue-strip-label {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.44rem;
+        color: var(--muted);
+        letter-spacing: 0.1em;
+        flex-shrink: 0;
+      }
+      .q-item {
+        min-width: 58px;
+        padding: 4px 5px;
+        border-radius: 7px;
+        border: 2px solid var(--panel2);
+        background: var(--panel);
+        font-size: 0.64rem;
+        font-weight: 900;
+        text-align: center;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .q-item img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .q-item.active {
+        outline: 3px solid var(--yellow);
+        outline-offset: 2px;
+      }
+      .q-item.done {
+        opacity: 0.4;
+        filter: grayscale(0.2);
+      }
+      .q-item.boss-q {
+        border-color: var(--purple-d);
+      }
+      .empty-state {
+        padding: 18px;
+        text-align: center;
+        background: var(--panel);
+        border: 2px dashed var(--muted2);
+        border-radius: 10px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      /* ── BOTTOM BAR ── */
+      .bottom-bar {
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        gap: 10px;
+        padding: 7px 12px;
+        background: rgba(251, 243, 234, 0.97);
+        border-top: var(--px) solid var(--ink);
+        flex-shrink: 0;
+      }
+      @media (max-width: 1000px) {
+        .bottom-bar {
+          grid-template-columns: 1fr;
+        }
+      }
+      .luigi-hud {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 7px;
+      }
+      .luigi-portrait-wrap {
+        border: var(--px) solid var(--ink);
+        border-radius: 8px;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: linear-gradient(180deg, #f5ece2, #e2d4c1);
+        image-rendering: pixelated;
+      }
+      .luigi-portrait-wrap img {
+        width: 56px;
+        height: 74px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        display: block;
+      }
+      .luigi-meta h3 {
+        font-size: 0.86rem;
+        font-weight: 900;
+        margin-bottom: 5px;
+      }
+      .lives-row {
+        display: flex;
+        gap: 5px;
+      }
+      .life-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        image-rendering: pixelated;
+        transition: transform 0.3s;
+      }
+      .life-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .life-icon.lost {
+        filter: grayscale(1);
+        opacity: 0.32;
+        transform: scale(0.8);
+      }
+      .life-icon.lose-anim {
+        animation: loseLife 0.4s ease;
+      }
+      @keyframes loseLife {
+        0% {
+          transform: scale(1.35) rotate(-10deg);
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(0.8);
+          opacity: 0.3;
+        }
+      }
+      .msg-bar {
+        padding: 7px 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+      }
+      .msg-title {
+        font-weight: 900;
+        font-size: 0.88rem;
+      }
+      .msg-text {
+        font-size: 0.76rem;
+        line-height: 1.55;
+        color: var(--ink);
+      }
+      .msg-text strong {
+        color: #648f70;
+      }
+
+      /* ── RESULTS ── */
+      #scResults {
+        background: radial-gradient(ellipse at 50% 20%, #2f254f, var(--bg) 72%);
+        overflow-y: auto;
+        padding: 20px;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      .results-wrap {
+        width: min(920px, 100%);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin: auto;
+      }
+      .results-head {
+        text-align: center;
+        padding: 20px;
+      }
+      .results-trophy {
+        font-size: 3.5rem;
+        animation: trophySpin 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      @keyframes trophySpin {
+        from {
+          transform: scale(0.35) rotate(-20deg);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .results-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: clamp(1rem, 3.5vw, 1.55rem);
+        color: var(--yellow);
+        text-shadow: 0 0 20px rgba(241, 209, 141, 0.5);
+        margin: 12px 0 6px;
+      }
+      .results-sub {
+        font-size: 0.88rem;
+        color: var(--green-l);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      .stars-row {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin: 8px 0;
+      }
+      .star {
+        font-size: 2.2rem;
+      }
+      .star.lit {
+        animation: starPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      .star.dim {
+        filter: grayscale(1);
+        opacity: 0.35;
+      }
+      @keyframes starPop {
+        from {
+          transform: scale(0.4) rotate(-20deg);
+        }
+        to {
+          transform: none;
+        }
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        padding: 16px;
+        background: var(--parchment);
+        border: var(--px) solid var(--ink);
+        border-radius: 10px;
+        box-shadow: 0 var(--px) 0 var(--ink);
+      }
+      @media (max-width: 640px) {
+        .stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .stat-box {
+        background: linear-gradient(180deg, var(--panel), #f8ece0);
+        border: 2px solid var(--panel2);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+      }
+      .stat-box .n {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: #648f70;
+      }
+      .stat-box .k {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.1em;
+      }
+      .mini-mem-label {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.5rem;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .mini-mem {
+        display: grid;
+        gap: 7px;
+        padding: 14px;
+        background: var(--parchment);
+        border: var(--px) solid var(--ink);
+        border-radius: 10px;
+        box-shadow: 0 var(--px) 0 var(--ink);
+      }
+      .r-pt-section {
+        padding: 14px;
+        background: var(--parchment);
+        border: var(--px) solid var(--ink);
+        border-radius: 10px;
+        box-shadow: 0 var(--px) 0 var(--ink);
+      }
+      .r-pt-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .r-pt-card {
+        flex: 1;
+        min-width: 150px;
+        background: var(--panel);
+        border: 2px solid var(--panel2);
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 0.74rem;
+      }
+      .r-pt-card .r-pt-pid {
+        font-weight: 900;
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 2px solid var(--panel2);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .r-pt-card .r-pt-pid img {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .r-pt-row {
+        display: grid;
+        grid-template-columns: 1fr 20px 1fr;
+        gap: 2px;
+        padding: 2px 0;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.7rem;
+      }
+      .refl-box {
+        padding: 14px 16px;
+        background: var(--parchment);
+        border: var(--px) solid var(--ink);
+        border-radius: 10px;
+        box-shadow: 0 var(--px) 0 var(--ink);
+      }
+      .refl-title {
+        font-weight: 900;
+        font-size: 0.92rem;
+        color: #648f70;
+        margin-bottom: 8px;
+      }
+      .refl-text {
+        font-size: 0.84rem;
+        line-height: 1.65;
+      }
+      .refl-text strong {
+        color: #648f70;
+      }
+      .r-btns {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding-bottom: 16px;
+      }
+      .r-btn {
+        padding: 11px 22px;
+        border-radius: 8px;
+        border: var(--px) solid var(--ink);
+        font-size: 0.8rem;
+        font-weight: 900;
+        box-shadow: 0 4px 0 var(--ink);
+        cursor: pointer;
+        transition:
+          transform 0.08s,
+          box-shadow 0.08s;
+      }
+      .r-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 0 var(--ink);
+      }
+      .r-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 var(--ink);
+      }
+      .r-btn.primary {
+        background: linear-gradient(180deg, #e5f0e6, #cddfce);
+      }
+      .r-btn.secondary {
+        background: var(--panel);
+      }
+
+      /* ── BOSS MODAL ── */
+      #bossWarning {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(152, 134, 207, 0.22);
+        backdrop-filter: blur(4px);
+        z-index: 600;
+      }
+      .boss-modal {
+        background: var(--parchment);
+        border: 4px solid var(--purple-d);
+        border-radius: 16px;
+        padding: 28px 32px;
+        text-align: center;
+        max-width: 440px;
+        box-shadow:
+          0 0 60px rgba(152, 134, 207, 0.28),
+          0 8px 0 var(--ink);
+        animation: modalPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      @keyframes modalPop {
+        from {
+          transform: scale(0.6) rotate(-5deg);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .boss-modal h2 {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.84rem;
+        color: #725fb1;
+        margin-bottom: 10px;
+        line-height: 1.6;
+      }
+      .boss-modal p {
+        font-size: 0.88rem;
+        line-height: 1.65;
+        margin-bottom: 16px;
+      }
+      .boss-modal-btns {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .bm-btn {
+        padding: 10px 18px;
+        border-radius: 8px;
+        border: var(--px) solid var(--ink);
+        font-weight: 900;
+        font-size: 0.8rem;
+        box-shadow: 0 4px 0 var(--ink);
+        cursor: pointer;
+        transition:
+          transform 0.1s,
+          box-shadow 0.1s;
+      }
+      .bm-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 var(--ink);
+      }
+      .bm-btn.reject {
+        background: linear-gradient(180deg, #f0d2d2, #ddb4b4);
+      }
+      .bm-btn.release {
+        background: linear-gradient(180deg, #f7e4b5, #eccc84);
+      }
+      .boss-modal .boss-portrait img {
+        width: 100px;
+        height: 100px;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+
+      /* ── FLOATERS & CURSOR ── */
+      #scoreFloater {
+        position: fixed;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.66rem;
+        font-weight: 900;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0;
+      }
+      #scoreFloater.pop {
+        animation: scorePop 0.9s ease forwards;
+      }
+      @keyframes scorePop {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1.15);
+        }
+        60% {
+          opacity: 1;
+          transform: translateY(-44px) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-70px) scale(0.9);
+        }
+      }
+      #cursor {
+        position: fixed;
+        width: 24px;
+        height: 32px;
+        pointer-events: none;
+        z-index: 9999;
+        transform: translate(-2px, -2px);
+      }
+      .shake {
+        animation: shk 0.35s ease;
+      }
+      @keyframes shk {
+        10% {
+          transform: translate(-5px, -3px);
+        }
+        20% {
+          transform: translate(5px, 2px);
+        }
+        30% {
+          transform: translate(-4px, 3px);
+        }
+        40% {
+          transform: translate(4px, -2px);
+        }
+        50% {
+          transform: translate(-3px, 1px);
+        }
+        60% {
+          transform: translate(3px, -1px);
+        }
+        70% {
+          transform: translate(-2px, 2px);
+        }
+        80% {
+          transform: translate(2px, -2px);
+        }
+        100% {
+          transform: none;
+        }
+      }
+
+      @media (max-width: 760px) {
+        html,
+        body {
+          overflow: auto;
+        }
+        body {
+          cursor: auto;
+        }
+        #cursor {
+          display: none;
+        }
+        .screen {
+          position: static;
+          min-height: 100vh;
+        }
+        .desk-area,
+        .bottom-bar,
+        .level-grid,
+        .data-grid,
+        .stamp-row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ghost-bg" id="ghostBg"></div>
+
+    <!-- ══ TITLE ══ -->
+    <div id="scTitle" class="screen">
+      <div class="title-wrap">
+        <section class="title-left px-card">
+          <div class="t-eyebrow">Sisops · UDEM · Juego 1 de 2</div>
+          <h1 class="t-main">Luigi's<br />Memory<br />Desk</h1>
+          <p class="t-sub">Mostrador de Paginación — Hotel Encantado</p>
+          <p class="t-lead">
+            Atiende la recepción de la mansión. Cada huésped llega con una
+            solicitud de memoria. Asigna sus <strong>páginas</strong> a los
+            <strong>frames físicos</strong> (puertas del hotel), construye la
+            <strong>page table</strong> y decide cuándo un proceso puede entrar
+            o debe ser rechazado.
+          </p>
+          <div class="concept-row">
+            <div class="concept-pill">
+              🚪 Cada <b>puerta del hotel</b> = un frame de memoria física.
+            </div>
+            <div class="concept-pill">
+              👻 Cada <b>huésped</b> = un proceso con cierto tamaño en bytes.
+            </div>
+            <div class="concept-pill">
+              📄 El proceso se divide en <b>páginas</b> de tamaño fijo.
+            </div>
+            <div class="concept-pill">
+              🗺️ La <b>page table</b> guarda el mapeo página → frame.
+            </div>
+          </div>
+          <div class="level-grid" id="levelGrid"></div>
+        </section>
+        <section class="title-right">
+          <div class="desk-preview-board px-card">
+            <div class="desk-preview-slot"></div>
+            <div
+              class="desk-preview-slot filled"
+              style="
+                background: linear-gradient(180deg, #e1ecdf, #c7dfc9);
+                border-color: #7daf8d;
+              "
+            ></div>
+            <div
+              class="desk-preview-slot filled"
+              style="
+                background: linear-gradient(180deg, #e4ddf4, #cfc4ea);
+                border-color: #9886cf;
+              "
+            ></div>
+            <div class="desk-preview-slot"></div>
+            <div
+              class="desk-preview-slot filled"
+              style="
+                background: linear-gradient(180deg, #f6e7be, #e8d08e);
+                border-color: #c29a4b;
+              "
+            ></div>
+            <div class="desk-preview-slot"></div>
+          </div>
+          <div class="desk-preview-paper"></div>
+          <div class="preview-door"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ══ GAME ══ -->
+    <div id="scGame" class="screen hidden">
+      <div
+        style="display: flex; flex-direction: column; width: 100%; height: 100%"
+      >
+        <div class="hud">
+          <div class="hud-stat">Score <span id="hScore">0</span></div>
+          <div class="hud-stat">Uso <span id="hUsage">0%</span></div>
+          <div class="hud-stat">Frag <span id="hFrag">0 B</span></div>
+          <div class="hud-stat">Libres <span id="hFree">0</span></div>
+          <div class="hud-timer" id="hTimer">—</div>
+          <div class="hud-lvl" id="hLvl">Nivel</div>
+          <button class="hud-btn" id="menuBtn">Menú</button>
+          <button class="hud-btn" id="restartBtn">↺</button>
+        </div>
+
+        <div class="desk-area">
+          <!-- LEFT: hotel door frames -->
+          <div class="board-col">
+            <div class="board-header px-card">
+              <span class="board-title">🚪 Puertas del Hotel</span>
+              <div class="usage-bar-wrap">
+                <div class="usage-bar" id="usageBar" style="width: 0%"></div>
+              </div>
+              <span class="board-legend" id="boardLegend">0 / 0 frames</span>
+            </div>
+            <div class="memory-board">
+              <div class="slots" id="slots"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT: process card + page table + queue — all inline, no popup -->
+          <div class="right-col px-card" style="overflow: hidden">
+            <!-- Queue strip at top -->
+            <div class="queue-strip">
+              <span class="queue-strip-label">Cola</span>
+              <div
+                id="queueList"
+                style="display: flex; gap: 6px; overflow-x: auto; flex: 1"
+              ></div>
+              <span
+                id="queueRemaining"
+                style="
+                  font-size: 0.72rem;
+                  font-weight: 900;
+                  color: #648f70;
+                  flex-shrink: 0;
+                  padding-left: 8px;
+                "
+                >—</span
+              >
+            </div>
+
+            <!-- Process paper — inline on the counter -->
+            <div class="process-section">
+              <div class="process-inner">
+                <div id="emptyState" class="empty-state hidden">
+                  ✅ No quedan huéspedes.<br />¡Nivel completo!
+                </div>
+                <div id="processCard">
+                  <div class="counter-paper" id="counterPaper">
+                    <div id="stampEl" class="stamp ok">ACEPTADO</div>
+                    <div id="procTag" class="proc-tag">Proceso</div>
+                    <div class="proc-header">
+                      <div id="procPortrait" class="proc-portrait"></div>
+                      <div>
+                        <div class="proc-name" id="procName">P1 · Boo</div>
+                        <div
+                          style="
+                            font-size: 0.7rem;
+                            color: var(--muted);
+                            margin-top: 3px;
+                          "
+                          id="procSub"
+                        >
+                          128 B · 2 páginas
+                        </div>
+                      </div>
+                    </div>
+                    <div class="data-grid">
+                      <div class="data-box">
+                        <span class="k">Tamaño real</span
+                        ><span class="v" id="dSize">0 B</span>
+                      </div>
+                      <div class="data-box">
+                        <span class="k">Páginas</span
+                        ><span class="v" id="dPages">0</span>
+                      </div>
+                      <div class="data-box">
+                        <span class="k">Memoria total</span
+                        ><span class="v" id="dReq">0 B</span>
+                      </div>
+                      <div class="data-box">
+                        <span class="k">Puertas libres</span
+                        ><span class="v" id="dFree">0</span>
+                      </div>
+                    </div>
+                    <div class="pages-label">
+                      Páginas — arrastra a una puerta libre 🚪
+                    </div>
+                    <div class="pages-row" id="pagesRow"></div>
+                    <div class="frag-note" id="fragNote"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Page table -->
+            <div class="pt-panel">
+              <div class="pt-title">Page Table — proceso actual</div>
+              <div class="pt-grid" id="pageTable"></div>
+            </div>
+
+            <!-- Action buttons at the very bottom -->
+            <div class="stamp-row">
+              <button class="s-btn accept" id="acceptBtn">✅ Aceptar</button>
+              <button class="s-btn reject" id="rejectBtn">❌ Rechazar</button>
+              <button class="s-btn release" id="releaseBtn">🗑️ Liberar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTTOM BAR -->
+        <div class="bottom-bar">
+          <section class="luigi-hud px-card">
+            <div class="luigi-portrait-wrap" id="luigiPortraitWrap"></div>
+            <div class="luigi-meta">
+              <h3>Luigi</h3>
+              <div class="lives-row" id="livesRow"></div>
+            </div>
+          </section>
+          <section class="msg-bar px-card">
+            <div class="msg-title" id="msgTitle">Bienvenido al mostrador</div>
+            <div class="msg-text" id="msgText">
+              Arrastra las páginas del huésped a las
+              <strong>puertas libres</strong>. Las páginas
+              <strong>no necesitan quedar juntas</strong>.
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RESULTS ══ -->
+    <div id="scResults" class="screen hidden">
+      <div class="results-wrap">
+        <div class="results-head">
+          <div class="results-trophy" id="rTrophy">🏆</div>
+          <h1 class="results-title" id="rTitle">¡Mostrador Cerrado!</h1>
+          <div class="results-sub" id="rSub">Resumen del nivel</div>
+          <div class="stars-row" id="starsRow"></div>
+        </div>
+        <div class="stats-grid px-card">
+          <div class="stat-box">
+            <div class="n" id="rScore">0</div>
+            <div class="k">Puntaje</div>
+          </div>
+          <div class="stat-box">
+            <div class="n" id="rAccepted">0</div>
+            <div class="k">Aceptados</div>
+          </div>
+          <div class="stat-box">
+            <div class="n" id="rRejected">0</div>
+            <div class="k">Rechazados</div>
+          </div>
+          <div class="stat-box">
+            <div class="n" id="rFrag">0 B</div>
+            <div class="k">Frag. interna</div>
+          </div>
+        </div>
+        <div class="mini-mem px-card">
+          <div class="mini-mem-label">Mapa de puertas final</div>
+          <div
+            class="slots"
+            id="miniSlots"
+            style="--cols: 6; --slot: 56px"
+          ></div>
+        </div>
+        <div class="r-pt-section">
+          <div class="mini-mem-label">Page Tables generadas</div>
+          <div class="r-pt-grid" id="rPtGrid"></div>
+        </div>
+        <div class="refl-box px-card">
+          <div class="refl-title">💡 Lo que aprendiste</div>
+          <div class="refl-text" id="rRefl"></div>
+        </div>
+        <div class="r-btns">
+          <button class="r-btn primary" id="rPlayAgain">↺ Repetir</button>
+          <button class="r-btn primary" id="rNext">Siguiente nivel ▶</button>
+          <button class="r-btn secondary" id="rMenu">🏠 Menú</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BOSS MODAL ══ -->
+    <div id="bossWarning" class="hidden">
+      <div class="boss-modal">
+        <div
+          class="boss-portrait"
+          id="bossPortrait"
+          style="display: flex; justify-content: center; margin-bottom: 10px"
+        ></div>
+        <h2>¡KING BOO EXIGE MEMORIA!</h2>
+        <p id="bossMsg">No hay frames suficientes.</p>
+        <div class="boss-modal-btns">
+          <button class="bm-btn reject" id="bossReject">
+            ❌ Rechazar a King Boo
+          </button>
+          <button class="bm-btn release" id="bossRelease">
+            🗑️ Liberar memoria
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="scoreFloater">+30</div>
+    <div id="cursor">
+      <svg viewBox="0 0 24 32" width="24" height="32">
+        <path
+          d="M6 28 L6 12 Q6 8 10 8 L10 4 Q10 2 12 2 Q14 2 14 4 L14 8 Q16 8 17 10 L18 12 Q18 14 17 15 L17 22 Q17 26 13 28 Z"
+          fill="#fff8ef"
+          stroke="#3b2b22"
+          stroke-width="2"
+        />
+        <rect
+          x="12"
+          y="4"
+          width="4"
+          height="8"
+          rx="2"
+          fill="#fff8ef"
+          stroke="#3b2b22"
+          stroke-width="1.5"
+        />
+        <rect
+          x="15"
+          y="9"
+          width="3"
+          height="7"
+          rx="1.5"
+          fill="#fff8ef"
+          stroke="#3b2b22"
+          stroke-width="1.5"
+        />
+        <rect
+          x="4"
+          y="13"
+          width="3"
+          height="7"
+          rx="1.5"
+          fill="#fff8ef"
+          stroke="#3b2b22"
+          stroke-width="1.5"
+        />
+      </svg>
+    </div>
+
+    <script>
+      "use strict";
+
+      /* ══ ASSETS ══ */
+      const ASSETS = {
+        Luigi: "img/Luigi.png",
+        Boo: "img/Boo.png",
+        Flashy: "img/Flashy.png",
+        Misty: "img/Misty.png",
+        Chonk: "img/Chonk.png",
+        Dot: "img/Dot.png",
+        Nova: "img/Nova.png",
+        Peep: "img/Peep.png",
+        Toad: "img/Toad.png",
+        Daisy: "img/Daisy.png",
+        ShyGuy: "img/ShyGuy.png",
+        Koopa: "img/Koopa.png",
+        KingBoo: "img/KingBoo.png",
+        Vidas: "img/Vidas.png",
+      };
+      function assetImg(name, w, h, cls = "asset-img") {
+        const img = document.createElement("img");
+        img.src = ASSETS[name] || "";
+        img.alt = name;
+        img.className = cls;
+        if (w) img.style.width = typeof w === "number" ? `${w}px` : w;
+        if (h) img.style.height = typeof h === "number" ? `${h}px` : h;
+        img.draggable = false;
+        return img;
+      }
+
+      /* ══ AUDIO ══ */
+      let _actx = null;
+      function actx() {
+        return (
+          _actx ||
+          (_actx = new (window.AudioContext || window.webkitAudioContext)())
+        );
+      }
+      function snd(type) {
+        try {
+          const c = actx(),
+            n = c.currentTime;
+          const p = (f, t, g = 0.2, d = 0.16, tp = "triangle") => {
+            const o = c.createOscillator(),
+              ga = c.createGain();
+            o.connect(ga);
+            ga.connect(c.destination);
+            o.type = tp;
+            o.frequency.value = f;
+            ga.gain.setValueAtTime(g, t);
+            ga.gain.exponentialRampToValueAtTime(0.001, t + d);
+            o.start(t);
+            o.stop(t + d + 0.05);
+          };
+          if (type === "drop") {
+            p(620, n, 0.13, 0.08);
+            p(820, n + 0.05, 0.09, 0.07);
+          }
+          if (type === "accept") {
+            p(523, n, 0.18, 0.12);
+            p(659, n + 0.1, 0.18, 0.12);
+            p(784, n + 0.2, 0.18, 0.2);
+            p(1047, n + 0.28, 0.15, 0.25);
+          }
+          if (type === "reject") {
+            p(220, n, 0.22, 0.28, "sawtooth");
+            p(165, n + 0.12, 0.18, 0.28, "sawtooth");
+          }
+          if (type === "error") {
+            p(330, n, 0.16, 0.14, "square");
+            p(220, n + 0.18, 0.16, 0.16, "square");
+          }
+          if (type === "release") {
+            p(420, n, 0.14, 0.11);
+            p(330, n + 0.1, 0.14, 0.14);
+          }
+          if (type === "boss") {
+            p(55, n, 0.32, 0.52, "sawtooth");
+            p(80, n + 0.12, 0.22, 0.42, "square");
+          }
+          if (type === "star") {
+            [523, 659, 784, 1047].forEach((f, i) =>
+              p(f, n + i * 0.1, 0.18, 0.24),
+            );
+          }
+        } catch (e) {}
+      }
+
+      /* ══ LEVELS ══ */
+      const LEVELS = [
+        {
+          id: 0,
+          name: "Nivel 1 · Primer Huésped",
+          tag: "Tutorial",
+          pageSize: 64,
+          numFrames: 6,
+          numLives: 3,
+          allowReject: false,
+          allowRelease: false,
+          starThresholds: [450, 320, 180],
+          processes: [
+            {
+              id: "P1",
+              name: "Boo",
+              asset: "Boo",
+              color: "#eef0fa",
+              size: 128,
+            },
+            {
+              id: "P2",
+              name: "Flashy",
+              asset: "Flashy",
+              color: "#f9efc7",
+              size: 192,
+            },
+          ],
+        },
+        {
+          id: 1,
+          name: "Nivel 2 · Fragmentación",
+          tag: "Frag. Interna",
+          pageSize: 64,
+          numFrames: 7,
+          numLives: 3,
+          allowReject: false,
+          allowRelease: true,
+          starThresholds: [560, 400, 220],
+          processes: [
+            {
+              id: "P1",
+              name: "Misty",
+              asset: "Misty",
+              color: "#d9ebf6",
+              size: 120,
+            },
+            {
+              id: "P2",
+              name: "Chonk",
+              asset: "Chonk",
+              color: "#e5dcf5",
+              size: 150,
+            },
+            { id: "P3", name: "Dot", asset: "Dot", color: "#dcefe2", size: 40 },
+          ],
+        },
+        {
+          id: 2,
+          name: "Nivel 3 · Hotel Lleno",
+          tag: "Gestión",
+          pageSize: 64,
+          numFrames: 10,
+          numLives: 3,
+          allowReject: true,
+          allowRelease: true,
+          starThresholds: [700, 520, 300],
+          processes: [
+            {
+              id: "P1",
+              name: "Nova",
+              asset: "Nova",
+              color: "#d9e5f4",
+              size: 192,
+            },
+            {
+              id: "P2",
+              name: "Peep",
+              asset: "Peep",
+              color: "#f0dbe5",
+              size: 96,
+            },
+            {
+              id: "P3",
+              name: "Misty",
+              asset: "Misty",
+              color: "#dceee0",
+              size: 128,
+            },
+            {
+              id: "P4",
+              name: "Chonk",
+              asset: "Chonk",
+              color: "#f5e1ca",
+              size: 256,
+            },
+          ],
+        },
+        {
+          id: 3,
+          name: "Nivel 4 · KING BOO",
+          tag: "BOSS",
+          pageSize: 64,
+          numFrames: 12,
+          numLives: 3,
+          allowReject: true,
+          allowRelease: true,
+          isBossLevel: true,
+          starThresholds: [900, 660, 400],
+          processes: [
+            {
+              id: "P1",
+              name: "Toad",
+              asset: "Toad",
+              color: "#f3dfcf",
+              size: 128,
+            },
+            {
+              id: "P2",
+              name: "Daisy",
+              asset: "Daisy",
+              color: "#f8ebc9",
+              size: 192,
+            },
+            {
+              id: "P3",
+              name: "Shy Guy",
+              asset: "ShyGuy",
+              color: "#f2d8d8",
+              size: 96,
+            },
+            {
+              id: "P4",
+              name: "Koopa",
+              asset: "Koopa",
+              color: "#dfeede",
+              size: 128,
+            },
+            {
+              id: "P5",
+              name: "King Boo",
+              asset: "KingBoo",
+              color: "#e8ddf5",
+              size: 448,
+              boss: true,
+            },
+          ],
+        },
+      ];
+
+      /* ══ STATE ══ */
+      const S = {
+        li: 0,
+        score: 0,
+        lives: 3,
+        memory: [],
+        pageTables: {},
+        ghostInfo: {},
+        procs: [],
+        ci: 0,
+        placedPages: {},
+        accepted: [],
+        rejected: [],
+        actionStack: [],
+        wrongDrops: 0,
+        timerSec: 0,
+        timerInterval: null,
+      };
+      const $ = (id) => document.getElementById(id);
+      const PAGE_SIZE = () => LEVELS[S.li].pageSize;
+      const ceilPg = (sz, ps = PAGE_SIZE()) => Math.ceil(sz / ps);
+      const freeFrames = () => S.memory.filter((f) => f.pid === null).length;
+      const usedFrames = () => S.memory.filter((f) => f.pid !== null).length;
+      const currentProc = () => S.procs[S.ci] || null;
+      const totalFrag = () =>
+        S.procs
+          .filter((p) => p.done && !p.rejected)
+          .reduce((a, p) => a + p.frag, 0);
+      const utilPct = () =>
+        S.memory.length
+          ? Math.round((usedFrames() / S.memory.length) * 100)
+          : 0;
+
+      function showFloater(x, y, txt, color = "#648f70") {
+        const el = $("scoreFloater");
+        el.textContent = txt;
+        el.style.color = color;
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.classList.remove("pop");
+        void el.offsetWidth;
+        el.classList.add("pop");
+      }
+
+      /* ══ DRAG & DROP ══ */
+      const drag = {
+        active: false,
+        pid: null,
+        pg: null,
+        srcEl: null,
+        clone: null,
+        ox: 0,
+        oy: 0,
+        pointerId: null,
+      };
+      function makeDraggable(chip, pid, pg) {
+        chip.addEventListener("pointerdown", (e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          if ((S.placedPages[pid] || {})[pg] !== undefined) return;
+          const p = currentProc();
+          if (!p || p.id !== pid) return;
+          e.preventDefault();
+          e.stopPropagation();
+          drag.active = true;
+          drag.pid = pid;
+          drag.pg = pg;
+          drag.srcEl = chip;
+          drag.pointerId = e.pointerId;
+          drag.srcEl.setPointerCapture?.(e.pointerId);
+          const r = chip.getBoundingClientRect();
+          const cl = chip.cloneNode(true);
+          cl.id = "dragClone";
+          cl.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;pointer-events:none;z-index:9998;transform:rotate(-4deg) scale(1.08);box-shadow:0 12px 32px rgba(0,0,0,.22);border-radius:9px;`;
+          document.body.appendChild(cl);
+          drag.clone = cl;
+          drag.ox = e.clientX - r.left;
+          drag.oy = e.clientY - r.top;
+          chip.classList.add("dragging-src");
+          document.addEventListener("pointermove", onDragMove, {
+            passive: false,
+          });
+          document.addEventListener("pointerup", onDragEnd);
+        });
+      }
+      function onDragMove(e) {
+        if (!drag.active) return;
+        e.preventDefault();
+        if (drag.clone) {
+          drag.clone.style.left = e.clientX - drag.ox + "px";
+          drag.clone.style.top = e.clientY - drag.oy + "px";
+        }
+        document
+          .querySelectorAll(".slot")
+          .forEach((s) => s.classList.remove("drop-ok", "drop-bad"));
+        if (drag.clone) drag.clone.style.display = "none";
+        const under = document.elementFromPoint(e.clientX, e.clientY);
+        if (drag.clone) drag.clone.style.display = "";
+        const slot = under?.closest(".slot");
+        if (slot) {
+          const fid = Number(slot.dataset.frame);
+          slot.classList.add(
+            S.memory[fid].pid === null ? "drop-ok" : "drop-bad",
+          );
+        }
+      }
+      function onDragEnd(e) {
+        document.removeEventListener("pointermove", onDragMove);
+        document.removeEventListener("pointerup", onDragEnd);
+        drag.srcEl?.releasePointerCapture?.(drag.pointerId);
+        document
+          .querySelectorAll(".slot")
+          .forEach((s) => s.classList.remove("drop-ok", "drop-bad"));
+        if (drag.clone) {
+          drag.clone.style.display = "none";
+          const under = document.elementFromPoint(e.clientX, e.clientY);
+          drag.clone.style.display = "";
+          drag.clone.remove();
+          drag.clone = null;
+          const slot = under?.closest(".slot");
+          if (slot)
+            dropOnFrame(Number(slot.dataset.frame), e.clientX, e.clientY);
+        }
+        if (drag.srcEl) drag.srcEl.classList.remove("dragging-src");
+        drag.active = false;
+        drag.pid = null;
+        drag.pg = null;
+        drag.srcEl = null;
+        drag.pointerId = null;
+      }
+      function dropOnFrame(fid, cx, cy) {
+        const p = currentProc();
+        if (!p) return;
+        const frame = S.memory[fid];
+        if (frame.pid !== null) {
+          snd("error");
+          loseLife(
+            "Esa puerta ya está ocupada. Cada frame solo puede guardar una página a la vez.",
+          );
+          return;
+        }
+        const placed = S.placedPages[p.id] || {};
+        if (placed[drag.pg] !== undefined) {
+          snd("error");
+          return;
+        }
+        const ps = PAGE_SIZE(),
+          isLast = drag.pg === p.pages - 1;
+        const bytes = isLast ? p.size - drag.pg * ps : ps;
+        frame.pid = p.id;
+        frame.pg = drag.pg;
+        frame.bytes = bytes;
+        frame.color = p.color;
+        frame.asset = p.asset;
+        frame.pname = p.name;
+        if (!S.placedPages[p.id]) S.placedPages[p.id] = {};
+        S.placedPages[p.id][drag.pg] = fid;
+        S.score += 30;
+        snd("drop");
+        showFloater(cx || 300, cy || 300, "+30", "#648f70");
+        speak(
+          "Página asignada",
+          `<strong>${p.id}.pg${drag.pg}</strong> → Puerta <strong>F${fid}</strong>. El SO guarda este mapeo en la page table. <strong>Las páginas no tienen que quedar juntas</strong>.`,
+        );
+        renderAll();
+      }
+
+      /* ══ TIMER ══ */
+      function startTimer() {
+        clearInterval(S.timerInterval);
+        S.timerSec = 0;
+        const el = $("hTimer");
+        el.textContent = "0s";
+        el.classList.remove("warn");
+        S.timerInterval = setInterval(() => {
+          S.timerSec++;
+          el.textContent = S.timerSec + "s";
+          el.classList.toggle("warn", S.timerSec > 20);
+        }, 1000);
+      }
+      function stopTimer() {
+        clearInterval(S.timerInterval);
+        $("hTimer").textContent = "—";
+        $("hTimer").classList.remove("warn");
+      }
+      function timerBonus() {
+        return S.timerSec <= 10 ? 30 : S.timerSec <= 20 ? 15 : 0;
+      }
+
+      /* ══ START LEVEL ══ */
+      function startLevel(li) {
+        S.li = li;
+        const lv = LEVELS[li];
+        S.score = 0;
+        S.lives = lv.numLives;
+        S.memory = Array.from({ length: lv.numFrames }, (_, i) => ({
+          id: i,
+          pid: null,
+          pg: null,
+          bytes: 0,
+          color: null,
+          asset: null,
+          pname: null,
+        }));
+        S.pageTables = {};
+        S.ghostInfo = {};
+        S.procs = [];
+        S.ci = 0;
+        S.placedPages = {};
+        S.accepted = [];
+        S.rejected = [];
+        S.actionStack = [];
+        S.wrongDrops = 0;
+        S.procs = lv.processes.map((p) => ({
+          ...p,
+          pages: ceilPg(p.size, lv.pageSize),
+          required: ceilPg(p.size, lv.pageSize) * lv.pageSize,
+          frag: ceilPg(p.size, lv.pageSize) * lv.pageSize - p.size,
+          done: false,
+          rejected: false,
+        }));
+        showScreen("game");
+        renderAll();
+        speak(
+          "Bienvenido al mostrador",
+          `<strong>${lv.name}</strong> — ${lv.numFrames} puertas de ${lv.pageSize} B. Arrastra las páginas del huésped a las puertas libres 🚪.`,
+        );
+        startTimer();
+      }
+
+      /* ══ ACTIONS ══ */
+      function acceptProcess() {
+        const p = currentProc();
+        if (!p) return;
+        const placed = S.placedPages[p.id] || {};
+        if (Object.keys(placed).length < p.pages) {
+          snd("error");
+          loseLife(
+            `Faltan ${p.pages - Object.keys(placed).length} página(s) por asignar.`,
+          );
+          return;
+        }
+        const tb = timerBonus(),
+          perf = S.wrongDrops === 0;
+        const pts = 100 + (p.frag === 0 ? 40 : 0) + (perf ? 50 : 0) + tb;
+        S.score += pts;
+        S.pageTables[p.id] = { ...placed };
+        S.ghostInfo[p.id] = {
+          color: p.color,
+          asset: p.asset,
+          name: p.name,
+          pages: p.pages,
+          frag: p.frag,
+        };
+        S.actionStack.push({ pid: p.id, frames: Object.values(placed) });
+        p.done = true;
+        S.accepted.push(p.id);
+        S.wrongDrops = 0;
+        flashStamp(true);
+        snd("accept");
+        let msg = `<strong>${p.name}</strong> aceptado. Page table: ${Object.entries(
+          placed,
+        )
+          .map(([pg, fr]) => `pg${pg}→F${fr}`)
+          .join(", ")}.`;
+        if (p.frag > 0)
+          msg += ` Fragmentación interna: <strong>${p.frag} B</strong>.`;
+        else msg += ` <strong>Sin fragmentación interna.</strong>`;
+        if (perf) msg += ` <strong>¡Perfecto! +50</strong>`;
+        if (tb > 0) msg += ` <strong>Rápido +${tb}</strong>`;
+        speak("✅ Proceso aceptado", msg);
+        advanceProcess();
+      }
+      function rejectProcess() {
+        const lv = LEVELS[S.li];
+        if (!lv.allowReject) {
+          snd("error");
+          loseLife("En este nivel no puedes rechazar procesos.");
+          return;
+        }
+        const p = currentProc();
+        if (!p) return;
+        const free = freeFrames();
+        if (free >= p.pages && !p.boss) {
+          snd("error");
+          loseLife(
+            `Error: ${p.name} sí cabe. Necesita ${p.pages} frames y hay ${free} libres.`,
+          );
+          return;
+        }
+        S.score += 80;
+        p.rejected = true;
+        S.rejected.push(p.id);
+        flashStamp(false);
+        snd("reject");
+        speak(
+          "❌ Proceso rechazado",
+          `Correcto: <strong>${p.name}</strong> necesita <strong>${p.pages} frames</strong> pero solo hay <strong>${free} libres</strong>.`,
+        );
+        advanceProcess();
+      }
+      function releaseLastProcess() {
+        const lv = LEVELS[S.li];
+        if (!lv.allowRelease) {
+          snd("error");
+          loseLife("En este nivel no se puede liberar memoria.");
+          return;
+        }
+        if (S.actionStack.length === 0) {
+          snd("error");
+          loseLife("No hay procesos aceptados que liberar.");
+          return;
+        }
+        const last = S.actionStack.pop();
+        const proc = S.procs.find((p) => p.id === last.pid);
+        if (!proc) return;
+        last.frames.forEach((fid) => {
+          S.memory[fid] = {
+            id: fid,
+            pid: null,
+            pg: null,
+            bytes: 0,
+            color: null,
+            asset: null,
+            pname: null,
+          };
+        });
+        proc.done = false;
+        delete S.pageTables[proc.id];
+        delete S.ghostInfo[proc.id];
+        delete S.placedPages[proc.id];
+        S.accepted = S.accepted.filter((id) => id !== proc.id);
+        S.score = Math.max(0, S.score - 20);
+        S.ci = S.procs.findIndex((p) => p.id === proc.id);
+        snd("release");
+        speak(
+          "🗑️ Memoria liberada",
+          `<strong>${proc.pages} puertas</strong> de <strong>${proc.name}</strong> liberadas. El espacio quedó disponible.`,
+        );
+        renderAll();
+        startTimer();
+      }
+      function advanceProcess() {
+        stopTimer();
+        let next = S.ci + 1;
+        while (
+          next < S.procs.length &&
+          (S.procs[next].done || S.procs[next].rejected)
+        )
+          next++;
+        S.ci = next;
+        renderAll();
+        if (!currentProc()) {
+          setTimeout(showResults, 600);
+          return;
+        }
+        startTimer();
+        const p = currentProc();
+        if (p?.boss && freeFrames() < p.pages) {
+          snd("boss");
+          $("bossMsg").innerHTML =
+            `King Boo necesita <b>${p.pages} puertas</b> pero solo quedan <b>${freeFrames()} libres</b>.<br>Debes liberar memoria o rechazarlo.`;
+          const bp = $("bossPortrait");
+          bp.innerHTML = "";
+          bp.appendChild(assetImg("KingBoo", 100, 100));
+          $("bossWarning").classList.remove("hidden");
+        }
+      }
+      function loseLife(reason) {
+        S.lives = Math.max(0, S.lives - 1);
+        S.wrongDrops++;
+        snd("error");
+        speak("⚠️ Incorrecto", reason);
+        renderLives(true);
+        $("scGame").classList.remove("shake");
+        void $("scGame").offsetWidth;
+        $("scGame").classList.add("shake");
+        $("scGame").addEventListener(
+          "animationend",
+          () => $("scGame").classList.remove("shake"),
+          { once: true },
+        );
+        if (S.lives <= 0) {
+          speak("Sin vidas", "Puedes reiniciar el nivel.");
+          setTimeout(showResults, 600);
+        }
+        renderHUD();
+      }
+      function flashStamp(ok) {
+        const el = $("stampEl");
+        el.textContent = ok ? "ACEPTADO" : "RECHAZADO";
+        el.className = "stamp " + (ok ? "ok" : "no") + " show";
+        setTimeout(() => el.classList.remove("show"), 600);
+      }
+      function speak(title, text) {
+        $("msgTitle").textContent = title;
+        $("msgText").innerHTML = text;
+      }
+
+      /* ══ RENDER ══ */
+      function renderAll() {
+        renderHUD();
+        renderLives();
+        renderSlots();
+        renderProcess();
+        renderPageTable();
+        renderQueue();
+      }
+
+      function renderHUD() {
+        $("hScore").textContent = S.score;
+        $("hUsage").textContent = utilPct() + "%";
+        $("hFrag").textContent = totalFrag() + " B";
+        $("hFree").textContent = freeFrames();
+        $("usageBar").style.width = utilPct() + "%";
+        $("boardLegend").textContent =
+          `${usedFrames()} / ${S.memory.length} puertas`;
+        $("hLvl").textContent = LEVELS[S.li].name;
+      }
+      function renderLives(animateLost = false) {
+        const row = $("livesRow");
+        const lv = LEVELS[S.li];
+        row.innerHTML = "";
+        for (let i = 0; i < lv.numLives; i++) {
+          const d = document.createElement("div");
+          d.className = "life-icon" + (i >= S.lives ? " lost" : "");
+          d.appendChild(assetImg("Vidas", 24, 24));
+          if (animateLost && i === S.lives) d.classList.add("lose-anim");
+          row.appendChild(d);
+        }
+      }
+      function renderSlots() {
+        const cont = $("slots");
+        const lv = LEVELS[S.li];
+        const cols =
+          lv.numFrames <= 4
+            ? lv.numFrames
+            : lv.numFrames <= 9
+              ? 3
+              : lv.numFrames <= 12
+                ? 4
+                : 5;
+        cont.style.setProperty("--cols", cols);
+        cont.innerHTML = "";
+        S.memory.forEach((frame) => {
+          const div = document.createElement("div");
+          div.className = "slot" + (frame.pid ? " occupied" : "");
+          div.dataset.frame = frame.id;
+          const sid = document.createElement("div");
+          sid.className = "slot-id";
+          sid.textContent = "F" + frame.id;
+          div.appendChild(sid);
+          if (frame.pid) {
+            div.style.background = `linear-gradient(160deg,${frame.color}f0,${frame.color}a0)`;
+            div.style.borderColor = adjustColor(frame.color, -40);
+            const inner = document.createElement("div");
+            inner.className = "slot-inner";
+            inner.appendChild(assetImg(frame.asset, 32, 32));
+            const pid = document.createElement("div");
+            pid.className = "slot-pid";
+            pid.textContent = `${frame.pid}·pg${frame.pg}`;
+            inner.appendChild(pid);
+            div.appendChild(inner);
+          } else {
+            const fc = document.createElement("div");
+            fc.style.cssText =
+              "font-size:.5rem;font-weight:900;color:rgba(255,255,255,.5);letter-spacing:.05em;z-index:1";
+            fc.textContent = "libre";
+            div.appendChild(fc);
+          }
+          cont.appendChild(div);
+        });
+      }
+      function renderProcess() {
+        const p = currentProc();
+        const lv = LEVELS[S.li];
+        const es = $("emptyState"),
+          pc = $("processCard");
+        if (!p) {
+          es.classList.remove("hidden");
+          pc.style.display = "none";
+          $("acceptBtn").disabled = true;
+          $("rejectBtn").disabled = true;
+          $("releaseBtn").disabled = true;
+          $("queueRemaining").textContent = "Nivel completo";
+          return;
+        }
+        es.classList.add("hidden");
+        pc.style.display = "";
+        const cp = $("counterPaper");
+        cp.classList.toggle("boss-paper", !!p.boss);
+        const tagEl = $("procTag");
+        tagEl.className = "proc-tag" + (p.boss ? " boss-tag" : "");
+        tagEl.textContent = p.boss ? "⚠️ Proceso BOSS" : "Proceso";
+        const port = $("procPortrait");
+        port.innerHTML = "";
+        port.style.background = p.color;
+        port.appendChild(assetImg(p.asset, 54, 54));
+        $("procName").textContent = `${p.id} · ${p.name}`;
+        $("procSub").textContent = `${p.size} B · ${p.pages} páginas`;
+        $("dSize").textContent = p.size + " B";
+        $("dPages").textContent = p.pages;
+        $("dReq").textContent = p.required + " B";
+        $("dFree").textContent = freeFrames();
+        $("queueRemaining").textContent = `${S.procs.length - S.ci} en cola`;
+        const fn = $("fragNote");
+        if (p.frag > 0)
+          fn.innerHTML = `📐 <strong>${p.name}</strong> usa ${p.size} B en ${p.pages} páginas de ${PAGE_SIZE()} B. Última página: ${p.size - (p.pages - 1) * PAGE_SIZE()} B usados → <strong>${p.frag} B de fragmentación interna</strong>.`;
+        else
+          fn.innerHTML = `✅ <strong>${p.name}</strong> llena exactamente sus páginas. <strong>No genera fragmentación interna.</strong>`;
+        const pr = $("pagesRow");
+        pr.innerHTML = "";
+        const placed = S.placedPages[p.id] || {};
+        for (let i = 0; i < p.pages; i++) {
+          const chip = document.createElement("div");
+          chip.className =
+            "page-chip" + (placed[i] !== undefined ? " placed" : "");
+          chip.style.background = `linear-gradient(170deg,${p.color}ee,${p.color}88)`;
+          chip.style.borderColor = p.boss
+            ? adjustColor("#c6b7ea", -25)
+            : adjustColor(p.color, -35);
+          chip.appendChild(assetImg(p.asset, 20, 20, "chip-sprite"));
+          const lbl = document.createElement("div");
+          lbl.className = "chip-label";
+          lbl.textContent = "pg " + i;
+          chip.appendChild(lbl);
+          const bytes =
+            i === p.pages - 1 ? p.size - i * PAGE_SIZE() : PAGE_SIZE();
+          const byt = document.createElement("div");
+          byt.className = "chip-bytes";
+          byt.textContent = bytes + " B";
+          chip.appendChild(byt);
+          if (placed[i] !== undefined) chip.title = `Asignado a F${placed[i]}`;
+          else makeDraggable(chip, p.id, i);
+          pr.appendChild(chip);
+        }
+        const allPlaced = Object.keys(placed).length >= p.pages;
+        $("acceptBtn").disabled = !allPlaced;
+        $("rejectBtn").disabled = !lv.allowReject;
+        $("releaseBtn").disabled =
+          !lv.allowRelease || S.actionStack.length === 0;
+      }
+      function renderPageTable() {
+        const pt = $("pageTable");
+        pt.innerHTML = "";
+        const hdr = document.createElement("div");
+        hdr.className = "pt-row hdr";
+        hdr.innerHTML =
+          '<div>Página</div><div class="arrow">→</div><div>Frame</div>';
+        pt.appendChild(hdr);
+        const p = currentProc();
+        if (!p) {
+          const r = document.createElement("div");
+          r.className = "pt-row";
+          r.innerHTML = '<div>—</div><div class="arrow">—</div><div>—</div>';
+          pt.appendChild(r);
+          return;
+        }
+        const placed = S.placedPages[p.id] || {};
+        for (let i = 0; i < p.pages; i++) {
+          const r = document.createElement("div");
+          r.className = "pt-row" + (placed[i] !== undefined ? " done" : "");
+          r.innerHTML = `<div class="pg">${p.id}.pg${i}</div><div class="arrow">→</div><div class="${placed[i] !== undefined ? "fr" : "fr empty"}">${placed[i] !== undefined ? "F" + placed[i] : "?"}</div>`;
+          pt.appendChild(r);
+        }
+      }
+      function renderQueue() {
+        const ql = $("queueList");
+        ql.innerHTML = "";
+        S.procs.forEach((p, i) => {
+          const item = document.createElement("div");
+          item.className =
+            "q-item" +
+            (i === S.ci && !p.done && !p.rejected ? " active" : "") +
+            (p.done || p.rejected ? " done" : "") +
+            (p.boss ? " boss-q" : "");
+          item.style.background = p.done || p.rejected ? "#e8ddd0" : p.color;
+          item.appendChild(assetImg(p.asset, 24, 24));
+          const lbl = document.createElement("div");
+          lbl.style.cssText = "font-size:.6rem;font-weight:900";
+          lbl.textContent = p.id;
+          item.appendChild(lbl);
+          const pg = document.createElement("div");
+          pg.style.cssText = "font-size:.52rem;color:var(--muted)";
+          pg.textContent = p.pages + "pg";
+          item.appendChild(pg);
+          ql.appendChild(item);
+        });
+      }
+      function adjustColor(hex, amount) {
+        const s = hex.startsWith("#") ? hex : "#888";
+        const n = parseInt(s.slice(1), 16);
+        const r = Math.max(0, Math.min(255, (n >> 16) + amount));
+        const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amount));
+        const b = Math.max(0, Math.min(255, (n & 0xff) + amount));
+        return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+      }
+
+      /* ══ RESULTS ══ */
+      function showResults() {
+        stopTimer();
+        showScreen("results");
+        const lv = LEVELS[S.li];
+        const thr = lv.starThresholds;
+        const stars =
+          S.score >= thr[0]
+            ? 3
+            : S.score >= thr[1]
+              ? 2
+              : S.score >= thr[2]
+                ? 1
+                : 0;
+        $("rTrophy").textContent = ["😌", "⭐", "🏆", "👑"][stars];
+        $("rTitle").textContent =
+          stars >= 2 ? "¡Mostrador Cerrado!" : "Nivel Terminado";
+        $("rSub").textContent =
+          stars >= 3
+            ? "¡Paginación Perfecta!"
+            : stars >= 2
+              ? "¡Muy bien hecho!"
+              : "Sigue practicando";
+        const sr = $("starsRow");
+        sr.innerHTML = "";
+        for (let i = 0; i < 3; i++) {
+          const s = document.createElement("div");
+          s.className = "star" + (i < stars ? " lit" : " dim");
+          s.textContent = "⭐";
+          s.style.animationDelay = i * 0.15 + "s";
+          sr.appendChild(s);
+          if (i < stars) snd("star");
+        }
+        $("rScore").textContent = S.score;
+        $("rAccepted").textContent = S.accepted.length;
+        $("rRejected").textContent = S.rejected.length;
+        $("rFrag").textContent = totalFrag() + " B";
+        const ms = $("miniSlots");
+        ms.style.setProperty("--cols", Math.min(LEVELS[S.li].numFrames, 6));
+        ms.innerHTML = "";
+        S.memory.forEach((frame) => {
+          const div = document.createElement("div");
+          div.className = "slot" + (frame.pid ? " occupied" : "");
+          div.style.setProperty("--slot", "56px");
+          const sid = document.createElement("div");
+          sid.className = "slot-id";
+          sid.textContent = "F" + frame.id;
+          div.appendChild(sid);
+          if (frame.pid) {
+            div.style.background = `linear-gradient(160deg,${frame.color}f0,${frame.color}a0)`;
+            div.style.borderColor = adjustColor(frame.color, -40);
+            const inner = document.createElement("div");
+            inner.className = "slot-inner";
+            inner.appendChild(assetImg(frame.asset, 18, 18));
+            const lbl = document.createElement("div");
+            lbl.style.cssText =
+              "font-size:.46rem;font-weight:900;font-family:monospace;background:rgba(255,255,255,.5);padding:1px 3px;border-radius:3px;color:var(--ink)";
+            lbl.textContent = `${frame.pid}·${frame.pg}`;
+            inner.appendChild(lbl);
+            div.appendChild(inner);
+          } else {
+            const lbl = document.createElement("div");
+            lbl.style.cssText = "font-size:.5rem;color:rgba(255,255,255,.5)";
+            lbl.textContent = "libre";
+            div.appendChild(lbl);
+          }
+          ms.appendChild(div);
+        });
+        const rpt = $("rPtGrid");
+        rpt.innerHTML = "";
+        S.accepted.forEach((pid) => {
+          const gi = S.ghostInfo[pid];
+          if (!gi) return;
+          const card = document.createElement("div");
+          card.className = "r-pt-card";
+          card.style.borderLeft = `4px solid ${adjustColor(gi.color || "#ccc", -20)}`;
+          const pidRow = document.createElement("div");
+          pidRow.className = "r-pt-pid";
+          pidRow.appendChild(assetImg(gi.asset, 20, 20));
+          pidRow.appendChild(document.createTextNode(` ${pid} · ${gi.name}`));
+          card.appendChild(pidRow);
+          Object.entries(S.pageTables[pid] || {}).forEach(([pg, fr]) => {
+            const row = document.createElement("div");
+            row.className = "r-pt-row";
+            row.innerHTML = `<div style="color:#597aa5">${pid}.pg${pg}</div><div style="color:var(--muted)">→</div><div style="color:#648f70">F${fr}</div>`;
+            card.appendChild(row);
+          });
+          rpt.appendChild(card);
+        });
+        const frag = totalFrag();
+        let refl = `Completaste <strong>${LEVELS[S.li].name}</strong>. Atendiste <strong>${S.accepted.length}</strong> huésped(es) usando asignación <strong>no contigua</strong>. `;
+        if (frag > 0)
+          refl += `Se perdieron <strong>${frag} B</strong> por fragmentación interna. `;
+        else refl += `<strong>No hubo fragmentación interna.</strong> `;
+        if (S.rejected.length > 0)
+          refl += `Rechazaste <strong>${S.rejected.length}</strong> proceso(s) por falta de espacio. `;
+        refl += `La clave: el SO reconstruye el proceso completo gracias a la <strong>page table</strong>, que indica qué página está en cada puerta.`;
+        $("rRefl").innerHTML = refl;
+        $("rNext").style.display = S.li < LEVELS.length - 1 ? "" : "none";
+      }
+
+      /* ══ SCREENS ══ */
+      function showScreen(name) {
+        $("scTitle").classList.toggle("hidden", name !== "title");
+        $("scGame").classList.toggle("hidden", name !== "game");
+        $("scResults").classList.toggle("hidden", name !== "results");
+      }
+
+      /* ══ INIT ══ */
+      function initTitle() {
+        const bg = $("ghostBg");
+        ["Boo", "Flashy", "Misty", "Chonk", "Nova", "Peep"].forEach(
+          (asset, i) => {
+            const d = document.createElement("div");
+            d.className = "g-float";
+            d.style.cssText = `left:${8 + i * 14}%;--d:${7 + i * 1.4}s;--dl:${i * 0.8}s;image-rendering:pixelated;`;
+            d.appendChild(assetImg(asset, 72, 72));
+            bg.appendChild(d);
+          },
+        );
+        const grid = $("levelGrid");
+        grid.innerHTML = "";
+        LEVELS.forEach((lv, i) => {
+          const btn = document.createElement("button");
+          btn.className = "lv-btn" + (lv.isBossLevel ? " boss-btn" : "");
+          const spWrap = document.createElement("div");
+          spWrap.style.flexShrink = "0";
+          spWrap.appendChild(assetImg(lv.processes[0].asset, 52, 52));
+          const txtWrap = document.createElement("div");
+          txtWrap.className = "lv-btn-text";
+          txtWrap.innerHTML = `<span class="lv-tag${lv.isBossLevel ? " boss" : ""}">✦ ${lv.tag}</span><br>${lv.name}<small>${lv.numFrames} puertas · ${lv.processes.length} procesos · ${lv.pageSize}B/frame</small>`;
+          btn.appendChild(spWrap);
+          btn.appendChild(txtWrap);
+          btn.addEventListener("click", () => startLevel(i));
+          grid.appendChild(btn);
+        });
+        const lpw = $("luigiPortraitWrap");
+        lpw.innerHTML = "";
+        lpw.appendChild(assetImg("Luigi", 56, 74));
+      }
+
+      /* ══ EVENTS ══ */
+      document.addEventListener("mousemove", (e) => {
+        const c = $("cursor");
+        c.style.left = e.clientX + "px";
+        c.style.top = e.clientY + "px";
+      });
+      $("acceptBtn").addEventListener("click", acceptProcess);
+      $("rejectBtn").addEventListener("click", rejectProcess);
+      $("releaseBtn").addEventListener("click", releaseLastProcess);
+      $("menuBtn").addEventListener("click", () => {
+        stopTimer();
+        showScreen("title");
+      });
+      $("restartBtn").addEventListener("click", () => startLevel(S.li));
+      $("rPlayAgain").addEventListener("click", () => startLevel(S.li));
+      $("rNext").addEventListener("click", () => startLevel(S.li + 1));
+      $("rMenu").addEventListener("click", () => {
+        stopTimer();
+        showScreen("title");
+      });
+      $("bossReject").addEventListener("click", () => {
+        $("bossWarning").classList.add("hidden");
+        rejectProcess();
+      });
+      $("bossRelease").addEventListener("click", () => {
+        $("bossWarning").classList.add("hidden");
+        releaseLastProcess();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Enter") acceptProcess();
+        if (e.code === "KeyR") rejectProcess();
+        if (e.code === "KeyF") releaseLastProcess();
+        if (e.code === "Escape") {
+          stopTimer();
+          showScreen("title");
+        }
+      });
+
+      initTitle();
+      showScreen("title");
+    </script>
+  </body>
+</html>

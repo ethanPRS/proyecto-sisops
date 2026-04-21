@@ -1,0 +1,2636 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bowser's Galaxy — Page Replacement</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;800;900&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #080614;
+        --bg2: #0f0c28;
+        --panel: #12103a;
+        --panel2: #1a1850;
+        --ink: #ffe8b0;
+        --ink2: #c8b880;
+        --ink3: #807060;
+        --gold: #f5c040;
+        --gold-d: #b88a10;
+        --green: #50c870;
+        --green-d: #208040;
+        --red: #e05050;
+        --red-d: #902020;
+        --blue: #4090e0;
+        --purple: #9060e0;
+        --cyan: #40c0d0;
+        --orange: #e08030;
+        --border: #2a2870;
+        --border2: #3a3890;
+        --px: 3px;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        user-select: none;
+      }
+      body {
+        font-family: "Nunito", sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        cursor: none;
+      }
+      button {
+        font-family: inherit;
+        cursor: pointer;
+      }
+      .screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .px-card {
+        background: var(--panel);
+        border: var(--px) solid var(--border2);
+        box-shadow:
+          0 var(--px) 0 var(--border),
+          0 8px 32px rgba(0, 0, 0, 0.5);
+        border-radius: 10px;
+      }
+      .asset-img {
+        display: block;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+
+      /* STARS */
+      .star-bg {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 0;
+      }
+      .star {
+        position: absolute;
+        border-radius: 50%;
+        background: #fff;
+        animation: twinkle var(--d, 3s) var(--dl, 0s) ease-in-out infinite
+          alternate;
+      }
+      @keyframes twinkle {
+        from {
+          opacity: 0.1;
+        }
+        to {
+          opacity: 0.85;
+        }
+      }
+
+      /* ── TITLE ── */
+      #scTitle {
+        flex-direction: column;
+        overflow-y: auto;
+        padding: 20px;
+        background: radial-gradient(ellipse at 50% 30%, #200a50, var(--bg) 70%);
+      }
+      .title-wrap {
+        position: relative;
+        z-index: 1;
+        width: min(1080px, 100%);
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 860px) {
+        .title-wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+      .title-left {
+        padding: 28px 30px 24px;
+      }
+      .t-eyebrow {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.48rem;
+        letter-spacing: 0.2em;
+        color: var(--cyan);
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      .t-main {
+        font-family: "Press Start 2P", monospace;
+        font-size: clamp(1rem, 3.2vw, 1.65rem);
+        line-height: 1.6;
+        color: var(--gold);
+        text-shadow: 0 0 24px rgba(245, 192, 64, 0.55);
+        margin-bottom: 10px;
+      }
+      .t-sub {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--ink2);
+        margin-bottom: 16px;
+      }
+      .t-lead {
+        font-size: 0.88rem;
+        line-height: 1.75;
+        margin-bottom: 18px;
+        max-width: 56ch;
+      }
+      .t-lead strong {
+        color: var(--cyan);
+      }
+      .concept-row {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      .concept-pill {
+        padding: 9px 12px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 2px dashed var(--border2);
+        font-size: 0.82rem;
+        line-height: 1.55;
+      }
+      .concept-pill b {
+        color: var(--gold);
+      }
+      .level-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .lv-btn {
+        text-align: left;
+        min-height: 98px;
+        padding: 12px 14px;
+        background: linear-gradient(160deg, var(--panel2), var(--panel));
+        border: var(--px) solid var(--border2);
+        border-radius: 10px;
+        box-shadow: 0 4px 0 var(--border);
+        font-size: 0.78rem;
+        font-weight: 900;
+        color: var(--ink);
+        transition:
+          transform 0.1s,
+          box-shadow 0.12s,
+          border-color 0.12s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+      }
+      .lv-btn:hover {
+        transform: translateY(-2px);
+        box-shadow:
+          0 6px 0 var(--border),
+          0 0 20px rgba(245, 192, 64, 0.2);
+        border-color: var(--gold);
+      }
+      .lv-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 var(--border);
+      }
+      .lv-btn.boss-btn {
+        background: linear-gradient(160deg, #2a0a0a, #1a0000);
+        border-color: var(--red-d);
+      }
+      .lv-btn.boss-btn:hover {
+        border-color: var(--red);
+        box-shadow:
+          0 6px 0 var(--border),
+          0 0 20px rgba(224, 80, 80, 0.3);
+      }
+      .lv-btn-text small {
+        display: block;
+        font-weight: 700;
+        color: var(--ink3);
+        margin-top: 5px;
+        font-size: 0.66rem;
+      }
+      .lv-tag {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.54rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        font-weight: 900;
+        background: rgba(245, 192, 64, 0.15);
+        color: var(--gold);
+        margin-bottom: 4px;
+        border: 1px solid rgba(245, 192, 64, 0.3);
+      }
+      .lv-tag.boss {
+        background: rgba(224, 80, 80, 0.15);
+        color: var(--red);
+        border-color: rgba(224, 80, 80, 0.4);
+      }
+      .title-right {
+        border: var(--px) solid var(--border2);
+        box-shadow: 0 var(--px) 0 var(--border);
+        border-radius: 10px;
+        min-height: 380px;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(ellipse at 50% 60%, #1a0840, var(--bg) 80%);
+      }
+
+      /* ── GAME ── */
+      #scGame {
+        flex-direction: column;
+        padding: 0;
+        align-items: stretch;
+        background: var(--bg);
+      }
+      .hud {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 7px 12px;
+        flex-shrink: 0;
+        background: rgba(18, 16, 58, 0.96);
+        backdrop-filter: blur(4px);
+        border-bottom: var(--px) solid var(--border2);
+        flex-wrap: wrap;
+        z-index: 10;
+      }
+      .hud-stat {
+        padding: 4px 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1.5px solid var(--border2);
+        border-radius: 7px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .hud-stat .val {
+        color: var(--gold);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .hud-stat .val.red {
+        color: var(--red);
+      }
+      .hud-stat .val.grn {
+        color: var(--green);
+      }
+      .hud-lvl {
+        margin-left: auto;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.46rem;
+        color: var(--ink3);
+        letter-spacing: 0.1em;
+      }
+      .hud-timer {
+        padding: 4px 10px;
+        background: rgba(245, 192, 64, 0.12);
+        border: 1.5px solid var(--gold-d);
+        border-radius: 7px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.82rem;
+        font-weight: 700;
+        min-width: 62px;
+        text-align: center;
+        color: var(--gold);
+      }
+      .hud-timer.warn {
+        background: rgba(224, 80, 80, 0.2);
+        border-color: var(--red);
+        color: var(--red);
+      }
+      .hud-btn {
+        padding: 4px 10px;
+        border: 1.5px solid var(--border2);
+        border-radius: 7px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--ink);
+        box-shadow: 0 2px 0 var(--border);
+      }
+      .hud-btn:hover {
+        border-color: var(--gold);
+        color: var(--gold);
+      }
+      .hud-btn:active {
+        transform: translateY(2px);
+        box-shadow: none;
+      }
+      .desk-area {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 310px;
+        gap: 10px;
+        padding: 10px 12px;
+        min-height: 0;
+      }
+      @media (max-width: 960px) {
+        .desk-area {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* GALAXY COL */
+      .galaxy-col {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+      }
+      .ref-bar {
+        padding: 8px 12px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(18, 16, 58, 0.9);
+        border: var(--px) solid var(--border2);
+        border-radius: 8px;
+      }
+      .ref-label {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.42rem;
+        color: var(--ink3);
+        letter-spacing: 0.1em;
+        flex-shrink: 0;
+      }
+      .ref-scroll {
+        display: flex;
+        gap: 5px;
+        overflow: hidden;
+        flex: 1;
+        align-items: center;
+      }
+      .ref-page {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.5rem;
+        flex-shrink: 0;
+        border: 2px solid var(--border2);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--ink3);
+        transition: all 0.25s;
+      }
+      .ref-page.current {
+        background: var(--gold);
+        color: var(--bg);
+        border-color: var(--gold-d);
+        transform: scale(1.18);
+        box-shadow: 0 0 12px rgba(245, 192, 64, 0.55);
+      }
+      .ref-page.processed {
+        opacity: 0.35;
+      }
+      .ref-page.pfault {
+        background: rgba(224, 80, 80, 0.25);
+        border-color: var(--red-d);
+        color: var(--red);
+      }
+      .ref-page.phit {
+        background: rgba(80, 200, 112, 0.2);
+        border-color: var(--green-d);
+        color: var(--green);
+      }
+      .galaxy-map {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(
+          ellipse at 50% 40%,
+          #1a0840 0%,
+          var(--bg) 70%
+        );
+        border: var(--px) solid var(--border2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .planet-grid {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        padding: 16px;
+      }
+
+      /* PLANET SLOT */
+      .planet-slot {
+        position: relative;
+        width: 110px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        cursor: default;
+        transition: transform 0.15s;
+      }
+      .planet-slot.clickable {
+        cursor: pointer;
+      }
+      .planet-slot.clickable:hover .planet-ring {
+        box-shadow: 0 0 28px rgba(245, 192, 64, 0.7);
+        transform: scale(1.08);
+      }
+      .planet-slot.wrong-flash .planet-ring {
+        animation: wFlash 0.4s ease;
+      }
+      @keyframes wFlash {
+        0%,
+        100% {
+          box-shadow: none;
+        }
+        50% {
+          box-shadow: 0 0 32px rgba(224, 80, 80, 0.9);
+        }
+      }
+      .planet-ring {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        border: 3px solid var(--border2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--panel2);
+        position: relative;
+        overflow: hidden;
+        transition:
+          box-shadow 0.2s,
+          transform 0.15s;
+        image-rendering: pixelated;
+      }
+      .planet-ring.free {
+        background: linear-gradient(135deg, #0e0c2a, #080614);
+        border-style: dashed;
+        opacity: 0.6;
+      }
+      .planet-ring img {
+        width: 78px;
+        height: 78px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        display: block;
+      }
+      /* badges */
+      .p-badge {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.38rem;
+        padding: 2px 5px;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.8);
+        color: var(--gold);
+        border: 1px solid rgba(245, 192, 64, 0.35);
+        z-index: 2;
+      }
+      .p-bit {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.36rem;
+        border: 1.5px solid;
+      }
+      .p-bit.on {
+        background: rgba(80, 200, 112, 0.25);
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .p-bit.off {
+        background: rgba(224, 80, 80, 0.2);
+        border-color: var(--red);
+        color: var(--red);
+      }
+      .p-stamp {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-10deg);
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.34rem;
+        padding: 2px 4px;
+        border: 1.5px solid var(--orange);
+        color: var(--orange);
+        border-radius: 3px;
+        background: rgba(224, 128, 48, 0.15);
+        white-space: nowrap;
+      }
+      .p-pagenum {
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.4rem;
+        background: rgba(0, 0, 0, 0.85);
+        color: var(--ink);
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+      .p-frameid {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.42rem;
+        color: var(--ink3);
+      }
+      .p-free-lbl {
+        position: absolute;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: rgba(255, 255, 255, 0.22);
+      }
+      .conquest-flash {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(245, 192, 64, 0.7),
+          transparent 65%
+        );
+        pointer-events: none;
+        opacity: 0;
+        animation: cFlash 0.5s ease forwards;
+      }
+      @keyframes cFlash {
+        0% {
+          opacity: 1;
+          transform: scale(0.5);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.9);
+        }
+      }
+
+      /* LRU bar overlay */
+      .lru-bar-wrap {
+        position: absolute;
+        bottom: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 68%;
+        height: 4px;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        overflow: hidden;
+      }
+      .lru-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--cyan);
+        transition: width 0.5s;
+      }
+
+      /* KAMEK PANEL */
+      .kamek-col {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .kamek-panel {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .kamek-header {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.44rem;
+        letter-spacing: 0.1em;
+        color: var(--ink3);
+      }
+      .kamek-speech {
+        display: flex;
+        gap: 9px;
+        align-items: flex-start;
+        background: rgba(255, 255, 255, 0.04);
+        border: 2px solid var(--border2);
+        border-radius: 10px;
+        padding: 10px;
+        position: relative;
+      }
+      .kamek-portrait {
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+        border: 2px solid var(--border2);
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.04);
+        overflow: hidden;
+        image-rendering: pixelated;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .kamek-portrait img {
+        width: 52px;
+        height: 52px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        display: block;
+      }
+      .kamek-name {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.44rem;
+        color: var(--purple);
+        margin-bottom: 5px;
+      }
+      .kamek-text {
+        font-size: 0.75rem;
+        line-height: 1.6;
+      }
+      .kamek-text strong {
+        color: var(--gold);
+      }
+      .kamek-text em {
+        color: var(--cyan);
+      }
+      .event-badge {
+        text-align: center;
+        padding: 8px;
+        border-radius: 7px;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.54rem;
+        letter-spacing: 0.04em;
+      }
+      .event-badge.fault {
+        background: rgba(224, 80, 80, 0.15);
+        border: 2px solid var(--red-d);
+        color: var(--red);
+      }
+      .event-badge.hit {
+        background: rgba(80, 200, 112, 0.12);
+        border: 2px solid var(--green-d);
+        color: var(--green);
+      }
+      .event-badge.wait {
+        background: rgba(245, 192, 64, 0.12);
+        border: 2px solid var(--gold-d);
+        color: var(--gold);
+      }
+      .event-badge .sub {
+        font-size: 0.46rem;
+        color: var(--ink3);
+        font-family: "Nunito", sans-serif;
+        font-weight: 700;
+        margin-top: 3px;
+        display: block;
+      }
+      /* algo table */
+      .algo-table {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1.5px solid var(--border2);
+        border-radius: 7px;
+        overflow: hidden;
+      }
+      .algo-table-hdr {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.38rem;
+        color: var(--ink3);
+        padding: 5px 8px;
+        background: rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid var(--border2);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .algo-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        padding: 5px 8px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        font-family: "JetBrains Mono", monospace;
+        transition: background 0.2s;
+      }
+      .algo-row:last-child {
+        border-bottom: none;
+      }
+      .algo-row.evict {
+        background: rgba(224, 80, 80, 0.15);
+        color: var(--red);
+      }
+      .algo-row .pg {
+        color: var(--cyan);
+      }
+      .algo-row .fr {
+        color: var(--gold);
+      }
+      .algo-row .ex {
+        color: var(--ink3);
+        font-size: 0.62rem;
+      }
+      /* portal */
+      .portal-box {
+        background: linear-gradient(
+          135deg,
+          rgba(144, 96, 224, 0.15),
+          rgba(64, 144, 224, 0.1)
+        );
+        border: 2px solid var(--purple);
+        border-radius: 9px;
+        padding: 10px;
+        text-align: center;
+        animation: portalIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      @keyframes portalIn {
+        from {
+          transform: scale(0.3) rotate(-15deg);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .portal-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.44rem;
+        color: var(--purple);
+        margin-bottom: 7px;
+        letter-spacing: 0.1em;
+      }
+      .portal-future {
+        display: flex;
+        gap: 4px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .portal-pg {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.42rem;
+        border: 1.5px solid var(--border2);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .portal-pg.evict-soon {
+        background: rgba(224, 80, 80, 0.2);
+        border-color: var(--red-d);
+        color: var(--red);
+      }
+      .portal-pg.safe {
+        background: rgba(80, 200, 112, 0.15);
+        border-color: var(--green-d);
+        color: var(--green);
+      }
+      /* BOTTOM BAR */
+      .bottom-bar {
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        gap: 10px;
+        padding: 7px 12px;
+        background: rgba(18, 16, 58, 0.96);
+        border-top: var(--px) solid var(--border2);
+        flex-shrink: 0;
+      }
+      @media (max-width: 960px) {
+        .bottom-bar {
+          grid-template-columns: 1fr;
+        }
+      }
+      .bowser-hud {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 6px;
+      }
+      .bowser-portrait {
+        border: 2px solid var(--gold-d);
+        border-radius: 8px;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.04);
+        image-rendering: pixelated;
+      }
+      .bowser-portrait img {
+        width: 52px;
+        height: 68px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        display: block;
+      }
+      .bowser-meta h3 {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.48rem;
+        color: var(--gold);
+        margin-bottom: 5px;
+        letter-spacing: 0.1em;
+      }
+      .crowns-row {
+        display: flex;
+        gap: 5px;
+      }
+      .crown-icon {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        image-rendering: pixelated;
+        transition: transform 0.3s;
+      }
+      .crown-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .crown-icon.lost {
+        filter: grayscale(1);
+        opacity: 0.25;
+        transform: scale(0.8);
+      }
+      .crown-icon.lose-anim {
+        animation: loseLife 0.4s ease;
+      }
+      @keyframes loseLife {
+        0% {
+          transform: scale(1.4) rotate(-15deg);
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(0.8);
+          opacity: 0.25;
+        }
+      }
+      .msg-bar {
+        padding: 7px 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+      }
+      .msg-title {
+        font-weight: 900;
+        font-size: 0.84rem;
+      }
+      .msg-text {
+        font-size: 0.74rem;
+        line-height: 1.55;
+      }
+      .msg-text strong {
+        color: var(--gold);
+      }
+      .msg-text em {
+        color: var(--cyan);
+      }
+
+      /* ── BELADY ── */
+      #scBelady {
+        background: radial-gradient(ellipse at 50% 30%, #2a0000, var(--bg) 70%);
+      }
+      .belady-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: min(900px, 100%);
+        padding: 16px;
+      }
+      .belady-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.68rem;
+        color: var(--red);
+        text-shadow: 0 0 16px rgba(224, 80, 80, 0.5);
+        letter-spacing: 0.08em;
+        text-align: center;
+      }
+      .belady-sub {
+        font-size: 0.78rem;
+        color: var(--ink2);
+        text-align: center;
+      }
+      .belady-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        flex: 1;
+      }
+      .belady-side {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border: 2px solid var(--border2);
+        border-radius: 10px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .belady-side-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.48rem;
+        letter-spacing: 0.1em;
+        text-align: center;
+        margin-bottom: 4px;
+      }
+      .bst-blue {
+        color: var(--blue);
+      }
+      .bst-red {
+        color: var(--orange);
+      }
+      .belady-faults {
+        font-family: "Press Start 2P", monospace;
+        text-align: center;
+        font-size: 0.55rem;
+        margin-bottom: 4px;
+      }
+      .belady-faults .n {
+        font-size: 1.3rem;
+        display: block;
+      }
+      .bf-blue .n {
+        color: var(--blue);
+      }
+      .bf-red .n {
+        color: var(--orange);
+      }
+      .belady-planets {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .mini-planet {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 2px solid var(--border2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--panel2);
+        position: relative;
+        image-rendering: pixelated;
+        flex-shrink: 0;
+      }
+      .mini-planet img {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .mpn {
+        position: absolute;
+        bottom: 2px;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.34rem;
+        background: rgba(0, 0, 0, 0.85);
+        padding: 1px 4px;
+        border-radius: 2px;
+        color: var(--ink);
+      }
+      .belady-btns {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 6px;
+      }
+
+      /* ── RESULTS ── */
+      #scResults {
+        overflow-y: auto;
+        padding: 20px;
+        align-items: flex-start;
+        justify-content: center;
+        background: radial-gradient(ellipse at 50% 20%, #200a50, var(--bg) 70%);
+      }
+      .results-wrap {
+        width: min(900px, 100%);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin: auto;
+      }
+      .results-head {
+        text-align: center;
+        padding: 16px;
+      }
+      .results-trophy {
+        font-size: 3rem;
+        animation: tSpin 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      @keyframes tSpin {
+        from {
+          transform: scale(0.3) rotate(-20deg);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .results-title {
+        font-family: "Press Start 2P", monospace;
+        font-size: clamp(0.9rem, 3vw, 1.4rem);
+        color: var(--gold);
+        text-shadow: 0 0 18px rgba(245, 192, 64, 0.5);
+        margin: 10px 0 5px;
+        letter-spacing: 0.05em;
+      }
+      .results-sub {
+        font-size: 0.85rem;
+        color: var(--cyan);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      .stars-row {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin: 8px 0;
+      }
+      .star-ico {
+        font-size: 2rem;
+      }
+      .star-ico.lit {
+        animation: sPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      .star-ico.dim {
+        filter: grayscale(1);
+        opacity: 0.3;
+      }
+      @keyframes sPop {
+        from {
+          transform: scale(0.4) rotate(-20deg);
+        }
+        to {
+          transform: none;
+        }
+      }
+      .r-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 14px;
+        background: var(--panel);
+        border: var(--px) solid var(--border2);
+        border-radius: 10px;
+        box-shadow: 0 var(--px) 0 var(--border);
+      }
+      @media (max-width: 640px) {
+        .r-stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      .r-stat {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1.5px solid var(--border2);
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+      }
+      .r-stat .n {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: var(--gold);
+      }
+      .r-stat .n.red {
+        color: var(--red);
+      }
+      .r-stat .n.grn {
+        color: var(--green);
+      }
+      .r-stat .k {
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        color: var(--ink3);
+        letter-spacing: 0.1em;
+      }
+      .r-seq {
+        padding: 12px;
+        background: var(--panel);
+        border: var(--px) solid var(--border2);
+        border-radius: 10px;
+        box-shadow: 0 var(--px) 0 var(--border);
+      }
+      .r-seq-label {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.44rem;
+        color: var(--ink3);
+        margin-bottom: 7px;
+        letter-spacing: 0.1em;
+      }
+      .r-seq-row {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .r-seq-item {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.42rem;
+        border: 1.5px solid var(--border2);
+      }
+      .r-seq-item.fault {
+        background: rgba(224, 80, 80, 0.2);
+        border-color: var(--red-d);
+        color: var(--red);
+      }
+      .r-seq-item.hit {
+        background: rgba(80, 200, 112, 0.15);
+        border-color: var(--green-d);
+        color: var(--green);
+      }
+      .refl-box {
+        padding: 14px;
+        background: var(--panel);
+        border: var(--px) solid var(--border2);
+        border-radius: 10px;
+        box-shadow: 0 var(--px) 0 var(--border);
+      }
+      .refl-title {
+        font-weight: 900;
+        font-size: 0.9rem;
+        color: var(--gold);
+        margin-bottom: 7px;
+      }
+      .refl-text {
+        font-size: 0.78rem;
+        line-height: 1.65;
+      }
+      .refl-text strong {
+        color: var(--gold);
+      }
+      .refl-text em {
+        color: var(--cyan);
+      }
+      .r-btns {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding-bottom: 16px;
+      }
+      /* generic button */
+      .g-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 900;
+        font-size: 0.78rem;
+        cursor: pointer;
+        border: var(--px) solid;
+        box-shadow: 0 4px 0;
+        transition:
+          transform 0.08s,
+          box-shadow 0.08s;
+        color: var(--ink);
+      }
+      .g-btn:hover {
+        transform: translateY(-1px);
+      }
+      .g-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 1px 0 !important;
+      }
+      .g-btn.primary {
+        background: linear-gradient(
+          180deg,
+          rgba(245, 192, 64, 0.3),
+          rgba(245, 192, 64, 0.12)
+        );
+        border-color: var(--gold-d);
+        box-shadow: 0 4px 0 var(--gold-d);
+      }
+      .g-btn.secondary {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--border2);
+        box-shadow: 0 4px 0 var(--border);
+      }
+
+      /* FLOATERS */
+      #scoreFloater {
+        position: fixed;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.62rem;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0;
+      }
+      #scoreFloater.pop {
+        animation: sfPop 0.9s ease forwards;
+      }
+      @keyframes sfPop {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1.2);
+        }
+        60% {
+          opacity: 1;
+          transform: translateY(-42px) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-68px) scale(0.9);
+        }
+      }
+      .fireball {
+        position: fixed;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 400;
+        background: radial-gradient(
+          circle,
+          #fff 20%,
+          var(--orange) 50%,
+          var(--red) 100%
+        );
+        box-shadow: 0 0 12px var(--orange);
+        animation: fbAnim 0.5s ease forwards;
+      }
+      @keyframes fbAnim {
+        from {
+          opacity: 1;
+          transform: scale(1.4);
+        }
+        to {
+          opacity: 0;
+          transform: scale(0.2);
+        }
+      }
+      #cursor {
+        position: fixed;
+        width: 22px;
+        height: 30px;
+        pointer-events: none;
+        z-index: 9999;
+        transform: translate(-2px, -2px);
+      }
+      .shake {
+        animation: shk 0.35s ease;
+      }
+      @keyframes shk {
+        10% {
+          transform: translate(-5px, -3px);
+        }
+        20% {
+          transform: translate(5px, 2px);
+        }
+        30% {
+          transform: translate(-4px, 3px);
+        }
+        40% {
+          transform: translate(4px, -2px);
+        }
+        50% {
+          transform: translate(-3px, 1px);
+        }
+        60% {
+          transform: translate(3px, -1px);
+        }
+        70% {
+          transform: translate(-2px, 2px);
+        }
+        80% {
+          transform: translate(2px, -2px);
+        }
+        100% {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="star-bg" id="starBg"></div>
+
+    <!-- ══ TITLE ══ -->
+    <div id="scTitle" class="screen">
+      <div class="title-wrap">
+        <section class="title-left px-card">
+          <div class="t-eyebrow">Sisops · UDEM · Juego 2 de 2</div>
+          <h1 class="t-main">Bowser's<br />Galaxy<br />Conquest</h1>
+          <p class="t-sub">Simulador de Page Replacement</p>
+          <p class="t-lead">
+            Bowser conquista galaxias. Cada planeta es un
+            <strong>frame de memoria</strong>. Cuando llega un mundo nuevo sin
+            espacio libre, elige qué planeta desalojar según el algoritmo que
+            Kamek te indique.
+          </p>
+          <div class="concept-row">
+            <div class="concept-pill">
+              🪐 Cada <b>planeta</b> = un frame de memoria física
+            </div>
+            <div class="concept-pill">
+              🌍 Cada <b>mundo nuevo</b> = una página del reference string
+            </div>
+            <div class="concept-pill">
+              💥 Sin frames libres = <b>Page Fault</b> — ¡elige qué planeta
+              desalojar!
+            </div>
+            <div class="concept-pill">
+              🔮 Kamek revela el futuro solo con <b>Algoritmo Óptimo</b>
+            </div>
+          </div>
+          <div class="level-grid" id="levelGrid"></div>
+        </section>
+        <section class="title-right" id="titlePreview"></section>
+      </div>
+    </div>
+
+    <!-- ══ GAME ══ -->
+    <div id="scGame" class="screen hidden">
+      <div
+        style="display: flex; flex-direction: column; width: 100%; height: 100%"
+      >
+        <div class="hud">
+          <div class="hud-stat">
+            Score <span class="val" id="hScore">0</span>
+          </div>
+          <div class="hud-stat">
+            Faults <span class="val red" id="hFaults">0</span>
+          </div>
+          <div class="hud-stat">
+            Hits <span class="val grn" id="hHits">0</span>
+          </div>
+          <div class="hud-stat">
+            Frames <span class="val" id="hFrames">0</span>
+          </div>
+          <div class="hud-timer" id="hTimer">—</div>
+          <div class="hud-lvl" id="hLvl">Nivel</div>
+          <button class="hud-btn" id="menuBtn">Menú</button>
+          <button class="hud-btn" id="restartBtn">↺</button>
+        </div>
+        <div class="desk-area">
+          <div class="galaxy-col">
+            <div class="ref-bar px-card">
+              <span class="ref-label">REF STRING</span>
+              <div class="ref-scroll" id="refScroll"></div>
+            </div>
+            <div class="galaxy-map" id="galaxyMap">
+              <div class="planet-grid" id="planetGrid"></div>
+            </div>
+          </div>
+          <div class="kamek-col px-card">
+            <div class="kamek-panel">
+              <div class="kamek-header">Consejero Kamek</div>
+              <div class="kamek-speech">
+                <div class="kamek-portrait">
+                  <img
+                    src="img/Kamek.png"
+                    alt="Kamek"
+                    class="asset-img"
+                    style="width: 52px; height: 52px"
+                  />
+                </div>
+                <div>
+                  <div class="kamek-name">Kamek</div>
+                  <div class="kamek-text" id="kamekText">
+                    Listo para servir a Su Majestad...
+                  </div>
+                </div>
+              </div>
+              <div class="event-badge hidden" id="eventBadge"></div>
+              <div id="algoPanel"></div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-bar">
+          <section class="bowser-hud px-card">
+            <div class="bowser-portrait">
+              <img
+                src="img/Bowser.png"
+                alt="Bowser"
+                class="asset-img"
+                style="width: 52px; height: 68px"
+              />
+            </div>
+            <div class="bowser-meta">
+              <h3>BOWSER</h3>
+              <div class="crowns-row" id="crownsRow"></div>
+            </div>
+          </section>
+          <section class="msg-bar px-card">
+            <div class="msg-title" id="msgTitle">Conquista iniciada</div>
+            <div class="msg-text" id="msgText">
+              Espera el <strong>PAGE FAULT</strong> y haz clic en el planeta
+              correcto.
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BELADY BOSS ══ -->
+    <div id="scBelady" class="screen hidden">
+      <div class="belady-wrap px-card">
+        <div class="belady-title">BOSS — ANOMALÍA DE BELADY</div>
+        <div class="belady-sub">
+          Mismo string, FIFO, distinto número de frames. ¿Más frames siempre
+          ayuda?
+        </div>
+        <div
+          id="beladyRefBar"
+          style="
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 6px;
+          "
+        ></div>
+        <div class="belady-grid">
+          <div class="belady-side">
+            <div class="belady-side-title bst-blue">Ejército A — 3 Frames</div>
+            <div class="belady-faults bf-blue" id="bFaultsL">
+              Faults<span class="n" id="bFaultsLN">0</span>
+            </div>
+            <div class="belady-planets" id="bPlanetsL"></div>
+          </div>
+          <div class="belady-side">
+            <div class="belady-side-title bst-red">Ejército B — 4 Frames</div>
+            <div class="belady-faults bf-red" id="bFaultsR">
+              Faults<span class="n" id="bFaultsRN">0</span>
+            </div>
+            <div class="belady-planets" id="bPlanetsR"></div>
+          </div>
+        </div>
+        <div
+          id="beladyMsg"
+          style="
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--ink2);
+            padding: 6px;
+            min-height: 44px;
+          "
+        ></div>
+        <div class="belady-btns">
+          <button class="g-btn primary" id="bStepBtn">▶ Siguiente paso</button>
+          <button class="g-btn secondary" id="bMenuBtn">🏠 Menú</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RESULTS ══ -->
+    <div id="scResults" class="screen hidden">
+      <div class="results-wrap">
+        <div class="results-head">
+          <div class="results-trophy" id="rTrophy">🏆</div>
+          <h1 class="results-title" id="rTitle">Galaxia Conquistada</h1>
+          <div class="results-sub" id="rSub">Resumen</div>
+          <div class="stars-row" id="starsRow"></div>
+        </div>
+        <div class="r-stats px-card">
+          <div class="r-stat">
+            <div class="n" id="rScore">0</div>
+            <div class="k">Puntaje</div>
+          </div>
+          <div class="r-stat">
+            <div class="n red" id="rFaults">0</div>
+            <div class="k">Page Faults</div>
+          </div>
+          <div class="r-stat">
+            <div class="n grn" id="rHits">0</div>
+            <div class="k">Hits</div>
+          </div>
+          <div class="r-stat">
+            <div class="n" id="rFaultRate">0%</div>
+            <div class="k">Fault Rate</div>
+          </div>
+        </div>
+        <div class="r-seq px-card">
+          <div class="r-seq-label">Historial — Verde=Hit / Rojo=Fault</div>
+          <div class="r-seq-row" id="rSeqRow"></div>
+        </div>
+        <div class="refl-box px-card">
+          <div class="refl-title">Lo que aprendiste</div>
+          <div class="refl-text" id="rRefl"></div>
+        </div>
+        <div class="r-btns">
+          <button class="g-btn primary" id="rPlayAgain">Repetir</button>
+          <button class="g-btn primary" id="rNext">Siguiente</button>
+          <button class="g-btn secondary" id="rMenu">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="scoreFloater">+20</div>
+    <div id="cursor">
+      <svg viewBox="0 0 22 30" width="22" height="30">
+        <path
+          d="M5 26L5 11Q5 7 9 7L9 3Q9 1 11 1Q13 1 13 3L13 7Q15 7 16 9L17 11Q17 13 16 14L16 21Q16 25 12 26Z"
+          fill="#ffe8b0"
+          stroke="#2d1b00"
+          stroke-width="1.8"
+        />
+        <rect
+          x="11"
+          y="3"
+          width="4"
+          height="7"
+          rx="2"
+          fill="#ffe8b0"
+          stroke="#2d1b00"
+          stroke-width="1.3"
+        />
+        <rect
+          x="14"
+          y="8"
+          width="3"
+          height="6"
+          rx="1.5"
+          fill="#ffe8b0"
+          stroke="#2d1b00"
+          stroke-width="1.3"
+        />
+        <rect
+          x="3"
+          y="12"
+          width="3"
+          height="6"
+          rx="1.5"
+          fill="#ffe8b0"
+          stroke="#2d1b00"
+          stroke-width="1.3"
+        />
+      </svg>
+    </div>
+
+    <script>
+      "use strict";
+
+      /* ══ ASSETS ══ */
+      const PA = (n) => "img/Planet" + n + ".png"; // Planet0.png … Planet8.png — provided by user
+      const pageAsset = (p) => PA(p % 9);
+      function mkImg(src, w, h) {
+        const i = document.createElement("img");
+        i.src = src;
+        i.className = "asset-img";
+        if (w) i.style.width = w + "px";
+        if (h) i.style.height = h + "px";
+        i.style.objectFit = "contain";
+        i.draggable = false;
+        return i;
+      }
+
+      /* ══ AUDIO ══ */
+      let _ac = null;
+      function ac() {
+        return (
+          _ac ||
+          (_ac = new (window.AudioContext || window.webkitAudioContext)())
+        );
+      }
+      function snd(t) {
+        try {
+          const c = ac(),
+            n = c.currentTime;
+          const p = (f, s, g = 0.2, d = 0.16, tp = "triangle") => {
+            const o = c.createOscillator(),
+              ga = c.createGain();
+            o.connect(ga);
+            ga.connect(c.destination);
+            o.type = tp;
+            o.frequency.value = f;
+            ga.gain.setValueAtTime(g, s);
+            ga.gain.exponentialRampToValueAtTime(0.001, s + d);
+            o.start(s);
+            o.stop(s + d + 0.05);
+          };
+          if (t === "hit") {
+            p(880, n, 0.13, 0.08);
+            p(1100, n + 0.04, 0.09, 0.07);
+          }
+          if (t === "fault") {
+            p(150, n, 0.25, 0.35, "sawtooth");
+            p(110, n + 0.12, 0.2, 0.35, "sawtooth");
+          }
+          if (t === "correct") {
+            p(523, n, 0.2, 0.12);
+            p(659, n + 0.1, 0.2, 0.12);
+            p(784, n + 0.2, 0.18, 0.22);
+            p(1047, n + 0.28, 0.15, 0.28);
+          }
+          if (t === "wrong") {
+            p(280, n, 0.22, 0.28, "square");
+            p(200, n + 0.15, 0.2, 0.28, "square");
+          }
+          if (t === "portal") {
+            [392, 494, 587, 784, 988].forEach((f, i) =>
+              p(f, n + i * 0.09, 0.22, 0.3),
+            );
+          }
+          if (t === "boss") {
+            p(55, n, 0.35, 0.6, "sawtooth");
+            p(80, n + 0.1, 0.28, 0.5, "square");
+          }
+          if (t === "star") {
+            [523, 659, 784, 1047].forEach((f, i) =>
+              p(f, n + i * 0.1, 0.2, 0.28),
+            );
+          }
+          if (t === "fire") {
+            p(440, n, 0.16, 0.1);
+            p(550, n + 0.05, 0.1, 0.08);
+          }
+        } catch (e) {}
+      }
+
+      /* ══ LEVELS ══ */
+      const LEVELS = [
+        {
+          id: 0,
+          name: "Nivel 1 · FIFO",
+          algo: "FIFO",
+          tag: "Tutorial",
+          numFrames: 3,
+          numLives: 3,
+          ref: [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5],
+          starT: [260, 180, 100],
+          intro:
+            "¡Majestad! Usamos <strong>FIFO</strong> — el primero en llegar es el primero en irse. El planeta más <em>antiguo</em> debe ser desalojado.",
+          refl: "<strong>FIFO</strong> (First-In, First-Out) siempre desaloja el frame que lleva más tiempo en memoria, sin importar si fue visitado recientemente. Simple pero puede ser ineficiente.",
+        },
+        {
+          id: 1,
+          name: "Nivel 2 · LRU",
+          algo: "LRU",
+          tag: "Recency",
+          numFrames: 4,
+          numLives: 3,
+          ref: [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2],
+          starT: [320, 220, 120],
+          intro:
+            "<strong>LRU</strong> — Least Recently Used. Desalojamos el planeta que lleva más tiempo <em>sin ser visitado</em>. El más olvidado debe irse.",
+          refl: "<strong>LRU</strong> usa el historial de accesos: el menos visitado recientemente sale primero. Es más inteligente que FIFO pero requiere rastrear el tiempo de último uso por frame.",
+        },
+        {
+          id: 2,
+          name: "Nivel 3 · Clock",
+          algo: "Clock",
+          tag: "Use Bit",
+          numFrames: 3,
+          numLives: 3,
+          ref: [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5],
+          starT: [280, 190, 100],
+          intro:
+            "El <strong>Algoritmo Clock</strong>. Cada planeta tiene un <strong>bit de uso</strong> (0 o 1). La manecilla rota: si el bit es 1 lo pone en 0. Si ya es 0, ese planeta sale.",
+          refl: "<strong>Clock</strong> aproxima LRU con un simple bit de referencia por frame. La manecilla da una segunda oportunidad a los frames usados recientemente antes de desalojarlos.",
+        },
+        {
+          id: 3,
+          name: "Nivel 4 · Segunda Oportunidad",
+          algo: "SC",
+          tag: "Pardon",
+          numFrames: 4,
+          numLives: 3,
+          ref: [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2],
+          starT: [320, 220, 120],
+          intro:
+            "<strong>Segunda Oportunidad</strong>. Como FIFO pero con piedad: si el planeta más viejo tiene sello de indulto, lo conservamos y va al final de la cola.",
+          refl: "<strong>Segunda Oportunidad</strong> combina FIFO con un bit de referencia. Los planetas frecuentes reciben una segunda oportunidad antes de ser desalojados definitivamente.",
+        },
+        {
+          id: 4,
+          name: "Nivel 5 · Óptimo",
+          algo: "OPT",
+          tag: "Portal",
+          numFrames: 3,
+          numLives: 3,
+          ref: [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2],
+          starT: [360, 260, 140],
+          intro:
+            "¡Mi hechizo más poderoso! El <strong>Portal Temporal</strong> revela el futuro. Desalojamos el planeta que tardará <em>más tiempo en volver a ser necesario</em>.",
+          refl: "<strong>Optimal</strong> (Bélády) requiere conocer el futuro — por eso es teórico. Produce el mínimo posible de page faults y se usa como referencia comparativa para los demás algoritmos.",
+        },
+        {
+          id: 5,
+          name: "BOSS · Anomalía de Belady",
+          algo: "BELADY",
+          tag: "BOSS",
+          numFrames: 3,
+          numLives: 3,
+          isBoss: true,
+          ref: [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5],
+          starT: [999, 999, 999],
+          intro:
+            "¡Majestad... hay algo extraño! Con <strong>FIFO</strong>, usar <em>más frames</em> puede producir <em>más faults</em>. Esto se llama la <strong>Anomalía de Belady</strong>.",
+          refl: "La <strong>Anomalía de Belady</strong>: con FIFO, añadir más frames puede empeorar el rendimiento. Esto NO ocurre con LRU u Optimal, que son algoritmos de tipo <em>stack</em>.",
+        },
+      ];
+
+      /* ══ STATE ══ */
+      const S = {
+        li: 0,
+        score: 0,
+        lives: 3,
+        faults: 0,
+        hits: 0,
+        frames: [],
+        step: 0,
+        ref: [],
+        algo: "",
+        awaitEvict: false,
+        clockPtr: 0,
+        scQueue: [],
+        history: [],
+      };
+      const $ = (id) => document.getElementById(id);
+      const lv = () => LEVELS[S.li];
+
+      /* ══ UI HELPERS ══ */
+      function showFloater(x, y, txt, c = "#f5c040") {
+        const el = $("scoreFloater");
+        el.textContent = txt;
+        el.style.color = c;
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.classList.remove("pop");
+        void el.offsetWidth;
+        el.classList.add("pop");
+      }
+      function speak(t, b) {
+        $("msgTitle").textContent = t;
+        $("msgText").innerHTML = b;
+      }
+      function kamek(t) {
+        $("kamekText").innerHTML = t;
+      }
+      function showEv(cls, main, sub = "") {
+        const el = $("eventBadge");
+        el.className = "event-badge " + cls;
+        el.innerHTML = main + (sub ? `<span class="sub">${sub}</span>` : "");
+        el.classList.remove("hidden");
+      }
+      function hideEv() {
+        $("eventBadge").classList.add("hidden");
+      }
+      function shakeGame() {
+        $("scGame").classList.remove("shake");
+        void $("scGame").offsetWidth;
+        $("scGame").classList.add("shake");
+        $("scGame").addEventListener(
+          "animationend",
+          () => $("scGame").classList.remove("shake"),
+          { once: true },
+        );
+      }
+
+      /* ══ TIMER ══ */
+      let _ti = null,
+        _ts = 0;
+      function startTimer() {
+        clearInterval(_ti);
+        _ts = 0;
+        $("hTimer").textContent = "0s";
+        $("hTimer").classList.remove("warn");
+        _ti = setInterval(() => {
+          _ts++;
+          $("hTimer").textContent = _ts + "s";
+          $("hTimer").classList.toggle("warn", _ts > 25);
+        }, 1000);
+      }
+      function stopTimer() {
+        clearInterval(_ti);
+        $("hTimer").textContent = "—";
+        $("hTimer").classList.remove("warn");
+      }
+
+      /* ══ START ══ */
+      function startLevel(li) {
+        S.li = li;
+        const lev = LEVELS[li];
+        if (lev.isBoss) {
+          showScreen("belady");
+          initBelady();
+          return;
+        }
+        S.score = 0;
+        S.lives = lev.numLives;
+        S.faults = 0;
+        S.hits = 0;
+        S.step = 0;
+        S.ref = [...lev.ref];
+        S.algo = lev.algo;
+        S.awaitEvict = false;
+        S.history = [];
+        S.frames = Array.from({ length: lev.numFrames }, (_, i) => ({
+          id: i,
+          page: null,
+          arr: -1,
+          last: -1,
+          useB: 0,
+          sc: false,
+        }));
+        S.clockPtr = 0;
+        S.scQueue = [];
+        showScreen("game");
+        renderHUD();
+        renderCrowns();
+        renderRef();
+        renderPlanets();
+        kamek(lev.intro);
+        hideEv();
+        $("algoPanel").innerHTML = "";
+        $("hLvl").textContent = lev.name;
+        speak(
+          "Conquista iniciada",
+          `Algoritmo: <strong>${lev.algo}</strong>. Cuando haya <strong>Page Fault</strong>, haz clic en el planeta correcto.`,
+        );
+        startTimer();
+        setTimeout(() => step(), 600);
+      }
+
+      /* ══ ALGORITHMS ══ */
+      function inFrames(pg) {
+        return S.frames.findIndex((f) => f.page === pg);
+      }
+      function freeFrame() {
+        return S.frames.findIndex((f) => f.page === null);
+      }
+      function correctEvict() {
+        const a = S.algo;
+        if (a === "FIFO") {
+          let bi = -1,
+            bt = Infinity;
+          S.frames.forEach((f, i) => {
+            if (f.page !== null && f.arr < bt) {
+              bt = f.arr;
+              bi = i;
+            }
+          });
+          return bi;
+        }
+        if (a === "LRU") {
+          let bi = -1,
+            bt = Infinity;
+          S.frames.forEach((f, i) => {
+            if (f.page !== null && f.last < bt) {
+              bt = f.last;
+              bi = i;
+            }
+          });
+          return bi;
+        }
+        if (a === "Clock") {
+          const n = S.frames.length;
+          let p = S.clockPtr;
+          for (let i = 0; i < n * 2; i++) {
+            if (S.frames[p].useB === 0) return p;
+            S.frames[p].useB = 0;
+            p = (p + 1) % n;
+          }
+          return S.clockPtr;
+        }
+        if (a === "SC") {
+          const n = S.frames.length;
+          for (let i = 0; i < n * 2; i++) {
+            const p = S.scQueue[0];
+            if (!S.frames[p].sc) {
+              S.scQueue.shift();
+              return p;
+            }
+            S.frames[p].sc = false;
+            S.scQueue.push(S.scQueue.shift());
+          }
+          return S.scQueue[0] ?? 0;
+        }
+        if (a === "OPT") {
+          const fut = S.ref.slice(S.step + 1);
+          let bi = -1,
+            bd = -1;
+          S.frames.forEach((f, i) => {
+            if (f.page === null) return;
+            const ni = fut.indexOf(f.page);
+            const d = ni === -1 ? Infinity : ni;
+            if (d > bd) {
+              bd = d;
+              bi = i;
+            }
+          });
+          return bi;
+        }
+        return 0;
+      }
+      function fillFrame(fi, pg) {
+        S.frames[fi].page = pg;
+        S.frames[fi].arr = S.step;
+        S.frames[fi].last = S.step;
+        S.frames[fi].useB = 1;
+        S.frames[fi].sc = false;
+        if (S.algo === "SC" && !S.scQueue.includes(fi)) S.scQueue.push(fi);
+        if (S.algo === "Clock") S.clockPtr = (fi + 1) % S.frames.length;
+      }
+
+      /* ══ STEP ══ */
+      function step() {
+        if (S.step >= S.ref.length) {
+          showResults();
+          return;
+        }
+        const pg = S.ref[S.step];
+        renderRef();
+        const fi = inFrames(pg);
+        if (fi >= 0) {
+          // HIT
+          S.hits++;
+          S.score += 20;
+          S.frames[fi].last = S.step;
+          S.frames[fi].useB = 1;
+          S.frames[fi].sc = true;
+          S.history.push("hit");
+          showFloater(
+            window.innerWidth * 0.35,
+            window.innerHeight * 0.4,
+            "+20",
+            var_green,
+          );
+          showEv("hit", "HIT", `pg${pg} en Frame ${fi}`);
+          snd("hit");
+          kamek(
+            `La página <strong>${pg}</strong> ya está en el <em>Frame ${fi}</em>. ¡Hit!`,
+          );
+          speak(
+            "Hit!",
+            `Página <strong>${pg}</strong> ya en memoria. +20 puntos.`,
+          );
+          renderHUD();
+          renderPlanets();
+          S.step++;
+          setTimeout(() => step(), 900);
+        } else {
+          // FAULT
+          S.faults++;
+          S.history.push("fault");
+          snd("fault");
+          const ff = freeFrame();
+          if (ff >= 0) {
+            fillFrame(ff, pg);
+            showEv("fault", "PAGE FAULT", `pg${pg} → Frame ${ff} libre`);
+            kamek(
+              `Page fault en <strong>${pg}</strong>. Frame libre F${ff} disponible. ¡Conquistado!`,
+            );
+            speak(
+              "Page Fault — Frame libre",
+              `Página <strong>${pg}</strong> entra al frame libre F${ff}.`,
+            );
+            renderHUD();
+            renderPlanets();
+            S.step++;
+            setTimeout(() => step(), 900);
+          } else {
+            S.awaitEvict = true;
+            const ce = correctEvict();
+            showEv("wait", "PAGE FAULT", "Haz clic en el planeta a desalojar");
+            showAlgoPanel(ce);
+            if (S.algo === "OPT") showPortal(ce);
+            kamek(hintKamek(ce));
+            speak(
+              "Page Fault — Elige planeta",
+              `No hay frames libres. Haz clic en el planeta correcto según <strong>${S.algo}</strong>.`,
+            );
+            renderHUD();
+            renderPlanets(true);
+          }
+        }
+      }
+      const var_green = "#50c870";
+
+      function evict(clicked) {
+        if (!S.awaitEvict) return;
+        const ce = correctEvict(),
+          pg = S.ref[S.step];
+        // Apply clock bit clearing
+        if (S.algo === "Clock") {
+          const n = S.frames.length;
+          let p = S.clockPtr;
+          for (let i = 0; i < n * 2; i++) {
+            if (p === ce) break;
+            S.frames[p].useB = 0;
+            p = (p + 1) % n;
+          }
+          S.clockPtr = (ce + 1) % n;
+        }
+        if (S.algo === "SC") {
+          const idx = S.scQueue.indexOf(ce);
+          if (idx >= 0) S.scQueue.splice(idx, 1);
+        }
+        if (clicked === ce) {
+          // Correct
+          S.score += 50;
+          S.awaitEvict = false;
+          snd("correct");
+          showFloater(
+            window.innerWidth * 0.35,
+            window.innerHeight * 0.4,
+            "+50",
+            "#f5c040",
+          );
+          const evPg = S.frames[ce].page;
+          fireEffect(ce);
+          S.frames[ce].page = null;
+          fillFrame(ce, pg);
+          hideEv();
+          $("algoPanel").innerHTML = "";
+          kamek(
+            `¡Correcto! pg<strong>${evPg}</strong> desalojado para dar paso a pg<strong>${pg}</strong>.`,
+          );
+          speak(
+            "Correcto!",
+            `Página <strong>${evPg}</strong> desalojada. Página <strong>${pg}</strong> conquista el Frame ${ce}. +50 pts`,
+          );
+          renderHUD();
+          renderPlanets();
+          S.step++;
+          setTimeout(() => step(), 800);
+        } else {
+          // Wrong
+          S.lives = Math.max(0, S.lives - 1);
+          snd("wrong");
+          shakeGame();
+          const slots = $("planetGrid").querySelectorAll(".planet-slot");
+          slots[clicked]?.classList.add("wrong-flash");
+          setTimeout(
+            () => slots[clicked]?.classList.remove("wrong-flash"),
+            500,
+          );
+          kamek(wrongHint(ce, clicked));
+          speak(
+            "Incorrecto",
+            `Ese no era el planeta correcto según <strong>${S.algo}</strong>. Intenta de nuevo.`,
+          );
+          renderCrowns(true);
+          renderHUD();
+          if (S.lives <= 0) {
+            S.awaitEvict = false;
+            setTimeout(() => showResults(), 700);
+          } else renderPlanets(true);
+        }
+      }
+
+      /* ══ HINTS ══ */
+      function hintKamek(ce) {
+        const f = S.frames[ce],
+          a = S.algo;
+        if (a === "FIFO")
+          return `El planeta más antiguo es <strong>pg${f.page}</strong> (llegó en paso ${f.arr + 1}). ¡Ese debe irse!`;
+        if (a === "LRU")
+          return `<strong>pg${f.page}</strong> fue visitado por última vez en el paso ${f.last + 1}. ¡El más olvidado cae!`;
+        if (a === "Clock")
+          return `La manecilla apunta a <em>F${ce}</em>. Si el bit es <strong>0</strong> lo desalojamos. Si es 1, lo ponemos en 0 y giramos.`;
+        if (a === "SC")
+          return `El frente de la cola es <strong>pg${f.page}</strong>. ${f.sc ? "Tiene indulto, lo perdonamos y va al final." : "Sin indulto, sale de la galaxia."}`;
+        if (a === "OPT")
+          return `¡El portal muestra el futuro! <strong>pg${f.page}</strong> tardará más en regresar. ¡Ese es el candidato!`;
+        return "Elige con sabiduría, Majestad.";
+      }
+      function wrongHint(ce, cl) {
+        const fc = S.frames[ce],
+          fw = S.frames[cl],
+          a = S.algo;
+        if (a === "FIFO")
+          return `¡Incorrecto! pg<strong>${fw.page}</strong> llegó después. FIFO desaloja el <em>más antiguo</em>, que es pg<strong>${fc.page}</strong>.`;
+        if (a === "LRU")
+          return `¡Incorrecto! pg<strong>${fw.page}</strong> fue visitado más recientemente. LRU desaloja el <em>menos usado</em>.`;
+        if (a === "Clock")
+          return `¡Incorrecto! La manecilla busca el primer frame con <em>bit de uso = 0</em>. Sigue el orden del reloj.`;
+        if (a === "SC")
+          return `¡Incorrecto! Solo desalojamos el frente de la cola si <em>no tiene indulto</em>. Revisa los sellos.`;
+        if (a === "OPT")
+          return `¡Incorrecto! El portal muestra que pg<strong>${fc.page}</strong> tardará más en aparecer. ¡Ese desalojamos!`;
+        return `¡Incorrecto! El correcto era F${ce}.`;
+      }
+
+      /* ══ ALGO PANEL ══ */
+      function showAlgoPanel(ce) {
+        const panel = $("algoPanel");
+        panel.innerHTML = "";
+        if (S.algo === "OPT") return;
+        const div = document.createElement("div");
+        div.className = "algo-table";
+        const headers = [
+          "Frame",
+          "Página",
+          S.algo === "FIFO"
+            ? "Llegó"
+            : S.algo === "LRU"
+              ? "Últ.uso"
+              : S.algo === "Clock"
+                ? "Bit"
+                : S.algo === "SC"
+                  ? "Indulto"
+                  : "—",
+        ];
+        const hdr = document.createElement("div");
+        hdr.className = "algo-table-hdr";
+        headers.forEach((h) => {
+          const c = document.createElement("div");
+          c.textContent = h;
+          hdr.appendChild(c);
+        });
+        div.appendChild(hdr);
+        S.frames.forEach((f, i) => {
+          if (f.page === null) return;
+          const row = document.createElement("div");
+          row.className = "algo-row" + (i === ce ? " evict" : "");
+          const c1 = document.createElement("div");
+          c1.className = "fr";
+          c1.textContent = "F" + i;
+          row.appendChild(c1);
+          const c2 = document.createElement("div");
+          c2.className = "pg";
+          c2.textContent = "pg" + f.page;
+          row.appendChild(c2);
+          const c3 = document.createElement("div");
+          c3.className = "ex";
+          if (S.algo === "FIFO") c3.textContent = "t=" + (f.arr + 1);
+          else if (S.algo === "LRU") c3.textContent = "t=" + (f.last + 1);
+          else if (S.algo === "Clock") c3.textContent = f.useB ? "1" : "0 ←";
+          else if (S.algo === "SC") c3.textContent = f.sc ? "INDULTO" : "fuera";
+          row.appendChild(c3);
+          div.appendChild(row);
+        });
+        panel.appendChild(div);
+      }
+      function showPortal(ce) {
+        const panel = $("algoPanel");
+        panel.innerHTML = "";
+        snd("portal");
+        const fut = S.ref.slice(S.step + 1, S.step + 9);
+        const tgPg = S.frames[ce]?.page;
+        const box = document.createElement("div");
+        box.className = "portal-box";
+        const ttl = document.createElement("div");
+        ttl.className = "portal-title";
+        ttl.textContent = "PORTAL TEMPORAL";
+        box.appendChild(ttl);
+        const pf = document.createElement("div");
+        pf.className = "portal-future";
+        fut.forEach((p) => {
+          const d = document.createElement("div");
+          d.className = "portal-pg";
+          d.textContent = p;
+          if (p === tgPg) d.classList.add("evict-soon");
+          else if (S.frames.find((f) => f.page === p)) d.classList.add("safe");
+          pf.appendChild(d);
+        });
+        box.appendChild(pf);
+        const ni = fut.indexOf(tgPg);
+        const ptxt = document.createElement("div");
+        ptxt.style.cssText =
+          "font-size:.68rem;color:var(--ink2);margin-top:4px";
+        ptxt.innerHTML =
+          ni === -1
+            ? `pg<strong>${tgPg}</strong> no vuelve a aparecer. ¡Desalójalo!`
+            : `pg<strong>${tgPg}</strong> regresa en ${ni + 1} pasos.`;
+        box.appendChild(ptxt);
+        panel.appendChild(box);
+      }
+
+      /* ══ FIREBALL ══ */
+      function fireEffect(fi) {
+        snd("fire");
+        const slots = $("planetGrid").querySelectorAll(".planet-slot");
+        if (!slots[fi]) return;
+        const r = slots[fi].getBoundingClientRect();
+        const fb = document.createElement("div");
+        fb.className = "fireball";
+        fb.style.left = r.left + r.width / 2 - 9 + "px";
+        fb.style.top = r.top + r.height / 2 - 9 + "px";
+        document.body.appendChild(fb);
+        setTimeout(() => fb.remove(), 600);
+        const ring = slots[fi].querySelector(".planet-ring");
+        if (ring) {
+          const fl = document.createElement("div");
+          fl.className = "conquest-flash";
+          ring.appendChild(fl);
+          setTimeout(() => fl.remove(), 600);
+        }
+      }
+
+      /* ══ RENDER ══ */
+      function renderHUD() {
+        $("hScore").textContent = S.score;
+        $("hFaults").textContent = S.faults;
+        $("hHits").textContent = S.hits;
+        $("hFrames").textContent =
+          S.frames.filter((f) => f.page !== null).length +
+          "/" +
+          S.frames.length;
+      }
+      function renderCrowns(anim = false) {
+        const row = $("crownsRow");
+        row.innerHTML = "";
+        const lev = lv();
+        for (let i = 0; i < lev.numLives; i++) {
+          const d = document.createElement("div");
+          d.className = "crown-icon" + (i >= S.lives ? " lost" : "");
+          d.appendChild(mkImg("img/Crown.png", 22, 22));
+          if (anim && i === S.lives) d.classList.add("lose-anim");
+          row.appendChild(d);
+        }
+      }
+      function renderRef() {
+        const bar = $("refScroll");
+        bar.innerHTML = "";
+        const start = Math.max(0, S.step - 4),
+          end = Math.min(S.ref.length, S.step + 8);
+        for (let i = start; i < end; i++) {
+          const d = document.createElement("div");
+          d.className = "ref-page";
+          d.textContent = S.ref[i];
+          if (i < S.step)
+            d.classList.add(
+              "processed",
+              S.history[i] === "fault" ? "pfault" : "phit",
+            );
+          else if (i === S.step) d.classList.add("current");
+          bar.appendChild(d);
+        }
+      }
+      function renderPlanets(clickable = false) {
+        const grid = $("planetGrid");
+        grid.innerHTML = "";
+        S.frames.forEach((f, i) => {
+          const slot = document.createElement("div");
+          slot.className = "planet-slot";
+          if (clickable && f.page !== null) {
+            slot.classList.add("clickable");
+            slot.addEventListener("click", () => evict(i));
+          }
+          const ring = document.createElement("div");
+          ring.className = "planet-ring" + (f.page === null ? " free" : "");
+          if (f.page === null) {
+            const fl = document.createElement("div");
+            fl.className = "p-free-lbl";
+            fl.textContent = "libre";
+            ring.appendChild(fl);
+          } else {
+            ring.appendChild(mkImg(pageAsset(f.page), 78, 78));
+            // page num
+            const pn = document.createElement("div");
+            pn.className = "p-pagenum";
+            pn.textContent = "pg" + f.page;
+            ring.appendChild(pn);
+            // algo indicators
+            if (S.algo === "FIFO") {
+              const b = document.createElement("div");
+              b.className = "p-badge";
+              b.textContent = "t=" + (f.arr + 1);
+              ring.appendChild(b);
+            } else if (S.algo === "LRU") {
+              const age = S.step - f.last;
+              const pct = Math.max(
+                5,
+                100 - Math.round((age / Math.max(S.step, 1)) * 100),
+              );
+              const bw = document.createElement("div");
+              bw.className = "lru-bar-wrap";
+              const bf = document.createElement("div");
+              bf.className = "lru-bar-fill";
+              bf.style.width = pct + "%";
+              bw.appendChild(bf);
+              ring.appendChild(bw);
+              const b = document.createElement("div");
+              b.className = "p-badge";
+              b.textContent = "t=" + (f.last + 1);
+              ring.appendChild(b);
+            } else if (S.algo === "Clock") {
+              const cb = document.createElement("div");
+              cb.className = "p-bit " + (f.useB ? "on" : "off");
+              cb.textContent = f.useB;
+              ring.appendChild(cb);
+            } else if (S.algo === "SC") {
+              if (f.sc) {
+                const ps = document.createElement("div");
+                ps.className = "p-stamp";
+                ps.textContent = "2da OPT";
+                ring.appendChild(ps);
+              }
+              const b = document.createElement("div");
+              b.className = "p-badge";
+              b.textContent = "t=" + (f.arr + 1);
+              ring.appendChild(b);
+            } else if (S.algo === "OPT") {
+              const fut = S.ref.slice(S.step + 1);
+              const ni = fut.indexOf(f.page);
+              const b = document.createElement("div");
+              b.className = "p-badge";
+              b.textContent = ni === -1 ? "∞" : "+" + ni;
+              b.style.background =
+                ni === -1 ? "rgba(224,80,80,.4)" : "rgba(80,200,112,.2)";
+              ring.appendChild(b);
+            }
+          }
+          slot.appendChild(ring);
+          const fid = document.createElement("div");
+          fid.className = "p-frameid";
+          fid.textContent = "Frame " + i;
+          slot.appendChild(fid);
+          grid.appendChild(slot);
+        });
+      }
+
+      /* ══ BELADY ══ */
+      const BEL = { step: 0, ref: [], frL: [], frR: [], fL: 0, fR: 0 };
+      function initBelady() {
+        BEL.step = 0;
+        BEL.fL = 0;
+        BEL.fR = 0;
+        BEL.ref = [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5];
+        BEL.frL = Array.from({ length: 3 }, () => ({ page: null, arr: -1 }));
+        BEL.frR = Array.from({ length: 4 }, () => ({ page: null, arr: -1 }));
+        $("bStepBtn").disabled = false;
+        renderBelady();
+        snd("boss");
+        $("beladyMsg").innerHTML =
+          'Kamek: <em>"¡Ambos ejércitos corren FIFO con el mismo string, Majestad!"</em>';
+      }
+      function fifoEvict2(fr) {
+        let bi = -1,
+          bt = Infinity;
+        fr.forEach((f, i) => {
+          if (f.page !== null && f.arr < bt) {
+            bt = f.arr;
+            bi = i;
+          }
+        });
+        return bi;
+      }
+      function fifoStep2(fr, pg, s) {
+        if (fr.findIndex((f) => f.page === pg) >= 0) return false;
+        const ff = fr.findIndex((f) => f.page === null);
+        if (ff >= 0) {
+          fr[ff].page = pg;
+          fr[ff].arr = s;
+          return true;
+        }
+        const ev = fifoEvict2(fr);
+        fr[ev].page = pg;
+        fr[ev].arr = s;
+        return true;
+      }
+      function stepBelady() {
+        if (BEL.step >= BEL.ref.length) {
+          const msg =
+            BEL.fR > BEL.fL
+              ? `ANOMALÍA DETECTADA: 4 frames → ${BEL.fR} faults, 3 frames → ${BEL.fL} faults. ¡Más frames, más faults!`
+              : `3 frames=${BEL.fL} faults, 4 frames=${BEL.fR} faults.`;
+          $("beladyMsg").innerHTML = `Kamek: "<strong>${msg}</strong>"`;
+          $("bStepBtn").disabled = true;
+          snd("boss");
+          return;
+        }
+        const pg = BEL.ref[BEL.step];
+        if (fifoStep2(BEL.frL, pg, BEL.step)) BEL.fL++;
+        if (fifoStep2(BEL.frR, pg, BEL.step)) BEL.fR++;
+        BEL.step++;
+        renderBelady();
+        $("beladyMsg").textContent =
+          `Paso ${BEL.step}: página ${pg} → A: ${BEL.fL} faults | B: ${BEL.fR} faults`;
+      }
+      function renderBelady() {
+        const rb = $("beladyRefBar");
+        rb.innerHTML = "";
+        BEL.ref.forEach((p, i) => {
+          const d = document.createElement("div");
+          d.className = "ref-page";
+          d.textContent = p;
+          d.style.cssText = "flex-shrink:0;";
+          if (i < BEL.step) d.style.opacity = ".35";
+          else if (i === BEL.step) {
+            d.style.background = "var(--gold)";
+            d.style.color = "var(--bg)";
+            d.style.borderColor = "var(--gold-d)";
+          }
+          rb.appendChild(d);
+        });
+        $("bFaultsLN").textContent = BEL.fL;
+        $("bFaultsRN").textContent = BEL.fR;
+        ["L", "R"].forEach((s) => {
+          const fr = s === "L" ? BEL.frL : BEL.frR,
+            cont = $("bPlanets" + s);
+          cont.innerHTML = "";
+          fr.forEach((f) => {
+            const mp = document.createElement("div");
+            mp.className = "mini-planet";
+            if (f.page !== null) {
+              mp.appendChild(mkImg(pageAsset(f.page), 50, 50));
+              const mn = document.createElement("div");
+              mn.className = "mpn";
+              mn.textContent = "pg" + f.page;
+              mp.appendChild(mn);
+            }
+            cont.appendChild(mp);
+          });
+        });
+      }
+
+      /* ══ RESULTS ══ */
+      function showResults() {
+        stopTimer();
+        showScreen("results");
+        const lev = lv();
+        const total = S.ref.length;
+        const rate = total > 0 ? Math.round((S.faults / total) * 100) : 0;
+        const thr = lev.starT;
+        const stars =
+          S.score >= thr[0]
+            ? 3
+            : S.score >= thr[1]
+              ? 2
+              : S.score >= thr[2]
+                ? 1
+                : 0;
+        $("rTrophy").textContent = ["😤", "⭐", "🏆", "👑"][stars];
+        $("rTitle").textContent =
+          stars >= 2 ? "Galaxia Conquistada!" : "Conquista Incompleta";
+        $("rSub").textContent =
+          stars >= 3
+            ? "Page Replacement Perfecto!"
+            : stars >= 2
+              ? "Bien hecho, Majestad!"
+              : "Sigue entrenando";
+        const sr = $("starsRow");
+        sr.innerHTML = "";
+        for (let i = 0; i < 3; i++) {
+          const s = document.createElement("div");
+          s.className = "star-ico" + (i < stars ? " lit" : " dim");
+          s.textContent = "⭐";
+          s.style.animationDelay = i * 0.15 + "s";
+          sr.appendChild(s);
+          if (i < stars) snd("star");
+        }
+        $("rScore").textContent = S.score;
+        $("rFaults").textContent = S.faults;
+        $("rHits").textContent = S.hits;
+        $("rFaultRate").textContent = rate + "%";
+        const sq = $("rSeqRow");
+        sq.innerHTML = "";
+        S.history.forEach((h, i) => {
+          const d = document.createElement("div");
+          d.className = "r-seq-item " + h;
+          d.textContent = S.ref[i];
+          sq.appendChild(d);
+        });
+        $("rRefl").innerHTML =
+          lev.refl +
+          `<br/><br/>Resultado: <strong>${S.hits} hits</strong>, <strong>${S.faults} faults</strong>, tasa de fault ${rate}%.`;
+        $("rNext").style.display = S.li < LEVELS.length - 1 ? "" : "none";
+      }
+
+      /* ══ SCREENS ══ */
+      function showScreen(n) {
+        ["scTitle", "scGame", "scBelady", "scResults"].forEach((id) =>
+          $(id).classList.toggle(
+            "hidden",
+            id !== "sc" + n[0].toUpperCase() + n.slice(1),
+          ),
+        );
+      }
+
+      /* ══ TITLE INIT ══ */
+      function initTitle() {
+        const bg = $("starBg");
+        for (let i = 0; i < 120; i++) {
+          const d = document.createElement("div");
+          d.className = "star";
+          const sz = Math.random() < 0.12 ? 2.5 : 1;
+          d.style.cssText = `left:${Math.random() * 100}%;top:${Math.random() * 100}%;width:${sz}px;height:${sz}px;--d:${(2 + Math.random() * 4).toFixed(1)}s;--dl:${(Math.random() * 5).toFixed(1)}s`;
+          bg.appendChild(d);
+        }
+        const grid = $("levelGrid");
+        grid.innerHTML = "";
+        LEVELS.forEach((lev, i) => {
+          const btn = document.createElement("button");
+          btn.className = "lv-btn" + (lev.isBoss ? " boss-btn" : "");
+          const sp = document.createElement("div");
+          sp.style.cssText =
+            "flex-shrink:0;width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border2);image-rendering:pixelated";
+          sp.appendChild(
+            mkImg(lev.isBoss ? "img/Bowser.png" : pageAsset(i), 46, 46),
+          );
+          const tx = document.createElement("div");
+          tx.className = "lv-btn-text";
+          tx.innerHTML = `<span class="lv-tag${lev.isBoss ? " boss" : ""}">✦ ${lev.tag}</span><br/>${lev.name}<small>${lev.numFrames} frames · ${lev.ref?.length || 12} refs</small>`;
+          btn.appendChild(sp);
+          btn.appendChild(tx);
+          btn.addEventListener("click", () => startLevel(i));
+          grid.appendChild(btn);
+        });
+        // title preview
+        const pr = $("titlePreview");
+        const inner = document.createElement("div");
+        inner.style.cssText =
+          "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:20px";
+        const bw = document.createElement("div");
+        bw.style.cssText =
+          "image-rendering:pixelated;animation:titleFloat 3s ease-in-out infinite alternate";
+        bw.appendChild(mkImg("img/Bowser.png", 88, 110));
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;gap:10px";
+        [0, 3, 6].forEach((p) => {
+          const c = document.createElement("div");
+          c.style.cssText =
+            "width:54px;height:54px;border-radius:50%;border:2px solid rgba(255,255,255,.15);overflow:hidden;display:flex;align-items:center;justify-content:center;image-rendering:pixelated;background:var(--panel2)";
+          c.appendChild(mkImg(pageAsset(p), 48, 48));
+          row.appendChild(c);
+        });
+        const sub = document.createElement("div");
+        sub.style.cssText =
+          'font-family:"Press Start 2P",monospace;font-size:.44rem;color:var(--gold);letter-spacing:.12em;text-align:center;text-shadow:0 0 12px rgba(245,192,64,.5)';
+        sub.textContent = "CONQUER THE GALAXY";
+        inner.appendChild(bw);
+        inner.appendChild(row);
+        inner.appendChild(sub);
+        pr.appendChild(inner);
+        if (!document.getElementById("tfStyle")) {
+          const st = document.createElement("style");
+          st.id = "tfStyle";
+          st.textContent =
+            "@keyframes titleFloat{from{transform:translateY(0)}to{transform:translateY(-10px)}}";
+          document.head.appendChild(st);
+        }
+      }
+
+      /* ══ EVENTS ══ */
+      document.addEventListener("mousemove", (e) => {
+        const c = $("cursor");
+        c.style.left = e.clientX + "px";
+        c.style.top = e.clientY + "px";
+      });
+      $("menuBtn").addEventListener("click", () => {
+        stopTimer();
+        showScreen("title");
+      });
+      $("restartBtn").addEventListener("click", () => startLevel(S.li));
+      $("rPlayAgain").addEventListener("click", () => startLevel(S.li));
+      $("rNext").addEventListener("click", () => startLevel(S.li + 1));
+      $("rMenu").addEventListener("click", () => {
+        stopTimer();
+        showScreen("title");
+      });
+      $("bStepBtn").addEventListener("click", stepBelady);
+      $("bMenuBtn").addEventListener("click", () => showScreen("title"));
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Escape") {
+          stopTimer();
+          showScreen("title");
+        }
+      });
+
+      /* ══ INIT ══ */
+      initTitle();
+      showScreen("title");
+    </script>
+  </body>
+</html>
