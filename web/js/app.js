@@ -428,11 +428,12 @@ function updateQuantumVisibility() {
 
   const fcfsContainer = document.getElementById('fcfs-game-link-container');
   if (fcfsContainer) {
-    fcfsContainer.style.display = (algo === 'FCFS' || algo === 'SJF' || algo === 'HRRN' || algo === 'Round Robin' || algo === 'Priority (Preemptive)' || algo === 'Multilevel Queue' || algo === 'MLFQ') ? 'flex' : 'none';
+    fcfsContainer.style.display = (algo === 'FCFS' || algo === 'SJF' || algo === 'HRRN' || algo === 'Round Robin' || algo === 'SRTF' || algo === 'Priority (Preemptive)' || algo === 'Multilevel Queue' || algo === 'MLFQ') ? 'flex' : 'none';
     const btnFCFS = document.getElementById('btn-fcfs-game');
     const btnSJF = document.getElementById('btn-sjf-game');
     const btnHRRN = document.getElementById('btn-hrrn-game');
     const btnRR = document.getElementById('btn-rr-game');
+    const btnSRTF = document.getElementById('btn-srtf-game');
     const btnPRIO = document.getElementById('btn-pri-game');
     const btnmulti = document.getElementById('btn-multi-game');
     const btnMLFQ = document.getElementById('btn-mlfq-game')
@@ -440,6 +441,7 @@ function updateQuantumVisibility() {
     if (btnSJF) btnSJF.style.display = algo === 'SJF' ? 'flex' : 'none';
     if (btnHRRN) btnHRRN.style.display = algo === 'HRRN' ? 'flex' : 'none';
     if (btnRR) btnRR.style.display = algo === 'Round Robin' ? 'flex' : 'none';
+    if (btnSRTF) btnSRTF.style.display = algo === 'SRTF' ? 'flex' : 'none';
     if (btnPRIO) btnPRIO.style.display = algo === 'Priority (Preemptive)' ? 'flex' : 'none';
     if (btnmulti) btnmulti.style.display = algo === 'Multilevel Queue' ? 'flex' : 'none';
     if (btnMLFQ) btnMLFQ.style.display = algo === 'MLFQ' ? 'flex' : 'none';

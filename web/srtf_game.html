@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SRTF — Mario Kart Rainbow Road</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#020010;font-family:'Inter',sans-serif;color:#f0f0f0;user-select:none}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .35s}
+.scr.off{opacity:0;pointer-events:none}
+
+/* TITLE */
+#sT{background:radial-gradient(ellipse at 50% 30%,#1a0533 0%,#020010 90%);overflow-y:auto;padding:24px 20px;gap:14px}
+.t-sky{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.t-star{position:absolute;border-radius:50%;animation:tw var(--d) var(--dl) ease-in-out infinite alternate}
+@keyframes tw{from{opacity:.04}to{opacity:1}}
+.tc{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:920px}
+.logo-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.logo-canvas{display:block;filter:drop-shadow(0 0 18px rgba(253,224,71,.9))}
+.logo-title{font-size:clamp(1.4rem,5vw,3rem);color:#fde047;letter-spacing:.14em;text-align:center;line-height:1.15;text-shadow:0 0 22px rgba(253,224,71,.9),0 0 55px rgba(253,224,71,.5),3px 3px 0 #7c2d12;animation:lp 2.5s ease-in-out infinite alternate}
+@keyframes lp{from{text-shadow:0 0 18px rgba(253,224,71,.8),3px 3px 0 #7c2d12}to{text-shadow:0 0 42px #fde047,0 0 80px rgba(253,224,71,.5),3px 3px 0 #7c2d12}}
+.logo-sub{font-size:.72rem;letter-spacing:.28em;color:#c4b5fd;text-transform:uppercase}
+.badge{background:linear-gradient(135deg,#1e1b4b,#2e1065);border:2px solid #a78bfa;border-radius:8px;padding:10px 20px;font-size:.78rem;color:#e9d5ff;text-align:center;max-width:620px;line-height:1.6}
+.badge strong{color:#fde047}
+.srtf-formula{background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.3);border-radius:8px;padding:10px 20px;text-align:center;font-size:.78rem;color:#c4b5fd;max-width:680px;line-height:1.5}
+.srtf-formula .f-eq{font-size:.95rem;color:#fde047;font-weight:700;margin-top:4px}
+.lvl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;width:100%;max-width:840px}
+.lc{background:rgba(0,0,0,.3);border:2px solid rgba(167,139,250,.35);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.22s;text-align:center}
+.lc:hover{border-color:#fde047;box-shadow:0 0 18px rgba(253,224,71,.45);background:rgba(253,224,71,.1);transform:translateY(-3px)}
+.lc-num{font-size:1.8rem;font-weight:900;color:rgba(253,224,71,.2);margin-bottom:4px}
+.lc-name{font-size:.82rem;font-weight:700;color:#fde047;margin-bottom:4px}
+.lc-desc{font-size:.62rem;color:#d0c8f0;line-height:1.4}
+.lc-tag{display:inline-block;margin-top:6px;font-size:.58rem;background:rgba(167,139,250,.25);border:1px solid rgba(196,181,253,.4);border-radius:99px;padding:2px 9px;color:#ddd6fe}
+.key-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.kh{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:5px 11px;font-size:.7rem;color:#f0f0f0;display:flex;align-items:center;gap:5px}
+.kb{background:#2e1065;border-radius:4px;padding:2px 7px;font-size:.66rem;color:#fff;font-weight:700;border-bottom:2px solid #1a0533}
+
+/* GAME */
+#sG{background:#020010;flex-direction:column;align-items:stretch}
+.hud{display:flex;align-items:center;padding:10px 18px;gap:14px;flex-shrink:0;background:rgba(0,0,0,.88);border-bottom:2px solid #7c3aed;z-index:100;min-height:52px;flex-wrap:wrap}
+.hi{display:flex;align-items:center;gap:5px}
+.hl{color:#c4b5fd;letter-spacing:.08em;text-transform:uppercase;font-size:.65rem}
+.hv{color:#fde047;font-weight:700;font-size:.9rem;text-shadow:0 0 8px rgba(253,224,71,.5)}
+.h-lvl{margin-left:auto;color:#fde047;font-size:.78rem;letter-spacing:.12em}
+.item-wrap{display:flex;align-items:center;gap:6px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);border-radius:6px;padding:4px 10px}
+.item-box-hud{width:26px;height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1rem;border:2px solid rgba(255,255,255,.25);background:rgba(100,200,255,.15)}
+.gw{flex:1;position:relative;overflow:hidden;display:flex}
+#gc{display:block;image-rendering:pixelated}
+
+/* SIDE PANEL */
+.sp{position:absolute;right:0;top:0;bottom:0;width:300px;background:rgba(2,0,16,.97);border-left:2px solid #7c3aed;padding:12px 10px;overflow-y:auto;z-index:50;display:flex;flex-direction:column;gap:8px}
+.spt{font-size:.65rem;letter-spacing:.18em;color:#a78bfa;text-transform:uppercase;border-bottom:1px solid rgba(124,58,237,.28);padding-bottom:5px;margin-bottom:1px}
+.sp-ch{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.04);font-size:.78rem;transition:.22s}
+.sp-ch.running{border-color:#fde047;background:rgba(253,224,71,.07);box-shadow:0 0 10px rgba(253,224,71,.25)}
+.sp-ch.done{opacity:.22;filter:grayscale(.8)}
+.sp-ch.waiting{opacity:.55}
+.sp-ball{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sp-info{flex:1;min-width:0}
+.sp-nm{font-weight:700;color:#f0f0f0;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-detail{color:#8080a0;font-size:.68rem}
+.sp-rem{font-size:.72rem;font-weight:700;font-family:monospace}
+.sp-rembar-wrap{width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:99px;margin-top:3px;overflow:hidden}
+.sp-rembar{height:100%;border-radius:99px;background:linear-gradient(90deg,#10b981,#fde047,#ef4444)}
+.sp-gseg{display:flex;align-items:center;padding:3px 5px;border-radius:4px;font-size:.68rem;font-weight:700;margin-bottom:2px;animation:sgi .3s ease both}
+@keyframes sgi{from{transform:translateX(8px);opacity:0}to{opacity:1}}
+.sp-gt{margin-left:auto;font-size:.6rem;opacity:.6;font-family:monospace}
+.sp-row{display:flex;justify-content:space-between;font-size:.72rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sp-row .k{color:#9090b0}.sp-row .v{color:#fde047;font-weight:700;font-family:monospace}
+
+/* TOAST */
+#toast{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);background:rgba(2,0,16,.98);border:3px solid #a78bfa;border-radius:14px;padding:20px 30px;text-align:center;z-index:200;pointer-events:none;opacity:0;transition:opacity .3s;max-width:500px;min-width:280px;box-shadow:0 0 50px rgba(124,58,237,.35)}
+#toast.show{opacity:1}
+.ti{font-size:2.6rem;display:block;margin-bottom:6px}
+.tm{font-size:1.3rem;color:#fde047;font-weight:800;margin-bottom:5px;line-height:1.2}
+.ts{font-size:.9rem;color:#e2e8f0;line-height:1.5}
+
+/* MODAL */
+#srtfModal{position:absolute;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:300;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(6px)}
+#srtfModal.show{opacity:1;pointer-events:all}
+.sm-box{background:#08002a;border:2px solid #7c3aed;border-radius:14px;padding:26px 30px;max-width:620px;width:95%;text-align:center;box-shadow:0 0 60px rgba(124,58,237,.4)}
+.sm-title{font-size:1.3rem;color:#fde047;font-weight:800;margin-bottom:6px}
+.sm-sub{font-size:.86rem;color:#b0a0d0;margin-bottom:8px;line-height:1.5}
+.sm-rule{background:rgba(124,58,237,.14);border:1px solid rgba(167,139,250,.3);border-radius:6px;padding:6px 14px;font-size:.74rem;color:#c4b5fd;margin-bottom:18px}
+.sm-rule strong{color:#fde047}
+.sm-opts{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.sm-opt{background:rgba(124,58,237,.1);border:2px solid rgba(167,139,250,.3);border-radius:10px;padding:14px 18px;cursor:pointer;transition:.2s;min-width:130px;text-align:center;font-family:inherit}
+.sm-opt:hover:not(:disabled){border-color:#fde047;background:rgba(253,224,71,.1);box-shadow:0 0 20px rgba(253,224,71,.3);transform:translateY(-3px)}
+.sm-opt.correct{border-color:#10b981!important;background:rgba(16,185,129,.15)!important}
+.sm-opt.wrong{border-color:#ef4444!important;background:rgba(239,68,68,.15)!important}
+.sm-opt:disabled{opacity:.28;cursor:not-allowed}
+.sm-name{font-size:.75rem;color:#8080a0;margin-bottom:2px}
+.sm-process{font-size:1rem;font-weight:700;color:#f0f0f0;margin-bottom:4px}
+.sm-rem{font-size:1.6rem;font-weight:900;color:#fde047;margin:4px 0}
+.sm-detail{font-size:.72rem;color:#7070a0;line-height:1.4}
+.sm-bar-wrap{width:100%;height:6px;background:rgba(255,255,255,.1);border-radius:99px;margin-top:8px;overflow:hidden}
+.sm-bar{height:100%;border-radius:99px;background:linear-gradient(90deg,#10b981,#fde047)}
+
+/* MOBILE */
+.mc{display:none;position:absolute;bottom:10px;left:0;right:0;justify-content:space-between;padding:0 12px;z-index:150;pointer-events:none}
+.mcg{display:flex;gap:8px;pointer-events:all}
+.mb{width:52px;height:52px;border-radius:50%;background:rgba(124,58,237,.5);border:2px solid rgba(167,139,250,.6);font-size:1.2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@media(max-width:640px){.mc{display:flex}.sp{width:165px}}
+@media(pointer:coarse){.mc{display:flex}}
+
+/* RESULTS */
+#sR{background:radial-gradient(ellipse at 50% 0%,#180a40,#020010 70%);overflow-y:auto;padding:28px 18px;gap:18px;align-items:center}
+.rtro{font-size:3.5rem;animation:spin 1s ease-out}
+@keyframes spin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+.rtitle{font-size:clamp(1.8rem,5vw,2.8rem);color:#fde047;text-shadow:0 0 20px rgba(253,224,71,.6);margin:8px 0 6px;text-align:center}
+.rsub{font-size:1.1rem;color:#a78bfa;letter-spacing:.2em;text-transform:uppercase}
+.rsb{background:rgba(124,58,237,.1);border:2px solid rgba(124,58,237,.3);border-radius:12px;padding:20px 28px;display:flex;gap:32px;justify-content:center;flex-wrap:wrap}
+.rsi .rv{font-size:2.8rem;font-weight:700;color:#fde047;text-shadow:0 0 16px rgba(253,224,71,.5);font-family:'JetBrains Mono',monospace}
+.rsi .rl{font-size:.9rem;color:#a78bfa;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.rg-wrap{width:100%;max-width:880px;overflow-x:auto}
+.rg-bar{display:flex;height:62px}
+.rg-seg{display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;overflow:hidden;flex-shrink:0;border-left:2px solid rgba(255,255,255,.2);animation:rs .4s ease both}
+@keyframes rs{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.rg-ticks{position:relative;height:22px;margin-top:5px}
+.rg-tick{position:absolute;transform:translateX(-50%);font-size:.8rem;color:#888;white-space:nowrap}
+.rg-tick::before{content:'';display:block;width:2px;height:6px;background:#666;margin:0 auto 2px}
+.rtbl{width:100%;max-width:880px;border-collapse:collapse;font-size:1rem;margin-bottom:20px}
+.rtbl th{padding:12px 14px;color:#a78bfa;font-size:.82rem;letter-spacing:.12em;border-bottom:2px solid rgba(124,58,237,.3);text-align:center;text-transform:uppercase}
+.rtbl td{padding:11px 14px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05);font-family:'JetBrains Mono',monospace}
+.r-refl{width:100%;max-width:880px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.25);border-radius:12px;padding:20px 24px;font-size:1rem;color:#b0b0d0;line-height:1.65}
+.r-refl-t{color:#10b981;font-weight:700;font-size:1.2rem;margin-bottom:10px;display:flex;gap:7px;align-items:center}
+.r-srtf-box{background:rgba(124,58,237,.07);border:1px solid rgba(167,139,250,.25);border-radius:7px;padding:12px 16px;margin-top:12px;font-size:.92rem;color:#c4b5fd}
+.rbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.rb{padding:10px 22px;border-radius:8px;font-family:inherit;font-size:.78rem;letter-spacing:.08em;cursor:pointer;border:2px solid;font-weight:700;transition:.2s;text-transform:uppercase}
+.rb-p{background:#2e1065;border-color:#7c3aed;color:#fff}
+.rb-p:hover{background:#4c1d95;box-shadow:0 0 14px rgba(124,58,237,.5)}
+.rb-g{background:transparent;border-color:rgba(167,139,250,.38);color:#a78bfa}
+.rb-g:hover{border-color:#a78bfa;background:rgba(167,139,250,.09)}
+.button{--stone-50:#fafaf9;--stone-800:#292524;--yellow-400:#facc15;font-size:1rem;cursor:pointer;position:relative;font-family:inherit;font-weight:bold;line-height:1;padding:1px;transform:translate(-4px,-4px);outline:2px solid transparent;outline-offset:5px;border-radius:9999px;background-color:var(--stone-800);color:var(--stone-800);transition:transform 150ms ease,box-shadow 150ms ease;text-align:center;box-shadow:.5px .5px 0 0 var(--stone-800),1px 1px 0 0 var(--stone-800),1.5px 1.5px 0 0 var(--stone-800),2px 2px 0 0 var(--stone-800),2.5px 2.5px 0 0 var(--stone-800),3px 3px 0 0 var(--stone-800),0 0 0 2px var(--stone-50),.5px .5px 0 2px var(--stone-50),1px 1px 0 2px var(--stone-50),1.5px 1.5px 0 2px var(--stone-50),2px 2px 0 2px var(--stone-50),2.5px 2.5px 0 2px var(--stone-50),3px 3px 0 2px var(--stone-50),3.5px 3.5px 0 2px var(--stone-50),4px 4px 0 2px var(--stone-50)}
+.button:hover{transform:translate(0,0);box-shadow:0 0 0 2px var(--stone-50)}
+.button>div{position:relative;pointer-events:none;background-color:var(--yellow-400);border:2px solid rgba(255,255,255,.3);border-radius:9999px}
+.button>div::before{content:"";position:absolute;inset:0;border-radius:9999px;opacity:.5;background-image:radial-gradient(rgb(255 255 255/80%) 20%,transparent 20%),radial-gradient(rgb(255 255 255/100%) 20%,transparent 20%);background-position:0 0,4px 4px;background-size:8px 8px;mix-blend-mode:hard-light;animation:btn-dots .5s infinite linear}
+.button>div>span{position:relative;display:flex;align-items:center;justify-content:center;padding:.75rem 1.25rem;gap:.25rem;filter:drop-shadow(0 -1px 0 rgba(255,255,255,.25))}
+@keyframes btn-dots{0%{background-position:0 0,4px 4px}100%{background-position:8px 0,12px 4px}}
+</style>
+</head>
+<body>
+
+<!-- TITLE -->
+<div class="scr" id="sT">
+  <div class="t-sky" id="tSky"></div>
+  <div class="tc">
+    <div class="logo-wrap">
+      <canvas id="logoCanvas" class="logo-canvas" width="100" height="80"></canvas>
+      <div class="logo-title">🏎️ RAINBOW ROAD<br>SRTF SCHEDULER</div>
+      <div class="logo-sub">⚡ Shortest Remaining Time First · Mario Kart Edition ⚡</div>
+    </div>
+    <div class="badge">
+      <strong>SRTF (Preemptive SJF):</strong> Mario Kart corre en Rainbow Road y debe adelantar siempre
+      al kart con el <strong>menor tiempo de vuelta restante</strong>. Si llega un kart más rápido,
+      <strong>¡expropiación!</strong> Mario cambia de objetivo al instante.
+    </div>
+    <div class="srtf-formula">
+      🏁 Regla de pista: elige siempre el proceso (kart) con <strong>menor tiempo restante (rem)</strong><br>
+      <div class="f-eq">Si rem_nuevo &lt; rem_actual → ¡PREEMPTION! Abandona y cambia de objetivo.</div>
+    </div>
+    <div class="lvl-grid" id="lvlGrid"></div>
+    <a href="index.html" class="button" style="text-decoration:none;margin:8px auto 20px;display:block;width:fit-content">
+      <div><span>🏠 Regresar al Menú Principal</span></div>
+    </a>
+    <div class="key-row">
+      <div class="kh"><span class="kb">← →</span> Mover</div>
+      <div class="kh"><span class="kb">↑ / Z</span> Saltar</div>
+      <div class="kh"><span class="kb">SPACE</span> Elegir / Usar ítem</div>
+      <div class="kh"><span class="kb">ESC</span> Menú</div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="scr off" id="sG">
+  <div class="hud">
+    <div class="hi"><span class="hv" id="hLives">❤️❤️❤️</span></div>
+    <div class="hi"><span class="hl">Score</span><span class="hv" id="hScore">0</span></div>
+    <div class="hi"><span class="hl">t</span><span class="hv" id="hClock">0</span></div>
+    <div class="item-wrap">
+      <div class="item-box-hud" id="hItemBox">?</div>
+      <span class="hv" id="hItem" style="font-size:.78rem">Sin ítem</span>
+    </div>
+    <div class="hi"><span class="hl">Kart activo</span><span class="hv" id="hRunning" style="color:#a78bfa">—</span></div>
+    <div class="hi"><span class="hl">Errores</span><span class="hv" id="hErr" style="color:#f87171">0</span></div>
+    <div class="h-lvl" id="hLvl">VUELTA 1</div>
+  </div>
+  <div class="gw" id="gw">
+    <canvas id="gc"></canvas>
+    <div class="sp" id="sp">
+      <div class="spt">🏎️ Cola SRTF (menor rem primero)</div>
+      <div id="spQ"></div>
+      <div class="spt" style="margin-top:5px">📊 Gantt (con preempciones)</div>
+      <div id="spG"></div>
+      <div class="spt" style="margin-top:5px">⏱ Métricas</div>
+      <div id="spM"></div>
+    </div>
+    <div id="toast"><span class="ti" id="tIcon">🏎️</span><div class="tm" id="tMsg"></div><div class="ts" id="tSub"></div></div>
+    <div id="srtfModal">
+      <div class="sm-box">
+        <div class="sm-title" id="smTitle">🏁 ¿A qué kart adelantas?</div>
+        <div class="sm-sub" id="smSub">Elige el proceso con MENOR tiempo restante</div>
+        <div class="sm-rule">Regla SRTF: <strong>menor tiempo restante = corre primero</strong> — si llega uno más corto, ¡preemption!</div>
+        <div class="sm-opts" id="smOpts"></div>
+      </div>
+    </div>
+    <div class="mc" id="mc">
+      <div class="mcg"><div class="mb" id="mcL">◀</div><div class="mb" id="mcR">▶</div></div>
+      <div class="mcg"><div class="mb" id="mcJ">↑</div><div class="mb" id="mcA">⭐</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="scr off" id="sR">
+  <div class="rtro" id="rTro">🏆</div>
+  <div class="rtitle" id="rTitle"></div>
+  <div class="rsub" id="rSub"></div>
+  <div class="rsb" id="rSB"></div>
+  <div class="rg-wrap">
+    <div style="font-size:.58rem;letter-spacing:.18em;color:#a78bfa;margin-bottom:5px">GANTT — VUELTAS CON EXPROPIACIONES</div>
+    <div class="rg-bar" id="rGBar"></div>
+    <div class="rg-ticks" id="rGTks"></div>
+  </div>
+  <table class="rtbl"><thead><tr>
+    <th>Kart</th><th>AT</th><th>BT</th><th>1ª vez</th><th>Fin</th><th>TAT</th><th>WT</th>
+  </tr></thead><tbody id="rTB"></tbody><tfoot id="rTF"></tfoot></table>
+  <div class="r-refl" id="rRefl"></div>
+  <div class="rbtns">
+    <button class="rb rb-p" id="bNxt">Siguiente Vuelta ▶</button>
+    <button class="rb rb-g" id="bRep">↺ Repetir</button>
+    <button class="rb rb-g" id="bMenu">🏠 Menú</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════
+   PIXEL MARIO — 16×16 frames
+══════════════════════════════════════════════════════ */
+const _=null,MR='#e52521',MS='#ffcc99',MB='#5b3a1e',MO='#f28030';
+const MARIO_FRAMES={
+  sit:[[_,_,_,MR,MR,MR,MR,MR,_,_,_,_,_,_,_,_],[_,_,MR,MR,MR,MR,MR,MR,MR,MR,MR,_,_,_,_,_],[_,_,MB,MB,MB,MS,MS,MB,MS,_,_,_,_,_,_,_],[_,MB,MS,MB,MS,MS,MS,MB,MS,MS,MS,_,_,_,_,_],[_,MB,MS,MB,MB,MS,MS,MS,MB,MS,MS,_,_,_,_,_],[_,MB,MB,MS,MS,MS,MS,MB,MB,MB,MB,_,_,_,_,_],[_,_,_,MS,MS,MS,MS,MS,MS,_,_,_,_,_,_,_],[_,MO,MO,MR,MO,MO,MO,_,_,_,_,_,_,_,_,_],[MO,MO,MO,MR,MO,MO,MO,MO,_,_,_,_,_,_,_,_],[MO,MO,MO,MR,MR,MO,MO,MO,_,_,_,_,_,_,_,_],[MS,MO,MR,MS,MS,MR,MO,MS,_,_,_,_,_,_,_,_],[MS,MR,MS,MS,MR,MS,MS,_,_,_,_,_,_,_,_,_,_],[_,_,MR,MR,_,_,_,_,_,_,_,_,_,_,_,_],[_,MB,MB,MB,_,_,_,_,_,_,_,_,_,_,_,_],[MB,MB,MB,_,_,_,_,_,_,_,_,_,_,_,_,_],[_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]],
+  wave:[[_,_,_,MR,MR,MR,MR,MR,_,_,_,_,_,_,_,_],[_,_,MR,MR,MR,MR,MR,MR,MR,MR,MR,_,_,_,_,_],[_,_,MB,MB,MB,MS,MS,MB,MS,_,_,_,_,_,_,_],[_,MB,MS,MB,MS,MS,MS,MB,MS,MS,MS,_,_,_,_,_],[_,MB,MS,MB,MB,MS,MS,MS,MB,MS,MS,MS,_,_,_,_],[_,MB,MB,MS,MS,MS,MS,MB,MB,MB,MB,_,_,_,_,_],[_,_,_,MS,MS,MS,MS,MS,MS,MS,_,_,_,_,_,_],[MS,_,MO,MO,MR,MO,MO,MO,_,_,MS,_,_,_,_,_],[_,_,MO,MO,MR,MO,MO,MO,MO,_,_,_,_,_,_,_],[_,MO,MO,MO,MR,MR,MO,MO,MO,MO,_,_,_,_,_,_],[MS,MS,MO,MR,MS,MS,MR,MO,MS,MS,_,_,_,_,_,_],[_,MS,MR,MS,MS,MR,MS,_,_,_,_,_,_,_,_,_,_],[_,MR,MR,_,MR,MR,_,_,_,_,_,_,_,_,_,_],[MB,MB,MB,_,MB,MB,MB,_,_,_,_,_,_,_,_,_],[MB,_,_,_,_,_,MB,MB,_,_,_,_,_,_,_,_],[_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]],
+};
+const MCACHE=new Map();
+function getMSpr(f){
+  if(MCACHE.has(f))return MCACHE.get(f);
+  const c=document.createElement('canvas');c.width=16;c.height=16;
+  const cx=c.getContext('2d'),fr=MARIO_FRAMES[f]||MARIO_FRAMES.sit;
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++)if(fr[y][x]){cx.fillStyle=fr[y][x];cx.fillRect(x,y,1,1);}
+  MCACHE.set(f,c);return c;
+}
+
+/* ══════════════════════════════════════════════════════
+   KART PIXEL ART — detailed 32px wide
+   drawn with individual fillRect calls for crisp pixel look
+══════════════════════════════════════════════════════ */
+function drawDetailedKart(ctx, ox, oy, bodyColor, accentColor, darkColor, isActive, animT, facing){
+  ctx.save();
+  if(facing===-1){ctx.translate(ox+40,oy);ctx.scale(-1,1);}else{ctx.translate(ox,oy);}
+
+  const by = isActive ? Math.sin(animT*10)*1.2 : 0;
+
+  // ── Drop shadow ──
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.beginPath();ctx.ellipse(20,28+by,17,5,0,0,Math.PI*2);ctx.fill();
+
+  // ── Rear axle ──
+  ctx.fillStyle='#2a2a2a';
+  ctx.fillRect(1,19+by,38,3);
+
+  // ── WHEELS (4 detailed pixel wheels) ──
+  const wheelData=[[4,21],[32,21]]; // [x center, y center]
+  wheelData.forEach(([wx,wy])=>{
+    const wyr=wy+by;
+    // Tire
+    ctx.fillStyle='#1a1a1a';
+    ctx.beginPath();ctx.arc(wx,wyr,6,0,Math.PI*2);ctx.fill();
+    // Tire highlight
+    ctx.fillStyle='#333';
+    ctx.beginPath();ctx.arc(wx-1,wyr-1,5,0,Math.PI*2);ctx.fill();
+    // Rim
+    ctx.fillStyle='#cccccc';
+    ctx.beginPath();ctx.arc(wx,wyr,3.5,0,Math.PI*2);ctx.fill();
+    // Rim spokes
+    ctx.strokeStyle='#888';ctx.lineWidth=1;
+    for(let i=0;i<4;i++){
+      const angle=i*Math.PI/2+(isActive?animT*3:0);
+      ctx.beginPath();ctx.moveTo(wx,wyr);ctx.lineTo(wx+Math.cos(angle)*3,wyr+Math.sin(angle)*3);ctx.stroke();
+    }
+    // Center hub
+    ctx.fillStyle='#fde047';
+    ctx.beginPath();ctx.arc(wx,wyr,1.2,0,Math.PI*2);ctx.fill();
+  });
+
+  // ── Body base (main chassis) ──
+  ctx.fillStyle=darkColor;
+  ctx.beginPath();
+  ctx.moveTo(2,20+by);ctx.lineTo(38,20+by);ctx.lineTo(36,8+by);
+  ctx.lineTo(28,4+by);ctx.lineTo(12,4+by);ctx.lineTo(4,8+by);
+  ctx.closePath();ctx.fill();
+
+  // ── Body top (bright color) ──
+  ctx.fillStyle=bodyColor;
+  ctx.beginPath();
+  ctx.moveTo(4,19+by);ctx.lineTo(36,19+by);ctx.lineTo(34,8+by);
+  ctx.lineTo(27,4+by);ctx.lineTo(13,4+by);ctx.lineTo(6,8+by);
+  ctx.closePath();ctx.fill();
+
+  // ── Body accent stripe ──
+  ctx.fillStyle=accentColor;
+  ctx.beginPath();
+  ctx.moveTo(6,14+by);ctx.lineTo(34,14+by);ctx.lineTo(32,9+by);ctx.lineTo(8,9+by);
+  ctx.closePath();ctx.fill();
+
+  // ── Cockpit / driver area ──
+  ctx.fillStyle='#0a001a';
+  ctx.beginPath();
+  ctx.moveTo(12,13+by);ctx.lineTo(28,13+by);ctx.lineTo(27,5+by);ctx.lineTo(13,5+by);
+  ctx.closePath();ctx.fill();
+
+  // ── Windshield ──
+  ctx.fillStyle='rgba(120,220,255,0.55)';
+  ctx.beginPath();
+  ctx.moveTo(14,12+by);ctx.lineTo(26,12+by);ctx.lineTo(25,6+by);ctx.lineTo(15,6+by);
+  ctx.closePath();ctx.fill();
+  // windshield glare
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.beginPath();ctx.moveTo(15,7+by);ctx.lineTo(20,7+by);ctx.lineTo(19,10+by);ctx.lineTo(14,10+by);ctx.closePath();ctx.fill();
+
+  // ── Front nose cone ──
+  ctx.fillStyle=darkColor;
+  ctx.beginPath();ctx.moveTo(34,10+by);ctx.lineTo(40,13+by);ctx.lineTo(40,17+by);ctx.lineTo(36,17+by);ctx.lineTo(36,10+by);ctx.closePath();ctx.fill();
+  ctx.fillStyle=bodyColor;
+  ctx.beginPath();ctx.moveTo(35,11+by);ctx.lineTo(39,13+by);ctx.lineTo(39,16+by);ctx.lineTo(36,16+by);ctx.lineTo(35,11+by);ctx.closePath();ctx.fill();
+  // Headlight
+  ctx.fillStyle='#fde047';
+  ctx.beginPath();ctx.arc(38,14+by,2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(253,224,71,0.5)';
+  ctx.beginPath();ctx.arc(38,14+by,4,0,Math.PI*2);ctx.fill();
+
+  // ── Rear spoiler ──
+  ctx.fillStyle=darkColor;
+  ctx.fillRect(1,7+by,3,8);
+  ctx.fillStyle=accentColor;
+  ctx.fillRect(0,7+by,4,3);
+
+  // ── Exhaust pipes ──
+  ctx.fillStyle='#888';
+  ctx.fillRect(2,15+by,3,4);
+  ctx.fillRect(2,12+by,3,2);
+  ctx.fillStyle='#666';
+  ctx.fillRect(3,15+by,2,4);
+  // Exhaust glow when active
+  if(isActive){
+    const puff=(animT*6)%1;
+    ctx.fillStyle=`rgba(255,140,0,${0.7-puff*0.7})`;
+    ctx.beginPath();ctx.arc(1-puff*6,16+by,2+puff*4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`rgba(255,80,0,${0.4-puff*0.4})`;
+    ctx.beginPath();ctx.arc(-1-puff*8,16+by,1+puff*6,0,Math.PI*2);ctx.fill();
+  }
+
+  // ── Number plate ──
+  ctx.fillStyle='#fff';
+  ctx.fillRect(15,15+by,10,5);
+  ctx.fillStyle='#111';
+  ctx.font=`bold 5px monospace`;ctx.textAlign='center';ctx.textBaseline='top';
+  ctx.fillText('MK',20,15+by+0.5);
+
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════════════════
+   RIVAL KART — simpler pixel kart for opponents
+══════════════════════════════════════════════════════ */
+function drawRivalKart(ctx,ox,oy,color,dark,animT,isActive){
+  ctx.save();ctx.translate(ox,oy);
+  const by=isActive?Math.sin(animT*9)*1.5:0;
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  ctx.beginPath();ctx.ellipse(16,24+by,13,4,0,0,Math.PI*2);ctx.fill();
+
+  // Wheels
+  [[5,21],[27,21]].forEach(([wx,wy])=>{
+    const wyr=wy+by;
+    ctx.fillStyle='#1a1a1a';ctx.beginPath();ctx.arc(wx,wyr,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#444';ctx.beginPath();ctx.arc(wx-0.5,wyr-0.5,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#aaa';ctx.beginPath();ctx.arc(wx,wyr,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fde047';ctx.beginPath();ctx.arc(wx,wyr,1,0,Math.PI*2);ctx.fill();
+  });
+  // Axle
+  ctx.fillStyle='#222';ctx.fillRect(0,19+by,32,2);
+
+  // Body
+  ctx.fillStyle=dark;
+  ctx.beginPath();ctx.moveTo(2,19+by);ctx.lineTo(30,19+by);ctx.lineTo(29,8+by);ctx.lineTo(22,5+by);ctx.lineTo(10,5+by);ctx.lineTo(3,8+by);ctx.closePath();ctx.fill();
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.moveTo(4,18+by);ctx.lineTo(28,18+by);ctx.lineTo(27,8+by);ctx.lineTo(22,5+by);ctx.lineTo(10,5+by);ctx.lineTo(5,8+by);ctx.closePath();ctx.fill();
+
+  // Windshield
+  ctx.fillStyle='rgba(120,210,255,0.5)';
+  ctx.beginPath();ctx.moveTo(11,13+by);ctx.lineTo(21,13+by);ctx.lineTo(20,6+by);ctx.lineTo(12,6+by);ctx.closePath();ctx.fill();
+
+  // Exhaust
+  ctx.fillStyle='#777';ctx.fillRect(1,13+by,3,4);
+  if(isActive){
+    const p=(animT*5)%1;
+    ctx.fillStyle=`rgba(180,180,200,${0.5-p*0.5})`;
+    ctx.beginPath();ctx.arc(-p*5,15+by,2+p*3,0,Math.PI*2);ctx.fill();
+  }
+  // Headlight
+  ctx.fillStyle='#fde047';ctx.fillRect(28,12+by,3,4);
+  ctx.fillStyle='rgba(253,224,71,0.4)';ctx.beginPath();ctx.arc(29.5,14+by,4,0,Math.PI*2);ctx.fill();
+
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════════════════
+   ITEM BLOCK — translucent ? block (Mario Kart style)
+══════════════════════════════════════════════════════ */
+function drawItemBlock(ctx, cx, cy, animT, collected){
+  const size=28;
+  const x=cx-size/2, y=cy-size/2;
+
+  if(collected){
+    // Shattered remains
+    ctx.fillStyle='rgba(253,224,71,0.08)';
+    ctx.fillRect(x,y,size,size);
+    return;
+  }
+
+  const spin=animT*1.8; // rotation for the ? symbol
+  const pulse=1+0.08*Math.sin(animT*4);
+
+  ctx.save();ctx.translate(cx,cy);ctx.scale(pulse,pulse);
+
+  // Outer glow
+  const grd=ctx.createRadialGradient(0,0,4,0,0,20);
+  grd.addColorStop(0,'rgba(253,224,71,0.25)');
+  grd.addColorStop(1,'rgba(253,224,71,0)');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(0,0,20,0,Math.PI*2);ctx.fill();
+
+  // Glass body — translucent white/blue tinted, like Mario Kart item boxes
+  const hw=size/2;
+  // Multi-layer translucent glass
+  ctx.fillStyle='rgba(160,220,255,0.18)';
+  ctx.fillRect(-hw,-hw,size,size);
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  ctx.fillRect(-hw,-hw,size,size);
+
+  // Colored edges (rainbow cycle)
+  const hue=(animT*60)%360;
+  ctx.strokeStyle=`hsla(${hue},100%,75%,0.85)`;
+  ctx.lineWidth=2.5;
+  ctx.strokeRect(-hw+1,-hw+1,size-2,size-2);
+
+  // Inner edge lines (3D box feel)
+  ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1;
+  ctx.strokeRect(-hw+3,-hw+3,size-6,size-6);
+
+  // Corner highlights (top-left face)
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.fillRect(-hw+1,-hw+1,size-2,3); // top
+  ctx.fillRect(-hw+1,-hw+1,3,size-2); // left
+
+  // Corner shadows (bottom-right)
+  ctx.fillStyle='rgba(0,0,50,0.25)';
+  ctx.fillRect(-hw+1,hw-4,size-2,3); // bottom
+  ctx.fillRect(hw-4,-hw+1,3,size-2); // right
+
+  // ? symbol — rotates slowly, rainbow colored
+  const qHue=(animT*90+180)%360;
+  ctx.fillStyle=`hsl(${qHue},100%,70%)`;
+  ctx.font=`bold 18px 'Inter',sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.save();ctx.rotate(Math.sin(spin)*0.15);ctx.fillText('?',0,0.5);ctx.restore();
+
+  // ? glow
+  ctx.fillStyle=`hsla(${qHue},100%,80%,0.4)`;
+  ctx.font=`bold 20px 'Inter',sans-serif`;
+  ctx.save();ctx.rotate(Math.sin(spin)*0.15);ctx.fillText('?',0,0.5);ctx.restore();
+
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════════════════
+   RAINBOW ROAD floor drawing
+══════════════════════════════════════════════════════ */
+function drawRainbowRoad(ctx, worldW, gy, H, roadOffset, idleT){
+  const roadH = H - gy; // height below the horizon
+
+  // ── Space void below road ──
+  ctx.fillStyle='#020010';
+  ctx.fillRect(0,gy,worldW,roadH);
+
+  // ── Road base with perspective strips ──
+  // The road narrows slightly toward the far edge — simulated with alpha layers
+  const ROAD_TOP_W = worldW;
+
+  // Dark road surface
+  const roadSurf=ctx.createLinearGradient(0,gy,0,gy+roadH);
+  roadSurf.addColorStop(0,'#0d0030');
+  roadSurf.addColorStop(0.4,'#080020');
+  roadSurf.addColorStop(1,'#030010');
+  ctx.fillStyle=roadSurf;
+  ctx.fillRect(0,gy,worldW,roadH);
+
+  // ── RAINBOW STRIPES — the core Rainbow Road look ──
+  // Animate stripes moving leftward
+  const STRIPE_W = 120;
+  const colors=[
+    'rgba(239,68,68,',   // red
+    'rgba(249,115,22,',  // orange
+    'rgba(253,224,71,',  // yellow
+    'rgba(34,197,94,',   // green
+    'rgba(59,130,246,',  // blue
+    'rgba(139,92,246,',  // violet
+    'rgba(236,72,153,',  // pink
+  ];
+
+  // Thick rainbow bands on road surface
+  for(let layer=0;layer<3;layer++){
+    const yOff = gy + layer*8;
+    const thick = 6-layer*1.5;
+    const alpha = 0.7-layer*0.18;
+    const off = (roadOffset*1.5 + layer*30) % (STRIPE_W*colors.length);
+
+    colors.forEach((c,i)=>{
+      let sx = i*STRIPE_W - off;
+      // tile across world
+      while(sx < worldW){
+        ctx.fillStyle=c+alpha+')';
+        ctx.fillRect(sx, yOff, STRIPE_W, thick);
+        sx += STRIPE_W*colors.length;
+      }
+    });
+  }
+
+  // ── Main top edge — the glowing rainbow border ──
+  const edgeOff = roadOffset % (STRIPE_W*colors.length);
+  colors.forEach((c,i)=>{
+    let sx = i*STRIPE_W - edgeOff;
+    while(sx < worldW){
+      // Glow pass
+      ctx.shadowBlur=20;ctx.shadowColor=c+'1)';
+      ctx.fillStyle=c+'0.95)';
+      ctx.fillRect(sx, gy-4, STRIPE_W, 8);
+      sx += STRIPE_W*colors.length;
+    }
+  });
+  ctx.shadowBlur=0;
+
+  // ── White dashed center line ──
+  const dashW=60,dashGap=40,dashTotal=dashW+dashGap;
+  const dashOff = roadOffset % dashTotal;
+  ctx.setLineDash([dashW,dashGap]);
+  ctx.lineDashOffset=-dashOff;
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(0,gy+20);ctx.lineTo(worldW,gy+20);ctx.stroke();
+  ctx.setLineDash([]);ctx.lineDashOffset=0;
+
+  // ── Road side edges — fading glow ──
+  // Left edge glow
+  const leftGrd=ctx.createLinearGradient(0,gy,60,gy);
+  leftGrd.addColorStop(0,'rgba(167,139,250,0.6)');
+  leftGrd.addColorStop(1,'rgba(167,139,250,0)');
+  ctx.fillStyle=leftGrd;ctx.fillRect(0,gy,60,roadH);
+
+  // Road checkerboard near bottom (distance effect)
+  const checkSize=40;
+  const checkOff=Math.floor(roadOffset/checkSize)*checkSize;
+  for(let cx2=0;cx2<worldW+checkSize;cx2+=checkSize){
+    for(let ry=gy+40;ry<gy+roadH;ry+=checkSize){
+      const even=Math.floor(cx2/checkSize+ry/checkSize)%2===0;
+      ctx.fillStyle=even?'rgba(124,58,237,0.06)':'rgba(0,0,80,0.04)';
+      ctx.fillRect(cx2-checkOff,ry,checkSize,checkSize);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   KART COLORS
+══════════════════════════════════════════════════════ */
+const KART_COLS=[
+  {color:'#e11d48',dark:'#881337',accent:'#fb7185'},
+  {color:'#2563eb',dark:'#1e3a8a',accent:'#60a5fa'},
+  {color:'#16a34a',dark:'#14532d',accent:'#4ade80'},
+  {color:'#9333ea',dark:'#581c87',accent:'#c084fc'},
+  {color:'#f59e0b',dark:'#78350f',accent:'#fcd34d'},
+  {color:'#0891b2',dark:'#164e63',accent:'#22d3ee'},
+];
+
+/* ══════════════════════════════════════════════════════
+   ITEMS
+══════════════════════════════════════════════════════ */
+const ITEMS=[
+  {id:'star',   emoji:'⭐',label:'Super Star',   desc:'¡Respuesta correcta automática!'},
+  {id:'shell',  emoji:'🐚',label:'Caparazón',    desc:'Revela qué proceso es el correcto'},
+  {id:'mushroom',emoji:'🍄',label:'Hongo',       desc:'Avanza 1 unidad extra al kart actual'},
+  {id:'banana', emoji:'🍌',label:'Banana',       desc:'Recupera 1 vida perdida'},
+];
+
+/* ══════════════════════════════════════════════════════
+   LEVELS
+══════════════════════════════════════════════════════ */
+const LEVELS=[
+  {id:0,name:'Vuelta 1 — Pista Intro',desc:'3 karts. Llega uno más veloz → primera expropiación.',tag:'Intro SRTF',
+   procs:[{name:'Kart-A',ki:0,at:0,bt:5},{name:'Kart-B',ki:1,at:1,bt:3},{name:'Kart-C',ki:2,at:2,bt:2}]},
+  {id:1,name:'Vuelta 2 — Caos en Pista',desc:'4 karts. Muchas llegadas y expropiaciones.',tag:'Alta conmutación',
+   procs:[{name:'Kart-A',ki:3,at:0,bt:8},{name:'Kart-B',ki:0,at:1,bt:4},{name:'Kart-C',ki:1,at:2,bt:2},{name:'Kart-D',ki:2,at:3,bt:1}]},
+  {id:2,name:'Vuelta 3 — Gran Premio A/B/C/D',desc:'El ejercicio clásico de la clase con SRTF.',tag:'Ejercicio Clase',
+   procs:[{name:'A',ki:4,at:0,bt:3},{name:'B',ki:5,at:0,bt:2},{name:'C',ki:0,at:1,bt:4},{name:'D',ki:1,at:3,bt:2}]},
+  {id:3,name:'Vuelta 4 — Rainbow Road Extremo',desc:'Kart lento expropiad constantemente. ¿Starvation?',tag:'Starvation',
+   procs:[{name:'Bowser',ki:3,at:0,bt:10},{name:'Koopa',ki:1,at:1,bt:2},{name:'Toad',ki:2,at:2,bt:1},{name:'Yoshi',ki:5,at:3,bt:1}]},
+];
+
+const GU=42, KART_W=40, KART_H=28, MARIO_SC=2, MARIO_PX=16*MARIO_SC;
+
+/* ══════════════════════════════════════════════════════
+   TITLE
+══════════════════════════════════════════════════════ */
+(function initTitle(){
+  const sky=document.getElementById('tSky');
+  const rb=['#ef4444','#f97316','#fde047','#22c55e','#3b82f6','#8b5cf6','#ec4899','#ffffff'];
+  for(let i=0;i<140;i++){
+    const d=document.createElement('div');d.className='t-star';
+    const sz=Math.random()<.1?4:Math.random()<.3?2:1;
+    const col=rb[Math.floor(Math.random()*rb.length)];
+    d.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;background:${col};--d:${(1+Math.random()*4).toFixed(1)}s;--dl:${(Math.random()*5).toFixed(1)}s`;
+    sky.appendChild(d);
+  }
+  const lc=document.getElementById('logoCanvas'),lx=lc.getContext('2d');
+  lx.imageSmoothingEnabled=false;
+  let lt=0;
+  setInterval(()=>{
+    lt+=0.1;lx.clearRect(0,0,100,80);
+    drawDetailedKart(lx,5,28,KART_COLS[0].color,KART_COLS[0].accent,KART_COLS[0].dark,true,lt,1);
+    lx.drawImage(getMSpr(Math.floor(lt*2)%2===0?'sit':'wave'),10,2,MARIO_PX,MARIO_PX);
+  },100);
+
+  const grid=document.getElementById('lvlGrid');
+  LEVELS.forEach((lv,i)=>{
+    const c=document.createElement('div');c.className='lc';
+    c.innerHTML=`<div class="lc-num">${String(i+1).padStart(2,'0')}</div><div class="lc-name">${lv.name}</div><div class="lc-desc">${lv.desc}</div><div class="lc-tag">${lv.tag}</div>`;
+    c.addEventListener('click',()=>startLevel(i));grid.appendChild(c);
+  });
+})();
+
+/* ══════════════════════════════════════════════════════
+   ENGINE
+══════════════════════════════════════════════════════ */
+const canvas=document.getElementById('gc'),ctx=canvas.getContext('2d');
+const gw=document.getElementById('gw');
+let W,H,SP_W=300;
+function resize(){SP_W=window.innerWidth<=640?165:300;W=gw.clientWidth-SP_W;H=gw.clientHeight;canvas.width=W;canvas.height=H;ctx.imageSmoothingEnabled=false;}
+
+let G={running:false},keys={},starBg=null,lastT=0;
+
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('sG').classList.contains('off'))return;
+  keys[e.code]=true;
+  if(e.code==='Space'){e.preventDefault();doAction();}
+  if(e.code==='KeyZ')keys['ArrowUp']=true;
+  if(e.code==='Escape')goMenu();
+});
+document.addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyZ')keys['ArrowUp']=false;});
+['mcL','mcR','mcJ','mcA'].forEach(id=>{
+  const el=document.getElementById(id),cm={mcL:'ArrowLeft',mcR:'ArrowRight',mcJ:'ArrowUp',mcA:'Space'};
+  if(!el)return;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();if(id==='mcA')doAction();else keys[cm[id]]=true;});
+  el.addEventListener('pointerup',()=>keys[cm[id]]=false);
+  el.addEventListener('pointerleave',()=>keys[cm[id]]=false);
+});
+
+function getAvailable(){return G.karts.filter(c=>!c.served&&c.at<=G.clock);}
+function getShortest(){const av=getAvailable();if(!av.length)return null;return av.reduce((a,b)=>a.rem<b.rem?a:(a.rem===b.rem&&a.at<b.at?a:b));}
+
+function buildItemBoxes(worldW,gy){
+  const boxes=[];
+  for(let x=220;x<worldW-100;x+=300){
+    boxes.push({x,y:gy-44,anim:Math.random()*Math.PI*2,collected:false,respawnT:0});
+  }
+  return boxes;
+}
+
+function buildWorld(li){
+  const lv=LEVELS[li],n=lv.procs.length;
+  const worldW=Math.max(W*3,n*KART_W*9+400),gy=Math.round(H*0.65);
+  const karts=lv.procs.map((p,i)=>({
+    ...p,origIdx:i,
+    x:220+i*(worldW-300)/Math.max(n-1,1),
+    y:gy-KART_H, // karts sit exactly ON the road line
+    kDef:KART_COLS[p.ki%KART_COLS.length],
+    served:false,rem:p.bt,s:-1,e:-1,tat:0,wt:0,
+    bob:Math.random()*Math.PI*2,
+    hitFlash:0,
+  }));
+  const mario={
+    x:50,y:gy-KART_H, // Mario kart also sits ON road
+    onGround:true,vy:0,facing:1,marioFrame:'sit',bounceT:0,
+  };
+  return{karts,mario,worldW,gy,itemBoxes:buildItemBoxes(worldW,gy)};
+}
+
+function startLevel(li){
+  resize();starBg=null;closeModal();
+  const{karts,mario,worldW,gy,itemBoxes}=buildWorld(li);
+  G={
+    li,score:0,lives:3,clock:0,errors:0,
+    karts,mario,worldW,gy,itemBoxes,camX:0,
+    doneCount:0,particles:[],shake:0,toastT:0,wrongF:0,idleT:0,running:true,
+    marioState:'free',current:null,
+    execProgress:0,execUnit:1.3,
+    gantt:[],triedWrong:[],optimal:null,
+    item:null,
+    roadOffset:0,rainbowT:0,preemptFlash:0,
+  };
+  showSc('sG');
+  document.getElementById('hLvl').textContent=LEVELS[li].name;
+  setItemHUD(null);
+  updateHUD();updateSP();
+  lastT=0;requestAnimationFrame(loop);
+}
+
+function loop(ts){
+  if(!G.running)return;
+  const dt=Math.min((ts-lastT)/1000,.05);lastT=ts;
+  update(dt);draw();
+  requestAnimationFrame(loop);
+}
+
+function update(dt){
+  const{mario,gy,worldW}=G;
+  if(G.shake>0)G.shake-=dt;
+  if(G.wrongF>0)G.wrongF-=dt;
+  if(G.preemptFlash>0)G.preemptFlash-=dt;
+  if(G.toastT>0){G.toastT-=dt;if(G.toastT<=0)hideTst();}
+  G.idleT+=dt;
+  G.rainbowT+=dt;
+  G.roadOffset=(G.roadOffset+dt*55)%10000;
+
+  G.karts.forEach(c=>{c.bob+=dt*2.8;if(c.hitFlash>0)c.hitFlash-=dt;});
+  G.particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=420*dt;p.life-=dt;});
+  G.particles=G.particles.filter(p=>p.life>0);
+
+  // Item box respawn
+  G.itemBoxes.forEach(b=>{b.anim+=dt*2.5;if(b.collected){b.respawnT-=dt;if(b.respawnT<=0)b.collected=false;}});
+
+  // Auto-advance clock
+  if(G.marioState==='free'&&!G.current&&G.doneCount<G.karts.length){
+    const av=getAvailable();
+    if(!av.length){const next=G.karts.filter(c=>!c.served).sort((a,b)=>a.at-b.at)[0];if(next)G.clock=next.at;}
+  }
+
+  if(G.marioState!=='question'){
+    const spd=G.marioState==='executing'?250:220;
+    mario.vy+=1500*dt;
+    if(keys['ArrowLeft']){mario.x-=spd*dt;mario.facing=-1;}
+    if(keys['ArrowRight']){mario.x+=spd*dt;mario.facing=1;}
+    if(keys['ArrowUp']&&mario.onGround){mario.vy=-560;mario.onGround=false;}
+    mario.x=Math.max(0,Math.min(mario.x,worldW-KART_W));
+    mario.y+=mario.vy*dt;
+    // Keep on road
+    const roadY=gy-KART_H;
+    if(mario.y>=roadY){mario.y=roadY;mario.vy=0;mario.onGround=true;}
+    mario.marioFrame=(G.marioState==='executing')?'sit':'wave';
+    G.camX=Math.max(0,Math.min(mario.x-W*.38,worldW-W));
+
+    // Item box collection
+    G.itemBoxes.forEach(b=>{
+      if(b.collected)return;
+      const dx=Math.abs(mario.x+KART_W/2-b.x),dy=Math.abs(mario.y+KART_H/2-b.y);
+      if(dx<32&&dy<32&&!G.item){
+        b.collected=true;b.respawnT=18;
+        const itm=ITEMS[Math.floor(Math.random()*ITEMS.length)];
+        G.item=itm;setItemHUD(itm);
+        showTst('📦',`¡Caja ? obtenida: ${itm.label}!`,itm.desc,3.5);
+        spawnParticles(b.x,b.y,'#fde047',20);
+      }
+    });
+  }
+
+  // EXECUTING
+  if(G.marioState==='executing'&&G.current){
+    const curr=G.karts.find(c=>c.name===G.current);
+    if(curr){
+      const near=Math.abs((mario.x+KART_W/2)-(curr.x+KART_W/2))<KART_W*2.8;
+      if(near){
+        G.execProgress+=dt/G.execUnit;
+        if(G.execProgress>=1){
+          G.execProgress=0;G.clock++;curr.rem--;curr.hitFlash=0.2;
+          if(curr.s===-1)curr.s=G.clock-1;
+          const last=G.gantt[G.gantt.length-1];
+          if(last&&last.name===curr.name&&last.end===G.clock-1)last.end=G.clock;
+          else G.gantt.push({name:curr.name,start:G.clock-1,end:G.clock,color:curr.kDef.color});
+          spawnParticles(curr.x+KART_W/2,curr.y,curr.kDef.accent,5);
+          updateHUD();updateSP();
+
+          if(curr.rem<=0){
+            curr.e=G.clock;curr.tat=curr.e-curr.at;curr.wt=curr.tat-curr.bt;
+            curr.served=true;G.doneCount++;G.score+=130+(curr.wt===0?50:0);
+            spawnParticles(curr.x+KART_W/2,curr.y,'#fde047',28);
+            G.marioState='free';G.current=null;
+            showTst('🏁',`¡${curr.name} termina su vuelta!`,`TAT=${curr.tat} | WT=${curr.wt}`);
+            updateSP();updateHUD();
+            if(G.doneCount>=G.karts.length){setTimeout(showResults,1400);return;}
+            setTimeout(()=>{if(G.running&&G.marioState==='free')autoNextOrAsk();},600);
+            return;
+          }
+          // Preemption check
+          const next=getShortest();
+          if(next&&next.name!==curr.name&&next.rem<curr.rem){
+            G.marioState='free';G.current=null;G.preemptFlash=1.6;
+            showTst('⚡','¡PREEMPTION!',`${next.name} (rem=${next.rem}) < ${curr.name} (rem=${curr.rem}). ¡Cambia de kart!`,4.5);
+            updateSP();updateHUD();
+            setTimeout(()=>{if(G.running&&G.marioState==='free')autoNextOrAsk();},800);
+            return;
+          }
+          updateSP();updateHUD();
+        }
+      }
+    }
+  }
+}
+
+function autoNextOrAsk(){
+  const av=getAvailable();
+  if(!av.length)return;
+  if(av.length===1){
+    G.current=av[0].name;G.marioState='executing';G.execProgress=0;
+    const k=G.karts.find(c=>c.name===G.current);
+    showTst('🏎️',`¡Adelanta a ${G.current}!`,`Tiempo restante: ${k.rem} — acércate al kart.`);
+  } else openSRTFModal();
+}
+
+function openSRTFModal(){
+  const av=getAvailable().sort((a,b)=>a.rem-b.rem||(a.at-b.at));
+  G.optimal=av[0];G.marioState='question';
+  const maxRem=av[av.length-1].rem,minRem=av[0].rem;
+  document.getElementById('smTitle').textContent=`t=${G.clock} — ¿A qué kart adelantas?`;
+  document.getElementById('smSub').textContent=`Tiempos restantes: ${av.map(c=>`${c.name}=${c.rem}`).join(' | ')}`;
+  const opts=document.getElementById('smOpts');opts.innerHTML='';
+  av.forEach(c=>{
+    const btn=document.createElement('button');btn.className='sm-opt';btn.dataset.name=c.name;
+    if(G.triedWrong&&G.triedWrong.includes(c.name)){btn.disabled=true;btn.classList.add('wrong');}
+    const pct=maxRem===minRem?100:Math.round(((maxRem-c.rem)/Math.max(1,maxRem-minRem))*100);
+    btn.innerHTML=`<div class="sm-name">${c.kDef?c.kDef.color.replace('#',''):''}  ${c.name}</div>
+      <div class="sm-process" style="color:${c.kDef.color}">🏎️ ${c.name}</div>
+      <div class="sm-rem">${c.rem} <span style="font-size:.9rem;color:#a78bfa">uds restantes</span></div>
+      <div class="sm-detail">BT original: ${c.bt} | Llegó: t=${c.at}</div>
+      <div class="sm-bar-wrap"><div class="sm-bar" style="width:${pct}%;background:linear-gradient(90deg,${c.kDef.color},${c.kDef.accent})"></div></div>`;
+    btn.addEventListener('click',()=>handleChoice(c));
+    opts.appendChild(btn);
+  });
+  document.getElementById('srtfModal').classList.add('show');
+}
+
+function handleChoice(chosen){
+  // Star item = auto correct
+  if(G.item&&G.item.id==='star'){
+    G.item=null;setItemHUD(null);G.score+=200;
+    document.querySelectorAll('.sm-opt').forEach(b=>{if(b.dataset.name===G.optimal.name)b.classList.add('correct');});
+    showTst('⭐','¡Super Star! Auto-correcto.',`${G.optimal.name} (rem=${G.optimal.rem}) es el correcto.`);
+    setTimeout(()=>{closeModal();G.current=G.optimal.name;G.marioState='executing';G.execProgress=0;},900);
+    return;
+  }
+  const isOk=chosen.name===G.optimal.name;
+  if(isOk){
+    G.score+=150;
+    document.querySelectorAll('.sm-opt').forEach(b=>{if(b.dataset.name===chosen.name)b.classList.add('correct');});
+    showTst('✅',`¡Correcto! ${chosen.name} tiene el menor tiempo restante (${chosen.rem}).`,`SRTF = Shortest Remaining Time First.`,4);
+    setTimeout(()=>{closeModal();G.triedWrong=[];G.current=chosen.name;G.marioState='executing';G.execProgress=0;
+      showTst('🏎️',`¡Adelanta a ${chosen.name}!`,`Acércate al kart para avanzar.`);},900);
+  } else {
+    G.errors++;G.lives=Math.max(0,G.lives-1);G.shake=.4;G.wrongF=.55;updateHUD();
+    if(!G.triedWrong)G.triedWrong=[];
+    G.triedWrong.push(chosen.name);
+    document.querySelectorAll('.sm-opt').forEach(b=>{if(b.dataset.name===chosen.name){b.classList.add('wrong');b.disabled=true;}});
+    showTst('❌',`¡Error! ${chosen.name} tiene rem=${chosen.rem}.`,`El correcto es ${G.optimal.name} con rem=${G.optimal.rem}. Inténtalo de nuevo.`,5);
+    document.getElementById('smSub').textContent=`❌ Incorrecto — ${G.lives} vida/s restantes. ¡Elige de nuevo!`;
+    if(G.lives<=0)setTimeout(()=>{closeModal();gameOver();},1500);
+  }
+}
+
+function closeModal(){document.getElementById('srtfModal').classList.remove('show');G.triedWrong=[];}
+
+function doAction(){
+  if(!G.running)return;
+  if(G.marioState==='question'){
+    // Shell: reveal correct
+    if(G.item&&G.item.id==='shell'){
+      G.item=null;setItemHUD(null);
+      showTst('🐚','¡Caparazón! El correcto es...',`${G.optimal.name} (rem=${G.optimal.rem}) 🎯`);
+      document.querySelectorAll('.sm-opt').forEach(b=>{if(b.dataset.name!==G.optimal.name&&!b.disabled){b.style.opacity='.25';}});
+    }
+    return;
+  }
+  if(G.marioState==='free'){
+    const av=getAvailable();
+    if(!av.length){const next=G.karts.filter(c=>!c.served).sort((a,b)=>a.at-b.at)[0];if(next)G.clock=next.at;return;}
+    G.triedWrong=[];autoNextOrAsk();return;
+  }
+  if(G.marioState==='executing'){
+    if(G.item&&G.item.id==='mushroom'){
+      G.item=null;setItemHUD(null);
+      const curr=G.karts.find(c=>c.name===G.current);
+      if(curr){showTst('🍄','¡Hongo Boost!',`${curr.name} avanza una unidad extra.`);G.execProgress=0.98;}
+    }
+    if(G.item&&G.item.id==='banana'){
+      G.item=null;setItemHUD(null);
+      G.lives=Math.min(3,G.lives+1);updateHUD();
+      showTst('🍌','¡Banana! Vida recuperada.',`Ahora tienes ${G.lives} vida/s.`);
+    }
+  }
+}
+
+function spawnParticles(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,sp=80+Math.random()*200;
+    G.particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-100,r:2+Math.random()*5,color,life:.6+Math.random()*.6,maxLife:1.2});
+  }
+}
+function setItemHUD(itm){
+  document.getElementById('hItem').textContent=itm?itm.emoji+' '+itm.label:'Sin ítem';
+  document.getElementById('hItemBox').textContent=itm?itm.emoji:'?';
+}
+function gameOver(){G.running=false;showTst('💀','¡Game Over!','SRTF siempre elige el proceso con menor tiempo restante.',8);setTimeout(()=>startLevel(G.li),3500);}
+
+function updateHUD(){
+  document.getElementById('hLives').textContent='❤️'.repeat(G.lives)||'💀';
+  document.getElementById('hScore').textContent=G.score;
+  document.getElementById('hClock').textContent=G.clock;
+  document.getElementById('hErr').textContent=G.errors;
+  document.getElementById('hRunning').textContent=G.current||'—';
+}
+
+function updateSP(){
+  const qEl=document.getElementById('spQ');qEl.innerHTML='';
+  const sorted=[...G.karts].sort((a,b)=>a.served-b.served||a.rem-b.rem);
+  sorted.forEach(c=>{
+    const d=document.createElement('div'),isRun=G.current===c.name;
+    const remPct=Math.round((1-c.rem/c.bt)*100);
+    d.className='sp-ch'+(isRun?' running':'')+(c.served?' done':'')+((!c.served&&c.at>G.clock)?' waiting':'');
+    d.innerHTML=`<div class="sp-ball" style="background:${c.kDef.color}"></div>
+      <div class="sp-info">
+        <div class="sp-nm">${c.name}${isRun?' 🏎️':''}${c.served?' 🏁':''}</div>
+        <div class="sp-detail">BT:${c.bt} · AT:${c.at}${c.at>G.clock?' (espera)':''}</div>
+        <div class="sp-rem" style="color:${c.rem<=2?'#ef4444':c.rem<=4?'#fde047':'#c4b5fd'}">rem: ${c.rem}</div>
+        ${!c.served?`<div class="sp-rembar-wrap"><div class="sp-rembar" style="width:${remPct}%;background:linear-gradient(90deg,${c.kDef.color},${c.kDef.accent})"></div></div>`:''}
+      </div>`;
+    qEl.appendChild(d);
+  });
+  const gEl=document.getElementById('spG');gEl.innerHTML='';
+  G.gantt.forEach(seg=>{
+    const d=document.createElement('div');d.className='sp-gseg';
+    d.style.cssText=`background:${seg.color}22;border-left:3px solid ${seg.color}`;
+    d.innerHTML=`<span style="color:${seg.color}">${seg.name}</span><span class="sp-gt">${seg.start}→${seg.end}</span>`;
+    gEl.appendChild(d);
+  });
+  const mEl=document.getElementById('spM');mEl.innerHTML='';
+  const sv=G.karts.filter(c=>c.served);
+  if(sv.length){
+    const aT=(sv.reduce((a,c)=>a+c.tat,0)/sv.length).toFixed(1),aW=(sv.reduce((a,c)=>a+c.wt,0)/sv.length).toFixed(1);
+    const preemptions=Math.max(0,G.gantt.length-sv.length);
+    [['Finalizados',`${sv.length}/${G.karts.length}`],['Avg TAT',aT],['Avg WT',aW],['Preempciones',preemptions],['Clock',G.clock]].forEach(([k,v])=>{
+      const r=document.createElement('div');r.className='sp-row';r.innerHTML=`<span class="k">${k}</span><span class="v">${v}</span>`;mEl.appendChild(r);
+    });
+  }
+}
+
+function showTst(icon,msg,sub,dur=4){document.getElementById('tIcon').textContent=icon;document.getElementById('tMsg').textContent=msg;document.getElementById('tSub').textContent=sub;document.getElementById('toast').classList.add('show');G.toastT=dur;}
+function hideTst(){document.getElementById('toast').classList.remove('show');}
+
+/* ══════════════════════════════════════════════════════
+   DRAW
+══════════════════════════════════════════════════════ */
+function draw(){
+  const{mario,karts,gy,worldW,camX,particles,shake,itemBoxes}=G;
+  let shx=0,shy=0;if(shake>0){shx=(Math.random()-.5)*7;shy=(Math.random()-.5)*4;}
+  ctx.save();ctx.translate(shx,shy);
+
+  // ── SPACE BACKGROUND ──
+  const sky=ctx.createLinearGradient(0,0,0,gy);
+  sky.addColorStop(0,'#000005');sky.addColorStop(0.5,'#05000f');sky.addColorStop(1,'#08001a');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+
+  // Star field (parallax)
+  if(!starBg){
+    const rb=['#ef4444','#f97316','#fde047','#22c55e','#3b82f6','#8b5cf6','#ec4899','#fff','#fff','#fff'];
+    starBg=[];
+    for(let i=0;i<220;i++){
+      starBg.push({x:Math.random()*6000,y:Math.random()*H*.9,
+        r:.3+Math.random()*1.8,a:.06+Math.random()*.9,p:.03+Math.random()*.28,
+        col:rb[Math.floor(Math.random()*rb.length)]});
+    }
+  }
+  starBg.forEach(s=>{
+    let sx2=(s.x-camX*s.p)%W;if(sx2<0)sx2+=W;
+    ctx.globalAlpha=s.a;ctx.fillStyle=s.col;
+    ctx.beginPath();ctx.arc(sx2,s.y,s.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+
+  // Preemption rainbow flash
+  if(G.preemptFlash>0){
+    const hue=Math.floor(G.rainbowT*180)%360;
+    ctx.fillStyle=`hsla(${hue},100%,65%,${G.preemptFlash*0.15})`;ctx.fillRect(0,0,W,H);
+  }
+
+  ctx.save();ctx.translate(-camX,0);
+
+  // ── RAINBOW ROAD ──
+  drawRainbowRoad(ctx,worldW,gy,H,G.roadOffset,G.idleT);
+
+  // ── ITEM BOXES ──
+  itemBoxes.forEach(b=>drawItemBlock(ctx,b.x,b.y,b.anim,b.collected));
+
+  // ── KART INFO COLUMNS ──
+  const avail=getAvailable();
+  const minRem=avail.length?Math.min(...avail.map(c=>c.rem)):Infinity;
+  karts.forEach(c=>{
+    if(c.served)return;
+    const isCurr=G.current===c.name,isMin=c.rem===minRem&&c.at<=G.clock;
+    ctx.fillStyle=isCurr?'rgba(253,224,71,.1)':isMin?'rgba(124,58,237,.07)':'rgba(100,80,200,.03)';
+    ctx.fillRect(c.x-8,0,KART_W+16,gy-KART_H-2);
+    ctx.font="9px 'Inter',sans-serif";ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    ctx.fillStyle=c.at<=G.clock?'rgba(196,181,253,.75)':'rgba(100,80,180,.5)';
+    ctx.fillText(`AT:${c.at}`,c.x+KART_W/2,18);
+    if(c.at<=G.clock){
+      ctx.fillStyle=c.rem===minRem?'#fde047':'#c4b5fd';
+      ctx.font='bold 11px monospace';
+      ctx.fillText(`rem:${c.rem}`,c.x+KART_W/2,32);
+      if(isMin){
+        ctx.fillStyle='rgba(253,224,71,.92)';ctx.font='bold 9px Inter';
+        ctx.fillText('⚡ SHORTEST',c.x+KART_W/2,46);
+      }
+      // Rem progress bar on road surface
+      const bw=KART_W-4,prog=1-c.rem/c.bt;
+      ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(c.x+2,gy-KART_H-10,bw,6);
+      ctx.fillStyle=c.rem<=2?'#ef4444':c.rem<=4?'#fde047':c.kDef.color;
+      ctx.fillRect(c.x+2,gy-KART_H-10,Math.round(bw*prog),6);
+      // border on bar
+      ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;
+      ctx.strokeRect(c.x+2,gy-KART_H-10,bw,6);
+    }
+  });
+
+  // ── RIVAL KARTS ──
+  karts.forEach(c=>{
+    const isActive=G.current===c.name;
+    if(c.served){ctx.globalAlpha=.18;}
+    else if(c.hitFlash>0){
+      ctx.globalAlpha=1;
+      ctx.fillStyle=`rgba(255,255,100,${c.hitFlash*1.5})`;
+      ctx.fillRect(c.x-4,c.y-4,KART_W+8,KART_H+8);
+    } else if(isActive){ctx.shadowBlur=22;ctx.shadowColor=c.kDef.color;}
+
+    drawRivalKart(ctx,c.x,c.y,c.kDef.color,c.kDef.dark,G.idleT+(c.bob),isActive);
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+
+    if(!c.served){
+      // Name tag above kart
+      const cx=c.x+KART_W/2;
+      ctx.fillStyle='rgba(0,0,0,.85)';ctx.fillRect(cx-28,c.y-22,56,15);
+      ctx.fillStyle=c.kDef.color;ctx.font='bold 10px Inter';ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.fillText(c.name,cx,c.y-20);
+      ctx.textBaseline='alphabetic';
+    }
+  });
+
+  // ── MARIO KART (player) ──
+  const m=mario;
+  // Shadow under mario kart (directly on road line)
+  ctx.fillStyle='rgba(0,0,0,0.45)';
+  ctx.beginPath();ctx.ellipse(m.x+KART_W/2+5,gy+2,20,5,0,0,Math.PI*2);ctx.fill();
+
+  drawDetailedKart(ctx,m.x,m.y,KART_COLS[0].color,KART_COLS[0].accent,KART_COLS[0].dark,G.marioState==='executing',G.idleT,m.facing);
+  // Mario sprite on top of kart
+  const msc=2,mpx=16*msc;
+  const marioY=m.y-mpx+6; // sit in the cockpit area
+  if(m.facing===-1){
+    ctx.save();ctx.translate(m.x+KART_W-4,marioY);ctx.scale(-1,1);
+    ctx.drawImage(getMSpr(m.marioFrame),-mpx,0,mpx,mpx);ctx.restore();
+  } else {
+    ctx.drawImage(getMSpr(m.marioFrame),m.x+6,marioY,mpx,mpx);
+  }
+
+  // "MARIO" label
+  ctx.fillStyle='rgba(0,0,0,.82)';ctx.fillRect(m.x,m.y-32,50,13);
+  ctx.fillStyle='#fde047';ctx.font='bold 9px Inter';ctx.textAlign='center';
+  ctx.fillText('🏎️ MARIO',m.x+25,m.y-21);
+
+  // Exec progress ring above mario
+  if(G.marioState==='executing'&&G.current){
+    const curr=karts.find(c=>c.name===G.current);
+    if(curr){
+      const prog=G.execProgress,rx=m.x+25,ry=m.y-52;
+      ctx.strokeStyle='rgba(167,139,250,.2)';ctx.lineWidth=5;
+      ctx.beginPath();ctx.arc(rx,ry,18,0,Math.PI*2);ctx.stroke();
+      const hue=(G.rainbowT*120)%360;
+      ctx.strokeStyle=`hsl(${hue},100%,70%)`;ctx.lineWidth=5;ctx.lineCap='round';
+      ctx.beginPath();ctx.arc(rx,ry,18,-Math.PI/2,-Math.PI/2+prog*Math.PI*2);ctx.stroke();
+      ctx.lineCap='butt';
+      ctx.fillStyle='#fde047';ctx.font='bold 10px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(curr.rem,rx,ry);ctx.textBaseline='alphabetic';
+    }
+  }
+
+  // Particles
+  particles.forEach(p=>{
+    ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  ctx.restore(); // camX
+
+  // Wrong flash
+  if(G.wrongF>0){ctx.fillStyle=`rgba(239,68,68,${G.wrongF*.28})`;ctx.fillRect(0,0,W,H);}
+
+  // Bottom HUD band
+  if(G.marioState==='free'){
+    const top=getShortest();
+    if(top){
+      const scx=top.x-camX+KART_W/2;
+      if(scx>20&&scx<W-20){
+        ctx.globalAlpha=.5+.5*Math.sin(G.idleT*4);
+        ctx.fillStyle='#fde047';ctx.font='bold 11px Inter';ctx.textAlign='center';
+        ctx.fillText('SPACE',scx,top.y-28);ctx.globalAlpha=1;
+      }
+    }
+  }
+  if(G.marioState==='executing'&&G.current){
+    const curr=karts.find(c=>c.name===G.current);
+    if(curr){
+      ctx.fillStyle='rgba(124,58,237,.25)';ctx.fillRect(0,H-46,W,46);
+      ctx.strokeStyle='rgba(167,139,250,.5)';ctx.lineWidth=2;ctx.strokeRect(0,H-46,W,46);
+      ctx.fillStyle='#e9d5ff';ctx.font='bold 16px Inter';ctx.textAlign='center';
+      ctx.fillText(`🏎️ Adelantando ${curr.name} · rem=${curr.rem} · ¡Acércate y mantente cerca!`,W/2,H-16);
+    }
+  }
+
+  ctx.restore(); // shake
+}
+
+/* ══════════════════════════════════════════════════════
+   RESULTS
+══════════════════════════════════════════════════════ */
+function showResults(){
+  G.running=false;closeModal();
+  const sv=G.karts.filter(c=>c.served);
+  const aT=(sv.reduce((a,c)=>a+c.tat,0)/sv.length).toFixed(2);
+  const aW=(sv.reduce((a,c)=>a+c.wt,0)/sv.length).toFixed(2);
+  const preemptions=Math.max(0,G.gantt.length-sv.length);
+  document.getElementById('rSB').innerHTML=`
+    <div class="rsi"><div class="rv">${G.score}</div><div class="rl">Score</div></div>
+    <div class="rsi"><div class="rv">${aT}</div><div class="rl">Avg TAT</div></div>
+    <div class="rsi"><div class="rv">${aW}</div><div class="rl">Avg WT</div></div>
+    <div class="rsi"><div class="rv">${preemptions}</div><div class="rl">Preempciones</div></div>
+    <div class="rsi"><div class="rv">${G.lives}</div><div class="rl">Vidas</div></div>`;
+  const gb=document.getElementById('rGBar'),gt=document.getElementById('rGTks');
+  gb.innerHTML='';gt.innerHTML='';gt.style.cssText='position:relative;height:20px;margin-top:5px';
+  G.gantt.forEach((seg,i)=>{
+    const dur=seg.end-seg.start,el=document.createElement('div');el.className='rg-seg';
+    el.style.cssText=`width:${dur*GU}px;background:${seg.color}88;animation-delay:${i*.07}s`;
+    el.innerHTML=`<span style="padding:0 4px;font-size:.7rem">${seg.name}</span>`;gb.appendChild(el);
+    [seg.start,seg.end].forEach(t=>{
+      if(!document.getElementById(`rgt${t}`)){
+        const tk=document.createElement('div');tk.className='rg-tick';tk.id=`rgt${t}`;
+        tk.textContent=t;tk.style.left=`${t*GU}px`;gt.appendChild(tk);
+      }
+    });
+  });
+  const tb=document.getElementById('rTB');tb.innerHTML='';
+  sv.sort((a,b)=>a.e-b.e).forEach(c=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="color:${c.kDef.color};font-weight:700">🏎️ ${c.name}</td><td>${c.at}</td><td>${c.bt}</td><td style="color:#3b82f6">${c.s}</td><td style="color:#10b981">${c.e}</td><td style="color:#a78bfa">${c.tat}</td><td style="color:#fde047">${c.wt}</td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('rTF').innerHTML=`<tr style="color:#f43f5e;font-weight:700"><td colspan="5" style="text-align:right;padding:7px 10px;font-size:.7rem">PROMEDIO →</td><td>${aT}</td><td>${aW}</td></tr>`;
+
+  const starvation=sv.some(c=>c.wt>c.bt*2&&c.bt>=5);
+  let refl=`<div class="r-refl-t">🏁 ¿Qué aprendiste sobre SRTF?</div>
+    <p>SRTF (Preemptive SJF) siempre adelantó al kart con <strong>menor tiempo restante</strong>.
+    Se produjeron <strong>${preemptions}</strong> expropiaciones — cada una es un <em>context switch</em> real en la CPU.</p>
+    <p style="margin-top:8px">Avg WT = <strong>${aW}</strong>. SRTF es <strong>óptimo para minimizar el Average Waiting Time</strong>,
+    pero implica más cambios de contexto que SJF no-preemptivo.</p>`;
+  if(starvation){
+    refl+=`<div class="r-srtf-box">⚠️ <strong>Starvation detectada:</strong> Algún kart con mucho trabajo fue constantemente expropiad por karts más rápidos. En sistemas reales, se puede usar <strong>aging</strong>: aumentar prioridad de procesos que esperan mucho.</div>`;
+  }
+  refl+=`<div class="r-srtf-box">💡 <strong>SRTF vs SJF:</strong> SJF es no-preemptivo — un proceso corre hasta terminar. SRTF verifica en cada llegada si el nuevo proceso tiene menos tiempo restante. El Avg WT de SRTF ≤ Avg WT de SJF casi siempre.</div>`;
+  if(G.errors===0)refl+=`<p style="margin-top:10px;color:#10b981">🏆 ¡Sin errores! Eres campeón de Rainbow Road y de SRTF.</p>`;
+  document.getElementById('rRefl').innerHTML=refl;
+
+  const perf=G.lives===3&&G.errors===0;
+  document.getElementById('rTro').textContent=perf?'🏆':'⭐';
+  document.getElementById('rTitle').textContent=perf?'¡Campeón de Rainbow Road!':'¡Vuelta Completada!';
+  document.getElementById('rSub').textContent=LEVELS[G.li].name;
+  const bn=document.getElementById('bNxt');bn.style.display=G.li<LEVELS.length-1?'':'none';
+  bn.onclick=()=>startLevel(G.li+1);
+  document.getElementById('bRep').onclick=()=>startLevel(G.li);
+  document.getElementById('bMenu').onclick=goMenu;
+  showSc('sR');
+}
+
+function showSc(id){document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('off',s.id!==id));}
+function goMenu(){G.running=false;starBg=null;closeModal();showSc('sT');}
+window.addEventListener('resize',()=>{if(G.running)resize();});
+</script>
+</body>
+</html>
