@@ -1,180 +1,136 @@
-# 🖥️ Visual Operating Systems Simulator
+# 🖥️ Simulador Visual de Sistemas Operativos
 
-A **production-quality, educational** operating systems simulator built with **Python 3** and **PyQt5**. Covers CPU scheduling, memory paging, page replacement, concurrency, regex/CSV extraction, and client-server communication — all with **animated, interactive visualizations**.
+Un simulador de sistemas operativos **educativo y de calidad de producción** construido con **Python 3** y **PyQt5**. Abarca la planificación de CPU, paginación de memoria, reemplazo de páginas, concurrencia, extracción con regex/CSV y comunicación cliente-servidor — todo con **visualizaciones interactivas y animadas**.
 
 ---
 
-## 📸 Features
+## 👥 Integrantes del Equipo
 
-| Feature | Details |
+| Nombre | Matrícula |
 |---|---|
-| **CPU Scheduling** | FCFS, SJF, HRRN, Round Robin, SRTF, Priority, Multilevel Queue, MLFQ |
-| **Memory Paging** | Configurable memory/page size, frame grid, page tables, fragmentation |
-| **Page Replacement** | FIFO, LRU, Optimal, Clock, Second Chance — step-by-step animation |
-| **Concurrency** | N-thread simulation, safe (Lock) vs unsafe, race condition detection |
-| **Regex + CSV** | Extract dates/names/emails/phones/addresses, live CSV view |
-| **Client-Server** | TCP event system with pub/sub, add/remove/trigger/exit protocol |
-| **Metrics** | CT, TAT, WT, RT, CPU utilization, algorithm comparison charts |
+| José Ricardo Jáuregui Guevara | 608995 |
+| Ethan Patricio Rivera Saldivar | 615347 |
+| Roberto De La Fuente Constantino | 593303 |
+| Andres Siqueiros Cuellar | 609026 |
 
 ---
 
-## 🏗️ Architecture
+## 🤝 Coevaluación del Equipo
 
+| Integrante | Rol / Contribuciones Principales | Porcentaje de Participación |
+|---|---|---|
+| **José Ricardo Jáuregui Guevara** | [Estructura del Proyecto, FrontEnd, Desarrollo de Algoritmos SRTF, Priority, Multilevel Queue, MFLQ y Desarrollo de juegos interactivos tipo “Mario”] | 100% |
+| **Ethan Patricio Rivera Saldivar** | [Estructura del Proyecto, FrontEnd, Desarollo de Algoritmos FCFS, SJF, HRRN, Round Robin, Desarollo de Juegos tipo Mario para FCFS, SJF, HRRN, Round Robin. Desarollo de la Seccion Scheduling] | 100% |
+| **Roberto De La Fuente Constantino** | [Testing y corrección de errores. Integración en Ubiquitos] | 100% |
+| **Andres Siqueiros Cuellar** | [Estructuras de proyecto, desarrollo de juegos interactivos para Memoria y page replace, Regex y forks, testing de CSV] | 100% |
+
+---
+
+## 🚀 Paso a Paso para Levantar el Proyecto en Local
+
+Sigue estos pasos para ejecutar el simulador en tu máquina local:
+
+### 1. Prerrequisitos
+Asegúrate de tener instalado en tu sistema:
+- **Python 3.8** o superior.
+- **Git** (opcional, para clonar el repositorio).
+
+### 2. Clonar el Repositorio (Opcional)
+Si aún no tienes el código localmente, clona el repositorio y entra a la carpeta:
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd proyecto-sisops
 ```
+
+### 3. Crear Entorno e Instalar Dependencias (Backend)
+Aunque el proyecto cuenta con páginas web y juegos de Mario, la interfaz principal del simulador necesita el backend en Python para calcular los algoritmos de Scheduling, Memoria y Concurrencia a través de una API.
+
+```bash
+# Crear el entorno virtual (si no lo tienes aún)
+python3 -m venv venv
+
+# Activar el entorno virtual en macOS/Linux:
+source venv/bin/activate
+# En Windows: venv\Scripts\activate
+
+# Instalar dependencias
+pip install -r requirements-web.txt
+```
+
+### 4. Levantar el Servidor Local
+Para que la API del simulador funcione y no te marque error de `Unexpected token '<'`, debes usar el servidor Flask integrado que levanta tanto la interfaz web como la API:
+
+```bash
+python web_server.py
+```
+
+### 5. Acceder al Simulador
+Abre tu navegador y dirígete a:
+👉 **[http://localhost:5050](http://localhost:5050)**
+---
+
+## 📸 Características Principales
+
+| Característica | Detalles |
+|---|---|
+| **Planificación de CPU** | FCFS, SJF, HRRN, Round Robin, SRTF, Prioridad, Cola Multinivel, MLFQ |
+| **Paginación de Memoria** | Tamaño de memoria/página configurable, cuadrícula de marcos, tablas de páginas, fragmentación |
+| **Reemplazo de Páginas** | FIFO, LRU, Óptimo, Reloj, Segunda Oportunidad — animación paso a paso |
+| **Concurrencia** | Simulación de N-hilos, modo seguro (Lock) vs inseguro, detección de condiciones de carrera |
+| **Regex + CSV** | Extracción de fechas/nombres/emails/teléfonos/direcciones, vista CSV en vivo |
+| **Cliente-Servidor** | Sistema de eventos TCP con pub/sub, protocolo de agregar/remover/activar/salir |
+| **Métricas** | CT, TAT, WT, RT, utilización de CPU, gráficos de comparación de algoritmos |
+
+---
+
+## 🏗️ Arquitectura del Proyecto
+
+```text
 proyecto-sisops/
-├── main.py                    # Entry point
+├── main.py                    # Punto de entrada
 ├── requirements.txt
 ├── README.md
 │
-├── algorithms/                # Core algorithms (scheduling, memory, page replacement)
-│   ├── process.py             # Process dataclass + ProcessState enum
-│   ├── scheduler.py           # Abstract Scheduler + result containers
-│   ├── fcfs.py                # First-Come, First-Served
-│   ├── sjf.py                 # Shortest Job First
-│   ├── hrrn.py                # Highest Response Ratio Next
-│   ├── round_robin.py         # Round Robin (configurable quantum)
-│   ├── srtf.py                # Shortest Remaining Time First
-│   ├── priority_preemptive.py # Preemptive Priority
-│   ├── multilevel_queue.py    # Multilevel Queue (3 fixed levels)
-│   ├── multilevel_feedback_queue.py  # MLFQ with demotion
-│   ├── memory.py              # Memory paging manager
-│   ├── page_replacement.py    # FIFO, LRU, Optimal, Clock, Second Chance
-│   └── __init__.py            # Exports + ALGORITHM_MAP
-│
-├── server/                    # TCP event server
-│   ├── server.py              # Threaded TCP server
-│   ├── event_manager.py       # Event add/remove/trigger
-│   ├── subscription.py        # Pub/sub manager
-│   └── __init__.py
-│
-├── client/                    # TCP client
-│   ├── client.py              # SimClient with background listener
-│   ├── client_config.py       # Connection constants
-│   └── __init__.py
-│
-├── gui/                       # PyQt5 GUI
-│   ├── main_window.py         # Main window + sidebar navigation
-│   ├── theme.py               # Dark theme stylesheet + colors
-│   ├── process_input_screen.py
-│   ├── scheduling_screen.py
-│   ├── gantt_widget.py        # Animated Gantt chart
-│   ├── queue_widget.py        # Animated queue visualization
-│   ├── metrics_table.py       # Per-process metrics table
-│   ├── memory_screen.py       # Memory frame grid
-│   ├── page_replacement_screen.py
-│   ├── comparison_screen.py   # Algorithm comparison charts
-│   ├── csv_view.py            # Live CSV extraction view
-│   ├── concurrency_screen.py  # Thread timeline visualization
-│   └── __init__.py
-│
-├── concurrency/               # Concurrency simulation
-│   ├── process_manager.py     # N-thread simulator
-│   ├── shared_state.py        # Safe/unsafe shared counters
-│   └── __init__.py
-│
-├── regex_csv/                 # Regex + CSV module
-│   ├── extractor.py           # Regex data extraction
-│   ├── csv_writer.py          # Incremental CSV writer
-│   └── __init__.py
-│
-├── tests/                     # Unit tests
-│   ├── test_scheduling.py
-│   ├── test_memory.py
-│   ├── test_regex.py
-│   ├── test_server.py
-│   └── scenarios/             # Sample input files
-│       ├── sample_processes.csv
-│       ├── sample_text.txt
-│       ├── edge_case_burst0.csv
-│       └── edge_case_same_arrival.csv
-│
-└── docs/                      # Documentation
-    ├── diagrama_arquitectura.png
-    └── reporte_tecnico.pdf
+├── algorithms/                # Algoritmos centrales (planificación, memoria, reemplazo)
+├── server/                    # Servidor de eventos TCP
+├── client/                    # Cliente TCP
+├── gui/                       # Interfaz gráfica (PyQt5)
+├── concurrency/               # Simulación de concurrencia
+├── regex_csv/                 # Módulo de Regex y CSV
+├── tests/                     # Pruebas unitarias
+└── docs/                      # Documentación (Diagramas, Reportes)
 ```
 
 ---
 
-## 🚀 How to Run
+## 🎨 Pantallas de la Interfaz (GUI)
 
-### 1. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Launch the Simulator
-
-```bash
-python main.py
-```
-
-The application will:
-1. Start the TCP event server on `127.0.0.1:9999`
-2. Launch the PyQt5 GUI window
-
-### 3. Run Unit Tests
-
-```bash
-python -m pytest tests/ -v
-```
+1. **Ingreso de Procesos** — Agregar/editar procesos, seleccionar algoritmo, configurar quantum.
+2. **Planificación** — Gráfico de Gantt animado, cola de listos, diagrama de estados.
+3. **Memoria** — Cuadrícula de marcos, tablas de páginas, estadísticas de fragmentación.
+4. **Reemplazo de Páginas** — Animación paso a paso de FIFO/LRU/Óptimo/Reloj/Segunda Oportunidad.
+5. **Comparación de Algoritmos** — Gráficos de barras que comparan todos los algoritmos.
+6. **Extracción CSV** — Seleccionar archivo .txt, extraer datos, vista CSV en vivo.
+7. **Concurrencia** — Línea de tiempo de N-hilos, modo seguro vs inseguro.
 
 ---
 
-## 🎨 GUI Screens
+## 🧪 Pruebas (Testing)
 
-1. **Process Input** — Add/edit processes, select algorithm, set quantum
-2. **Scheduling** — Animated Gantt chart, ready queue, state diagram
-3. **Memory** — Frame grid, page tables, fragmentation stats
-4. **Page Replacement** — Step-by-step animation of FIFO/LRU/Optimal/Clock/SC
-5. **Algorithm Comparison** — Bar charts comparing all algorithms
-6. **CSV Extraction** — Pick a .txt file, extract data, live CSV view
-7. **Concurrency** — N-thread timeline, safe vs unsafe mode
-
----
-
-## 🎯 Design
-
-- **Dark theme**: `#000000` background, `#6EEB83` green accent, `#6A00FF` purple accent
-- **Animated**: Gantt chart reveals, queue slides, auto-step page replacement
-- **Modular**: Each algorithm is a standalone class inheriting from `Scheduler`
-- **Educational**: Every concept is visual, interactive, and intuitive
-
----
-
-## 📊 Sample Input
-
-Use the CSV files in `tests/scenarios/`:
-- `sample_processes.csv` — 6 standard test processes
-- `sample_text.txt` — Text with dates, names, emails for regex testing
-- `edge_case_burst0.csv` — Process with burst time = 0
-- `edge_case_same_arrival.csv` — All processes arrive at t=0
-
----
-
-## 🧪 Testing
-
-| Test Suite | Coverage |
+| Suite de Pruebas | Cobertura |
 |---|---|
-| `test_scheduling.py` | All 8 algorithms + edge cases |
-| `test_memory.py` | Memory allocation + 5 page replacement algorithms |
-| `test_regex.py` | Date, email, name, address extraction |
-| `test_server.py` | Server protocol + pub/sub broadcast |
+| `test_scheduling.py` | Los 8 algoritmos de planificación + casos límite |
+| `test_memory.py` | Asignación de memoria + 5 algoritmos de reemplazo de páginas |
+| `test_regex.py` | Extracción de fechas, correos, nombres, direcciones |
+| `test_server.py` | Protocolo de servidor + transmisión pub/sub |
 
 ---
 
-## ⚙️ Technology Stack
+## ⚙️ Tecnologías Utilizadas
 
 - **Python 3.8+**
-- **PyQt5** — GUI framework
-- **socket** — TCP client-server
-- **threading** — Concurrency simulation
-- **re** — Regex extraction
-- **csv** — CSV handling
-
----
-
-## 👥 Authors
-
-UDEM — Ingeniería en Tecnologías Computacionales  
-Sistemas Operativos — 6to Semestre — Proyecto Final
+- **PyQt5** — Framework para la Interfaz Gráfica
+- **socket** — Cliente-servidor TCP
+- **threading** — Simulación de concurrencia
+- **re** — Extracción mediante expresiones regulares (Regex)
+- **csv** — Manejo de archivos CSV
