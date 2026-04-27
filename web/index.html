@@ -1,774 +1,1685 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Simulador Visual de Sistemas Operativos — CPU Scheduling, Memory Paging, Page Replacement, Concurrency y más." />
-  <title>Sisops Galaxy — Simulador Visual de Sistemas Operativos</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Simulador Visual de Sistemas Operativos — CPU Scheduling, Memory Paging, Page Replacement, Concurrency y más."
+    />
+    <title>Sisops Galaxy — Simulador Visual de Sistemas Operativos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  </head>
+  <body>
+    <!-- Page Loader -->
+    <div id="page-loader" class="page-overlay-loader">
+      <div class="loader"></div>
+    </div>
+    <script>
+      window.addEventListener("load", () => {
+        // Small artificial delay to show off the loader animation
+        setTimeout(() => {
+          const loader = document.getElementById("page-loader");
+          if (loader) loader.classList.add("hidden");
+        }, 500);
+      });
+    </script>
+    <!-- Toast container -->
+    <div
+      class="toast-container"
+      id="toast-container"
+      role="alert"
+      aria-live="polite"
+    ></div>
 
-  <!-- Page Loader -->
-  <div id="page-loader" class="page-overlay-loader">
-    <div class="loader"></div>
-  </div>
-  <script>
-    window.addEventListener('load', () => {
-      // Small artificial delay to show off the loader animation
-      setTimeout(() => {
-        const loader = document.getElementById('page-loader');
-        if(loader) loader.classList.add('hidden');
-      }, 500);
-    });
-  </script>  <!-- Toast container -->
-  <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+    <div class="app-wrapper">
+      <!-- ═══ Sidebar ═══════════════════════════════════════════════════ -->
+      <aside
+        class="sidebar"
+        role="navigation"
+        aria-label="Navegación principal"
+      >
+        <header class="sidebar-brand">
+          <div
+            class="brand-icon"
+            aria-hidden="true"
+            style="background: white; padding: 2px"
+          >
+            <img
+              src="img/Sisops%20Galaxy.png"
+              alt="Sisops Galaxy Logo"
+              style="
+                width: 28px;
+                height: 28px;
+                object-fit: contain;
+                border-radius: 4px;
+              "
+            />
+          </div>
+          <div>
+            <h1>Sisops Galaxy</h1>
+            <span class="brand-tag">UDEM — Sistemas Operativos</span>
+          </div>
+        </header>
 
-  <div class="app-wrapper">
-    <!-- ═══ Sidebar ═══════════════════════════════════════════════════ -->
-    <aside class="sidebar" role="navigation" aria-label="Navegación principal">
-      <header class="sidebar-brand">
-        <div class="brand-icon" aria-hidden="true" style="background: white; padding: 2px;">
-          <img src="img/Sisops%20Galaxy.png" alt="Sisops Galaxy Logo" style="width: 28px; height: 28px; object-fit: contain; border-radius: 4px;" />
-        </div>
-        <div>
-          <h1>Sisops Galaxy</h1>
-          <span class="brand-tag">UDEM — Sistemas Operativos</span>
-        </div>
-      </header>
+        <div class="sidebar-divider"></div>
 
-      <div class="sidebar-divider"></div>
+        <nav class="sidebar-nav">
+          <button
+            class="nav-btn active"
+            data-screen="processes"
+            id="nav-processes"
+          >
+            <span class="nav-icon" aria-hidden="true"
+              ><i class="ph ph-desktop"></i
+            ></span>
+            <span>Processes</span>
+          </button>
+          <button class="nav-btn" data-screen="scheduling" id="nav-scheduling">
+            <span class="nav-icon" aria-hidden="true"
+              ><i class="ph ph-chart-line-up"></i
+            ></span>
+            <span>Scheduling</span>
+          </button>
+          <button class="nav-btn" data-screen="memory" id="nav-memory">
+            <span class="nav-icon" aria-hidden="true"
+              ><i class="ph ph-brain"></i
+            ></span>
+            <span>Memory</span>
+          </button>
+          <button
+            class="nav-btn"
+            data-screen="page-replace"
+            id="nav-page-replace"
+          >
+            <span class="nav-icon" aria-hidden="true"
+              ><i class="ph ph-file-text"></i
+            ></span>
+            <span>Page Replace</span>
+          </button>
+          <button class="nav-btn" data-screen="comparison" id="nav-comparison">
+            <span class="nav-icon" aria-hidden="true"
+              ><i class="ph ph-scales"></i
+            ></span>
+            <span>Comparison</span>
+          </button>
+          <button
+            class="nav-btn"
+            data-screen="csv-extract"
+            id="nav-csv-extract"
+          >
+            <span class="nav-icon" aria-hidden="true"
+              ><i class="ph ph-file-code"></i
+            ></span>
+            <span>CSV Extract</span>
+          </button>
+          <button
+            class="nav-btn"
+            data-screen="concurrency"
+            id="nav-concurrency"
+          >
+            <span class="nav-icon" aria-hidden="true"
+              ><i class="ph ph-arrows-clockwise"></i
+            ></span>
+            <span>Concurrency</span>
+          </button>
+        </nav>
 
-      <nav class="sidebar-nav">
-        <button class="nav-btn active" data-screen="processes" id="nav-processes">
-          <span class="nav-icon" aria-hidden="true"><i class="ph ph-desktop"></i></span>
-          <span>Processes</span>
-        </button>
-        <button class="nav-btn" data-screen="scheduling" id="nav-scheduling">
-          <span class="nav-icon" aria-hidden="true"><i class="ph ph-chart-line-up"></i></span>
-          <span>Scheduling</span>
-        </button>
-        <button class="nav-btn" data-screen="memory" id="nav-memory">
-          <span class="nav-icon" aria-hidden="true"><i class="ph ph-brain"></i></span>
-          <span>Memory</span>
-        </button>
-        <button class="nav-btn" data-screen="page-replace" id="nav-page-replace">
-          <span class="nav-icon" aria-hidden="true"><i class="ph ph-file-text"></i></span>
-          <span>Page Replace</span>
-        </button>
-        <button class="nav-btn" data-screen="comparison" id="nav-comparison">
-          <span class="nav-icon" aria-hidden="true"><i class="ph ph-scales"></i></span>
-          <span>Comparison</span>
-        </button>
-        <button class="nav-btn" data-screen="csv-extract" id="nav-csv-extract">
-          <span class="nav-icon" aria-hidden="true"><i class="ph ph-file-code"></i></span>
-          <span>CSV Extract</span>
-        </button>
-        <button class="nav-btn" data-screen="concurrency" id="nav-concurrency">
-          <span class="nav-icon" aria-hidden="true"><i class="ph ph-arrows-clockwise"></i></span>
-          <span>Concurrency</span>
-        </button>
-      </nav>
+        <footer class="sidebar-footer">
+          <div class="connection-status">
+            <div class="status-dot" id="connection-dot"></div>
+            <span id="connection-text">Connected</span>
+          </div>
+        </footer>
+      </aside>
 
-      <footer class="sidebar-footer">
-        <div class="connection-status">
-          <div class="status-dot" id="connection-dot"></div>
-          <span id="connection-text">Connected</span>
-        </div>
-      </footer>
-    </aside>
+      <!-- ═══ Main Content ══════════════════════════════════════════════ -->
+      <main class="main-content">
+        <canvas id="particles-canvas" aria-hidden="true"></canvas>
 
-    <!-- ═══ Main Content ══════════════════════════════════════════════ -->
-    <main class="main-content">
-      <canvas id="particles-canvas" aria-hidden="true"></canvas>
+        <div class="content-area">
+          <!-- ─── Screen 1: Processes ───────────────────────────────── -->
+          <section
+            class="screen active"
+            id="screen-processes"
+            aria-labelledby="heading-processes"
+          >
+            <header class="screen-header">
+              <h2 id="heading-processes">Process Input</h2>
+              <p>
+                Agrega procesos, selecciona un algoritmo de scheduling y ejecuta
+                la simulación.
+              </p>
+            </header>
 
-      <div class="content-area">
-
-        <!-- ─── Screen 1: Processes ───────────────────────────────── -->
-        <section class="screen active" id="screen-processes" aria-labelledby="heading-processes">
-          <header class="screen-header">
-            <h2 id="heading-processes">Process Input</h2>
-            <p>Agrega procesos, selecciona un algoritmo de scheduling y ejecuta la simulación.</p>
-          </header>
-
-          <div class="grid-sidebar">
-            <!-- Config panel -->
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración</div>
-
-              <div class="form-group">
-                <label for="algo-select">Algoritmo</label>
-                <select class="form-select" id="algo-select">
-                  <option value="FCFS">FCFS (First Come, First Served)</option>
-                  <option value="SJF">SJF (Shortest Job First)</option>
-                  <option value="HRRN">HRRN (Highest Response Ratio)</option>
-                  <option value="Round Robin">Round Robin</option>
-                  <option value="SRTF">SRTF (Shortest Remaining Time)</option>
-                  <option value="Priority (Preemptive)">Priority (Preemptive)</option>
-                  <option value="Multilevel Queue">Multilevel Queue</option>
-                  <option value="MLFQ">MLFQ (Multilevel Feedback Queue)</option>
-                </select>
-              </div>
-
-              <div class="form-group" id="quantum-group">
-                <label for="quantum-input">Quantum</label>
-                <input type="number" class="form-input" id="quantum-input" value="2" min="1" max="50" />
-              </div>
-
-              <div class="sidebar-divider mt-md mb-md"></div>
-
-
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="input-arrival">Arrival</label>
-                  <input type="number" class="form-input" id="input-arrival" value="0" min="0" />
+            <div class="grid-sidebar">
+              <!-- Config panel -->
+              <div class="card">
+                <div class="card-title">
+                  <span class="card-icon"><i class="ph ph-gear"></i></span>
+                  Configuración
                 </div>
+
                 <div class="form-group">
-                  <label for="input-burst">Burst</label>
-                  <input type="number" class="form-input" id="input-burst" value="5" min="1" />
+                  <label for="algo-select">Algoritmo</label>
+                  <select class="form-select" id="algo-select">
+                    <option value="FCFS">
+                      FCFS (First Come, First Served)
+                    </option>
+                    <option value="SJF">SJF (Shortest Job First)</option>
+                    <option value="HRRN">HRRN (Highest Response Ratio)</option>
+                    <option value="Round Robin">Round Robin</option>
+                    <option value="SRTF">SRTF (Shortest Remaining Time)</option>
+                    <option value="Priority (Preemptive)">
+                      Priority (Preemptive)
+                    </option>
+                    <option value="Multilevel Queue">Multilevel Queue</option>
+                    <option value="MLFQ">
+                      MLFQ (Multilevel Feedback Queue)
+                    </option>
+                  </select>
                 </div>
-                <div class="form-group">
-                  <label for="input-priority">Priority</label>
-                  <input type="number" class="form-input" id="input-priority" value="0" min="0" />
+
+                <div class="form-group" id="quantum-group">
+                  <label for="quantum-input">Quantum</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    id="quantum-input"
+                    value="2"
+                    min="1"
+                    max="50"
+                  />
                 </div>
-                <div class="form-group">
-                  <label for="input-pages">Pages</label>
-                  <input type="number" class="form-input" id="input-pages" value="1" min="1" />
+
+                <div class="sidebar-divider mt-md mb-md"></div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="input-arrival">Arrival</label>
+                    <input
+                      type="number"
+                      class="form-input"
+                      id="input-arrival"
+                      value="0"
+                      min="0"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="input-burst">Burst</label>
+                    <input
+                      type="number"
+                      class="form-input"
+                      id="input-burst"
+                      value="5"
+                      min="1"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="input-priority">Priority</label>
+                    <input
+                      type="number"
+                      class="form-input"
+                      id="input-priority"
+                      value="0"
+                      min="0"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="input-pages">Pages</label>
+                    <input
+                      type="number"
+                      class="form-input"
+                      id="input-pages"
+                      value="1"
+                      min="1"
+                    />
+                  </div>
+                </div>
+
+                <div class="flex gap-sm mt-md">
+                  <button class="btn btn-primary" id="btn-add-process">
+                    <i class="ph ph-plus"></i> Agregar
+                  </button>
+                  <button class="btn btn-secondary" id="btn-load-sample">
+                    <i class="ph ph-folder-open"></i> Sample
+                  </button>
+                </div>
+
+                <div class="sidebar-divider mt-md mb-md"></div>
+
+                <div class="flex gap-sm">
+                  <button
+                    class="btn btn-primary btn-lg"
+                    id="btn-run-simulation"
+                    style="flex: 1"
+                  >
+                    <i class="ph ph-play"></i> Ejecutar Simulación
+                  </button>
+                </div>
+                <div class="flex gap-sm mt-sm">
+                  <button
+                    class="btn btn-danger btn-sm"
+                    id="btn-clear-processes"
+                    style="flex: 1"
+                  >
+                    <i class="ph ph-trash"></i> Limpiar
+                  </button>
+                </div>
+                <div class="flex gap-md mt-md" id="fcfs-game-link-container">
+                  <a
+                    href="fcfs_game.html"
+                    id="btn-fcfs-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i
+                      class="ph ph-game-controller"
+                      style="font-size: 1.2rem"
+                    ></i>
+                    FCFS (Mario)
+                  </a>
+                  <a
+                    href="sjf_game.html"
+                    id="btn-sjf-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i class="ph ph-rocket" style="font-size: 1.2rem"></i> SJF
+                    (Mario)
+                  </a>
+                  <a
+                    href="hrrn_game.html"
+                    id="btn-hrrn-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i class="ph ph-star" style="font-size: 1.2rem"></i> HRRN
+                    (Mario)
+                  </a>
+                  <a
+                    href="rr_game.html"
+                    id="btn-rr-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i
+                      class="ph ph-arrows-clockwise"
+                      style="font-size: 1.2rem"
+                    ></i>
+                    Round Robin (Mario)
+                  </a>
+                  <a
+                    href="srtf_game.html"
+                    id="btn-srtf-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i class="ph ph-car" style="font-size: 1.2rem"></i> SRTF
+                    (Mario)
+                  </a>
+                  <a
+                    href="priority_game.html"
+                    id="btn-pri-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i
+                      class="ph ph-castle-turret"
+                      style="font-size: 1.2rem"
+                    ></i>
+                    Priority Queue - Preemptive (Mario)
+                  </a>
+                  <a
+                    href="multilevel_game.html"
+                    id="btn-multi-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i class="ph ph-alien" style="font-size: 1.2rem"></i>
+                    Multilevel Queue (Mario)
+                  </a>
+                  <a
+                    href="mlfq_game.html"
+                    id="btn-mlfq-game"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i
+                      class="ph ph-chart-line-up"
+                      style="font-size: 1.2rem"
+                    ></i>
+                    MLFQ (Mario)
+                  </a>
                 </div>
               </div>
 
-              <div class="flex gap-sm mt-md">
-                <button class="btn btn-primary" id="btn-add-process"><i class="ph ph-plus"></i> Agregar</button>
-                <button class="btn btn-secondary" id="btn-load-sample"><i class="ph ph-folder-open"></i> Sample</button>
+              <!-- Process table -->
+              <div class="card">
+                <div class="card-title flex-between">
+                  <div>
+                    <span class="card-icon"
+                      ><i class="ph ph-clipboard-text"></i
+                    ></span>
+                    Procesos (<span id="process-count">0</span>)
+                  </div>
+                </div>
+                <div class="process-table-container">
+                  <div class="table-wrapper">
+                    <table class="process-table" id="process-table">
+                      <thead>
+                        <tr>
+                          <th>PID</th>
+                          <th>Arrival</th>
+                          <th>Burst</th>
+                          <th>Priority</th>
+                          <th>Pages</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody id="process-tbody"></tbody>
+                    </table>
+                  </div>
+                  <div class="empty-state" id="empty-processes">
+                    <div class="empty-icon"><i class="ph ph-mailbox"></i></div>
+                    <p>
+                      No hay procesos aún. Agrega procesos usando el formulario
+                      o carga los datos de ejemplo.
+                    </p>
+                  </div>
+                </div>
               </div>
+            </div>
+          </section>
 
-              <div class="sidebar-divider mt-md mb-md"></div>
+          <!-- ─── Screen 2: Scheduling ─────────────────────────────── -->
+          <section
+            class="screen"
+            id="screen-scheduling"
+            aria-labelledby="heading-scheduling"
+          >
+            <header
+              class="screen-header"
+              style="
+                display: flex;
+                align-items: flex-end;
+                justify-content: space-between;
+                border-bottom: none;
+                padding-bottom: 0;
+              "
+            >
+              <div>
+                <h2
+                  id="heading-scheduling"
+                  style="font-size: 2.2rem; margin-bottom: 5px"
+                >
+                  Esperando Algoritmo...
+                </h2>
+                <p>
+                  Diagrama de Gantt animado, cola de listas y métricas
+                  algorítmicas.
+                </p>
+              </div>
+              <!-- Mario Algo Tooltip Component -->
+              <div
+                class="mario-algo-btn-wrapper"
+                id="algo-mario-tooltip"
+                style="display: none; padding-bottom: 30px; margin-right: 20px"
+              >
+                <div class="brick one"></div>
+                <div class="tooltip-mario-container">
+                  <div class="box"></div>
+                  <div class="mush"></div>
+                  <div
+                    class="algo-popup"
+                    style="top: 50px; bottom: auto; right: -25px"
+                  >
+                    <h4 id="algo-popup-title">Algoritmo</h4>
+                    <p id="algo-popup-desc">
+                      Ejecuta la simulación para aprender de cada algoritmo.
+                    </p>
+                  </div>
+                </div>
+                <div class="brick two"></div>
+              </div>
+            </header>
 
-              <div class="flex gap-sm">
-                <button class="btn btn-primary btn-lg" id="btn-run-simulation" style="flex:1">
-                  <i class="ph ph-play"></i> Ejecutar Simulación
-                </button>
+            <div class="stats-grid" id="scheduling-stats">
+              <div class="stat-card">
+                <div class="stat-value" id="stat-avg-tat">—</div>
+                <div class="stat-label">Avg Turnaround</div>
               </div>
-              <div class="flex gap-sm mt-sm">
-                <button class="btn btn-danger btn-sm" id="btn-clear-processes" style="flex:1"><i class="ph ph-trash"></i> Limpiar</button>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-avg-wt">—</div>
+                <div class="stat-label">Avg Waiting</div>
               </div>
-              <div class="flex gap-md mt-md" id="fcfs-game-link-container">
-                <a href="fcfs_game.html" id="btn-fcfs-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
-                  <i class="ph ph-game-controller" style="font-size: 1.2rem;"></i> FCFS (Mario)
-                </a>
-                <a href="sjf_game.html" id="btn-sjf-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
-                  <i class="ph ph-rocket" style="font-size: 1.2rem;"></i> SJF (Mario)
-                </a>
-                <a href="hrrn_game.html" id="btn-hrrn-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
-                  <i class="ph ph-star" style="font-size: 1.2rem;"></i> HRRN (Mario)
-                </a>
-                <a href="rr_game.html" id="btn-rr-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
-                  <i class="ph ph-arrows-clockwise" style="font-size: 1.2rem;"></i> Round Robin (Mario)
-                </a>
-                <a href="priority_game.html" id="btn-pri-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
-                  <i class="ph ph-castle-turret" style="font-size: 1.2rem;"></i> Priority Queue - Preemptive (Mario)
-                </a>
-                <a href="multilevel_game.html" id="btn-multi-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
-                  <i class="ph ph-alien" style="font-size: 1.2rem;"></i> Multilevel Queue (Mario)
-                </a>
-                <a href="mlfq_game.html" id="btn-mlfq-game" target="_blank" class="btn-holographic" style="text-decoration: none; flex-direction: row; font-weight: 600; width: 100%; font-family: var(--font-body); font-size: 0.85rem;">
-                  <i class="ph ph-chart-line-up" style="font-size: 1.2rem;"></i> MLFQ (Mario)
-                </a>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-avg-rt">—</div>
+                <div class="stat-label">Avg Response</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-cpu-util">—</div>
+                <div class="stat-label">CPU Utilization</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-ctx-sw">—</div>
+                <div class="stat-label">Context Switches</div>
               </div>
             </div>
 
-            <!-- Process table -->
-            <div class="card">
+            <div class="card mb-lg">
               <div class="card-title flex-between">
-                <div><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Procesos (<span id="process-count">0</span>)</div>
+                <div>
+                  <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
+                  Gantt Chart
+                </div>
+                <div class="gantt-tick-label" id="gantt-tick-label">t = 0</div>
               </div>
-              <div class="process-table-container">
-                <div class="table-wrapper">
-                  <table class="process-table" id="process-table">
-                    <thead>
-                      <tr>
-                        <th>PID</th>
-                        <th>Arrival</th>
-                        <th>Burst</th>
-                        <th>Priority</th>
-                        <th>Pages</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody id="process-tbody"></tbody>
-                  </table>
-                </div>
-                <div class="empty-state" id="empty-processes">
-                  <div class="empty-icon"><i class="ph ph-mailbox"></i></div>
-                  <p>No hay procesos aún. Agrega procesos usando el formulario o carga los datos de ejemplo.</p>
-                </div>
+              <div class="gantt-container" id="gantt-container">
+                <canvas id="gantt-canvas" height="200"></canvas>
               </div>
             </div>
-          </div>
-        </section>
 
-        <!-- ─── Screen 2: Scheduling ─────────────────────────────── -->
-        <section class="screen" id="screen-scheduling" aria-labelledby="heading-scheduling">
-          <header class="screen-header" style="display: flex; align-items: flex-end; justify-content: space-between; border-bottom: none; padding-bottom: 0;">
-            <div>
-              <h2 id="heading-scheduling" style="font-size: 2.2rem; margin-bottom: 5px;">Esperando Algoritmo...</h2>
-              <p>Diagrama de Gantt animado, cola de listas y métricas algorítmicas.</p>
-            </div>
-            <!-- Mario Algo Tooltip Component -->
-            <div class="mario-algo-btn-wrapper" id="algo-mario-tooltip" style="display: none; padding-bottom: 30px; margin-right: 20px;">
-              <div class="brick one"></div>
-              <div class="tooltip-mario-container">
-                <div class="box"></div>
-                <div class="mush"></div>
-                <div class="algo-popup" style="top: 50px; bottom: auto; right: -25px;">
-                  <h4 id="algo-popup-title">Algoritmo</h4>
-                  <p id="algo-popup-desc">Ejecuta la simulación para aprender de cada algoritmo.</p>
+            <!-- Diagrama de estados + cola + CPU en vivo -->
+            <div class="grid-2 mb-lg">
+              <div class="card">
+                <div class="card-title">
+                  <span class="card-icon"
+                    ><i class="ph ph-arrows-left-right"></i
+                  ></span>
+                  Diagrama de Estados
+                </div>
+                <div class="state-diagram" id="state-diagram">
+                  <div class="state-node" data-state="new">
+                    <div
+                      class="state-badge"
+                      style="background: var(--state-new)"
+                    >
+                      NEW
+                    </div>
+                    <div class="state-pids" id="state-pids-new">—</div>
+                  </div>
+                  <div class="state-arrow">→</div>
+                  <div class="state-node" data-state="ready">
+                    <div
+                      class="state-badge"
+                      style="background: var(--state-ready)"
+                    >
+                      READY
+                    </div>
+                    <div class="state-pids" id="state-pids-ready">—</div>
+                  </div>
+                  <div class="state-arrow">→</div>
+                  <div class="state-node" data-state="running">
+                    <div
+                      class="state-badge"
+                      style="background: var(--state-running)"
+                    >
+                      RUNNING
+                    </div>
+                    <div class="state-pids" id="state-pids-running">—</div>
+                  </div>
+                  <div class="state-arrow">→</div>
+                  <div class="state-node" data-state="terminated">
+                    <div
+                      class="state-badge"
+                      style="background: var(--state-terminated)"
+                    >
+                      TERMINATED
+                    </div>
+                    <div class="state-pids" id="state-pids-terminated">—</div>
+                  </div>
+                </div>
+                <p class="state-diagram-help">
+                  Muestra los procesos en cada estado segun el tick actual del
+                  Gantt. Usa los controles de arriba para avanzar paso a paso.
+                </p>
+              </div>
+
+              <div class="card">
+                <div class="card-title">
+                  <span class="card-icon"><i class="ph ph-crosshair"></i></span>
+                  CPU &amp; Cola Ready
+                </div>
+                <div class="cpu-panel">
+                  <div class="cpu-core" id="cpu-core">
+                    <div class="cpu-label">CPU</div>
+                    <div class="cpu-pid" id="cpu-pid">IDLE</div>
+                  </div>
+                  <div class="ready-queue" id="ready-queue">
+                    <div class="queue-label">Ready Queue</div>
+                    <div class="queue-items" id="queue-items">
+                      <span class="queue-empty">vacia</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="brick two"></div>
-            </div>
-          </header>
-
-          <div class="stats-grid" id="scheduling-stats">
-            <div class="stat-card">
-              <div class="stat-value" id="stat-avg-tat">—</div>
-              <div class="stat-label">Avg Turnaround</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-avg-wt">—</div>
-              <div class="stat-label">Avg Waiting</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-avg-rt">—</div>
-              <div class="stat-label">Avg Response</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-cpu-util">—</div>
-              <div class="stat-label">CPU Utilization</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-ctx-sw">—</div>
-              <div class="stat-label">Context Switches</div>
-            </div>
-          </div>
-
-          <div class="card mb-lg">
-            <div class="card-title flex-between">
-              <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Gantt Chart</div>
-              <div class="gantt-tick-label" id="gantt-tick-label">t = 0</div>
-            </div>
-            <div class="gantt-container" id="gantt-container">
-              <canvas id="gantt-canvas" height="200"></canvas>
-            </div>
-
-          </div>
-
-          <!-- Diagrama de estados + cola + CPU en vivo -->
-          <div class="grid-2 mb-lg">
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-arrows-left-right"></i></span> Diagrama de Estados</div>
-              <div class="state-diagram" id="state-diagram">
-                <div class="state-node" data-state="new">
-                  <div class="state-badge" style="background: var(--state-new)">NEW</div>
-                  <div class="state-pids" id="state-pids-new">—</div>
-                </div>
-                <div class="state-arrow">→</div>
-                <div class="state-node" data-state="ready">
-                  <div class="state-badge" style="background: var(--state-ready)">READY</div>
-                  <div class="state-pids" id="state-pids-ready">—</div>
-                </div>
-                <div class="state-arrow">→</div>
-                <div class="state-node" data-state="running">
-                  <div class="state-badge" style="background: var(--state-running)">RUNNING</div>
-                  <div class="state-pids" id="state-pids-running">—</div>
-                </div>
-                <div class="state-arrow">→</div>
-                <div class="state-node" data-state="terminated">
-                  <div class="state-badge" style="background: var(--state-terminated)">TERMINATED</div>
-                  <div class="state-pids" id="state-pids-terminated">—</div>
-                </div>
-              </div>
-              <p class="state-diagram-help">Muestra los procesos en cada estado segun el tick actual del Gantt. Usa los controles de arriba para avanzar paso a paso.</p>
             </div>
 
             <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-crosshair"></i></span> CPU &amp; Cola Ready</div>
-              <div class="cpu-panel">
-                <div class="cpu-core" id="cpu-core">
-                  <div class="cpu-label">CPU</div>
-                  <div class="cpu-pid" id="cpu-pid">IDLE</div>
-                </div>
-                <div class="ready-queue" id="ready-queue">
-                  <div class="queue-label">Ready Queue</div>
-                  <div class="queue-items" id="queue-items"><span class="queue-empty">vacia</span></div>
-                </div>
+              <div class="card-title">
+                <span class="card-icon"
+                  ><i class="ph ph-clipboard-text"></i
+                ></span>
+                Métricas por Proceso
+              </div>
+              <div class="table-wrapper">
+                <table id="metrics-table">
+                  <thead>
+                    <tr>
+                      <th>PID</th>
+                      <th>Arrival (AT)</th>
+                      <th>Burst (BT)</th>
+                      <th>Completion (CT)</th>
+                      <th
+                        title="Turnaround Time = Completion Time - Arrival Time"
+                      >
+                        Turnaround<br /><span
+                          style="
+                            font-size: 0.65rem;
+                            font-weight: normal;
+                            color: var(--text-muted);
+                          "
+                          >(CT - AT)</span
+                        >
+                      </th>
+                      <th title="Waiting Time = Turnaround Time - Burst Time">
+                        Waiting<br /><span
+                          style="
+                            font-size: 0.65rem;
+                            font-weight: normal;
+                            color: var(--text-muted);
+                          "
+                          >(TAT - BT)</span
+                        >
+                      </th>
+                      <th title="Response Time = First Start - Arrival Time">
+                        Response<br /><span
+                          style="
+                            font-size: 0.65rem;
+                            font-weight: normal;
+                            color: var(--text-muted);
+                          "
+                          >(1st Start - AT)</span
+                        >
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="metrics-tbody"></tbody>
+                </table>
               </div>
             </div>
-          </div>
 
-          <div class="card">
-            <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Métricas por Proceso</div>
-            <div class="table-wrapper">
-              <table id="metrics-table">
-                <thead>
-                  <tr>
-                    <th>PID</th>
-                    <th>Arrival (AT)</th>
-                    <th>Burst (BT)</th>
-                    <th>Completion (CT)</th>
-                    <th title="Turnaround Time = Completion Time - Arrival Time">Turnaround<br><span style="font-size:0.65rem;font-weight:normal;color:var(--text-muted)">(CT - AT)</span></th>
-                    <th title="Waiting Time = Turnaround Time - Burst Time">Waiting<br><span style="font-size:0.65rem;font-weight:normal;color:var(--text-muted)">(TAT - BT)</span></th>
-                    <th title="Response Time = First Start - Arrival Time">Response<br><span style="font-size:0.65rem;font-weight:normal;color:var(--text-muted)">(1st Start - AT)</span></th>
-                  </tr>
-                </thead>
-                <tbody id="metrics-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Controles paso-a-paso del Gantt (Sticky) -->
-          <div class="playback-controls sticky-playback" id="gantt-playback">
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reiniciar (R)" style="border-radius: 50%"><i class="ph ph-skip-back"></i></button>
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Paso atras (←)" style="border-radius: 50%"><i class="ph ph-rewind"></i></button>
-            <button class="btn btn-primary" id="gantt-btn-play" title="Play/Pausa (Espacio)" style="border-radius: 24px; padding: 8px 28px; font-size: 1.1rem; font-weight: 700;"><i class="ph ph-play"></i> Play</button>
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Paso adelante (→)" style="border-radius: 50%"><i class="ph ph-fast-forward"></i></button>
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Ir al final" style="border-radius: 50%"><i class="ph ph-skip-forward"></i></button>
-            <span class="step-counter" id="gantt-step-counter" style="margin: 0 12px; min-width: 60px; text-align: center;">0 / 0</span>
-            <div class="playback-speed" style="margin-left: 8px;">
-              <label for="gantt-speed" style="margin:0; font-size: 0.8rem;">Velocidad</label>
-              <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
-              <span id="gantt-speed-label" class="text-mono" style="font-size: 0.85rem; font-weight: 600; background: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 6px; color: #fff; border: 1px solid rgba(255,255,255,0.2);">1.0x</span>
-            </div>
-            <a href="#" id="sticky-game-link" target="_blank" class="btn-holographic" style="display: none; height: 32px; padding: 0 16px; font-size: 0.85rem; flex-direction: row; margin-left: 24px; width: auto; font-family: var(--font-body); text-decoration: none;">
-              <i class="ph ph-game-controller" id="sticky-game-icon" style="font-size: 1.1rem;"></i> <span id="sticky-game-text">Jugar</span>
-            </a>
-
-          </div>
-        </section>
-
-        <!-- ─── Screen 3: Memory ─────────────────────────────────── -->
-        <section class="screen" id="screen-memory" aria-labelledby="heading-memory">
-          <header class="screen-header">
-            <h2 id="heading-memory">Memory Visualization</h2>
-            <p>Grid de frames de memoria con asignación paginada.</p>
-          </header>
-
-          <div class="grid-sidebar">
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración de Memoria</div>
-              <div class="form-group">
-                <label for="mem-size">Tamaño de Memoria (bytes)</label>
-                <input type="number" class="form-input" id="mem-size" value="1024" min="64" step="64" />
-              </div>
-              <div class="form-group">
-                <label for="page-size">Tamaño de Página (bytes)</label>
-                <input type="number" class="form-input" id="page-size" value="64" min="16" step="16" />
-              </div>
-              <button class="btn btn-primary mt-md" id="btn-allocate-memory" style="width:100%">
-                <i class="ph ph-brain"></i> Asignar Memoria
+            <!-- Controles paso-a-paso del Gantt (Sticky) -->
+            <div class="playback-controls sticky-playback" id="gantt-playback">
+              <button
+                class="btn btn-secondary btn-sm"
+                id="gantt-btn-reset"
+                title="Reiniciar (R)"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-skip-back"></i>
               </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="gantt-btn-prev"
+                title="Paso atras (←)"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-rewind"></i>
+              </button>
+              <button
+                class="btn btn-primary"
+                id="gantt-btn-play"
+                title="Play/Pausa (Espacio)"
+                style="
+                  border-radius: 24px;
+                  padding: 8px 28px;
+                  font-size: 1.1rem;
+                  font-weight: 700;
+                "
+              >
+                <i class="ph ph-play"></i> Play
+              </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="gantt-btn-next"
+                title="Paso adelante (→)"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-fast-forward"></i>
+              </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="gantt-btn-end"
+                title="Ir al final"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-skip-forward"></i>
+              </button>
+              <span
+                class="step-counter"
+                id="gantt-step-counter"
+                style="margin: 0 12px; min-width: 60px; text-align: center"
+                >0 / 0</span
+              >
+              <div class="playback-speed" style="margin-left: 8px">
+                <label for="gantt-speed" style="margin: 0; font-size: 0.8rem"
+                  >Velocidad</label
+                >
+                <input
+                  type="range"
+                  id="gantt-speed"
+                  min="0.25"
+                  max="4"
+                  step="0.25"
+                  value="1"
+                  style="width: 80px"
+                />
+                <span
+                  id="gantt-speed-label"
+                  class="text-mono"
+                  style="
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    background: rgba(255, 255, 255, 0.15);
+                    padding: 3px 8px;
+                    border-radius: 6px;
+                    color: #fff;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                  "
+                  >1.0x</span
+                >
+              </div>
+              <a
+                href="#"
+                id="sticky-game-link"
+                target="_blank"
+                class="btn-holographic"
+                style="
+                  display: none;
+                  height: 32px;
+                  padding: 0 16px;
+                  font-size: 0.85rem;
+                  flex-direction: row;
+                  margin-left: 24px;
+                  width: auto;
+                  font-family: var(--font-body);
+                  text-decoration: none;
+                "
+              >
+                <i
+                  class="ph ph-game-controller"
+                  id="sticky-game-icon"
+                  style="font-size: 1.1rem"
+                ></i>
+                <span id="sticky-game-text">Jugar</span>
+              </a>
+            </div>
+          </section>
 
-              <div class="stats-grid mt-lg" id="mem-stats" style="grid-template-columns: 1fr 1fr;">
-                <div class="stat-card">
-                  <div class="stat-value" id="mem-total-frames">—</div>
-                  <div class="stat-label">Total Frames</div>
+          <!-- ─── Screen 3: Memory ─────────────────────────────────── -->
+          <section
+            class="screen"
+            id="screen-memory"
+            aria-labelledby="heading-memory"
+          >
+            <header class="screen-header">
+              <h2 id="heading-memory">Memory Visualization</h2>
+              <p>Grid de frames de memoria con asignación paginada.</p>
+            </header>
+
+            <div class="grid-sidebar">
+              <div class="card">
+                <div class="card-title">
+                  <span class="card-icon"><i class="ph ph-gear"></i></span>
+                  Configuración de Memoria
                 </div>
-                <div class="stat-card">
-                  <div class="stat-value" id="mem-free-frames">—</div>
-                  <div class="stat-label">Free Frames</div>
+                <div class="form-group">
+                  <label for="mem-size">Tamaño de Memoria (bytes)</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    id="mem-size"
+                    value="1024"
+                    min="64"
+                    step="64"
+                  />
                 </div>
-                <div class="stat-card">
-                  <div class="stat-value" id="mem-used-frames">—</div>
-                  <div class="stat-label">Used Frames</div>
+                <div class="form-group">
+                  <label for="page-size">Tamaño de Página (bytes)</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    id="page-size"
+                    value="64"
+                    min="16"
+                    step="16"
+                  />
                 </div>
-                <div class="stat-card">
-                  <div class="stat-value" id="mem-utilization">—</div>
-                  <div class="stat-label">Utilization</div>
+                <button
+                  class="btn btn-primary mt-md"
+                  id="btn-allocate-memory"
+                  style="width: 100%"
+                >
+                  <i class="ph ph-brain"></i> Asignar Memoria
+                </button>
+                <div class="flex gap-md mt-md">
+                  <a
+                    href="memory_game.html"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i
+                      class="ph ph-game-controller"
+                      style="font-size: 1.2rem"
+                    ></i>
+                    Paginación (Luigi)
+                  </a>
+                </div>
+
+                <div
+                  class="stats-grid mt-lg"
+                  id="mem-stats"
+                  style="grid-template-columns: 1fr 1fr"
+                >
+                  <div class="stat-card">
+                    <div class="stat-value" id="mem-total-frames">—</div>
+                    <div class="stat-label">Total Frames</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-value" id="mem-free-frames">—</div>
+                    <div class="stat-label">Free Frames</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-value" id="mem-used-frames">—</div>
+                    <div class="stat-label">Used Frames</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-value" id="mem-utilization">—</div>
+                    <div class="stat-label">Utilization</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title">
+                  <span class="card-icon"
+                    ><i class="ph ph-squares-four"></i
+                  ></span>
+                  Frame Map
+                </div>
+                <div class="memory-grid" id="memory-grid">
+                  <div class="empty-state">
+                    <div class="empty-icon">
+                      <i class="ph ph-squares-four"></i>
+                    </div>
+                    <p>
+                      Ejecuta una simulación para ver la asignación de memoria.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-squares-four"></i></span> Frame Map</div>
-              <div class="memory-grid" id="memory-grid">
+            <div class="card mt-lg">
+              <div class="card-title">
+                <span class="card-icon"><i class="ph ph-book-open"></i></span>
+                Page Tables
+              </div>
+              <div id="page-tables-container">
                 <div class="empty-state">
-                  <div class="empty-icon"><i class="ph ph-squares-four"></i></div>
-                  <p>Ejecuta una simulación para ver la asignación de memoria.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card mt-lg">
-            <div class="card-title"><span class="card-icon"><i class="ph ph-book-open"></i></span> Page Tables</div>
-            <div id="page-tables-container">
-              <div class="empty-state">
-                <div class="empty-icon"><i class="ph ph-book-open"></i></div>
-                <p>Las tablas de páginas aparecerán después de la asignación.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ─── Screen 4: Page Replacement ────────────────────────── -->
-        <section class="screen" id="screen-page-replace" aria-labelledby="heading-page-replace">
-          <header class="screen-header">
-            <h2 id="heading-page-replace">Page Replacement</h2>
-            <p>Animación paso a paso de algoritmos de reemplazo de páginas.</p>
-          </header>
-
-          <div class="grid-sidebar">
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración</div>
-              <div class="form-group">
-                <label for="pr-algo">Algoritmo</label>
-                <select class="form-select" id="pr-algo">
-                  <option value="FIFO">FIFO</option>
-                  <option value="LRU">LRU</option>
-                  <option value="Optimal">Optimal</option>
-                  <option value="Clock">Clock</option>
-                  <option value="Second Chance">Second Chance</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="pr-frames">Número de Frames</label>
-                <input type="number" class="form-input" id="pr-frames" value="3" min="1" max="10" />
-              </div>
-              <div class="form-group">
-                <label for="pr-refstring">Reference String (separada por comas)</label>
-                <input type="text" class="form-input" id="pr-refstring" value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1" placeholder="7,0,1,2,0,3..." />
-              </div>
-              <button class="btn btn-primary mt-md" id="btn-run-pr" style="width:100%">
-                <i class="ph ph-play"></i> Ejecutar
-              </button>
-            </div>
-
-            <div>
-              <div class="card mb-md" id="pr-metaphor-box" style="display: none; position: relative; overflow: hidden; padding-bottom: var(--space-lg);">
-                <!-- Mario Galaxy Graphics -->
-                <div class="galaxy-bg"></div>
-                <div class="mario-sprite"></div>
-                <div class="luma-sprite"></div>
-                <div style="position: relative; z-index: 10;">
-                  <div class="card-title" style="color: #fff; margin-bottom: 8px;"><span class="card-icon" style="color: #A78BFA;"><i class="ph ph-planet"></i></span> Mario Galaxy Idea: FIFO</div>
-                  <p style="color: rgba(255,255,255,0.85); font-size: 0.9rem; line-height: 1.6;" id="pr-metaphor-text">
-                    Imagina que Mario atraviesa el espacio y solo puede mantener gravedad activa en <strong style="color: #A78BFA;">planetas limitados</strong> a la vez (tus Frames). Cuando aterriza en un nuevo asteroide (Nueva Página) y ya no tiene energía, la gravedad desaparece del <strong style="color: #F87171;">primer planeta que pisó</strong> (First-In, First-Out), dejándolo atrás en el hoyo negro.
+                  <div class="empty-icon"><i class="ph ph-book-open"></i></div>
+                  <p>
+                    Las tablas de páginas aparecerán después de la asignación.
                   </p>
                 </div>
               </div>
-              <div class="card mb-md">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Resultados</div>
-                <div class="stats-grid" style="grid-template-columns: 1fr 1fr 1fr;">
-                  <div class="stat-card">
-                    <div class="stat-value" id="pr-total-faults">—</div>
-                    <div class="stat-label">Page Faults</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="pr-fault-rate">—</div>
-                    <div class="stat-label">Fault Rate</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="pr-total-refs">—</div>
-                    <div class="stat-label">Total Refs</div>
-                  </div>
-                </div>
-              </div>
+            </div>
+          </section>
 
-              <div class="card mb-md">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-list-numbers"></i></span> Reference String</div>
-                <div class="ref-string-visual" id="pr-ref-visual"></div>
-              </div>
+          <!-- ─── Screen 4: Page Replacement ────────────────────────── -->
+          <section
+            class="screen"
+            id="screen-page-replace"
+            aria-labelledby="heading-page-replace"
+          >
+            <header class="screen-header">
+              <h2 id="heading-page-replace">Page Replacement</h2>
+              <p>
+                Animación paso a paso de algoritmos de reemplazo de páginas.
+              </p>
+            </header>
 
-              <div class="card mb-md">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-squares-four"></i></span> Frames</div>
-                <div class="page-frames-visual" id="pr-frames-visual"></div>
-                <div class="step-controls" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-reset"><i class="ph ph-skip-back"></i> Reset</button>
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-prev"><i class="ph ph-caret-left"></i> Prev</button>
-                  <span class="step-counter" id="pr-step-counter">Step 0 / 0</span>
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-next">Next <i class="ph ph-caret-right"></i></button>
-                  <button class="btn btn-primary btn-sm" id="pr-btn-play"><i class="ph ph-play"></i> Play</button>
-                  <div class="playback-speed" style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-                    <label for="pr-speed" style="font-size:0.8rem; margin:0;">Velocidad</label>
-                    <input type="range" id="pr-speed" min="0.25" max="3" step="0.25" value="1" style="width:80px;" />
-                    <span id="pr-speed-label" class="text-mono" style="font-size:0.8rem;">1.0x</span>
-                  </div>
-                </div>
-              </div>
-
+            <div class="grid-sidebar">
               <div class="card">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Step History</div>
-                <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
-                  <table id="pr-steps-table">
-                    <thead>
-                      <tr>
-                        <th>Step</th>
-                        <th>Page</th>
-                        <th>Result</th>
-                        <th>Evicted</th>
-                        <th>Frames</th>
-                        <th>Faults</th>
-                      </tr>
-                    </thead>
-                    <tbody id="pr-steps-tbody"></tbody>
-                  </table>
+                <div class="card-title">
+                  <span class="card-icon"><i class="ph ph-gear"></i></span>
+                  Configuración
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ─── Screen 5: Comparison ─────────────────────────────── -->
-        <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
-          <header class="screen-header">
-            <h2 id="heading-comparison">Algorithm Comparison</h2>
-            <p>Compara todos los algoritmos de scheduling con los mismos procesos.</p>
-          </header>
-
-          <div class="flex gap-md mb-lg">
-            <button class="btn btn-primary" id="btn-run-comparison"><i class="ph ph-chart-bar"></i> Comparar Todos los Algoritmos</button>
-          </div>
-
-          <div class="chart-grid" id="comparison-charts">
-            <div class="card" id="card-tat">
-              <div class="card-title flex-between">
-                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Turnaround Time</div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-tat', 'chart-tat')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-tat" height="280"></canvas>
-              </div>
-            </div>
-            <div class="card" id="card-wt">
-              <div class="card-title flex-between">
-                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Waiting Time</div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-wt', 'chart-wt')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-wt" height="280"></canvas>
-              </div>
-            </div>
-            <div class="card" id="card-rt">
-              <div class="card-title flex-between">
-                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Avg Response Time</div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-rt', 'chart-rt')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-rt" height="280"></canvas>
-              </div>
-            </div>
-            <div class="card" id="card-cpu">
-              <div class="card-title flex-between">
-                <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> CPU Utilization (%)</div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-cpu', 'chart-cpu')" title="Expandir"><i class="ph ph-arrows-out"></i></button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-cpu" height="280"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <div class="card mt-lg">
-            <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Comparison Table</div>
-            <div class="table-wrapper">
-              <table id="comparison-table">
-                <thead>
-                  <tr>
-                    <th>Algorithm</th>
-                    <th>Avg TAT</th>
-                    <th>Avg WT</th>
-                    <th>Avg RT</th>
-                    <th>CPU %</th>
-                    <th>Context Switches</th>
-                  </tr>
-                </thead>
-                <tbody id="comparison-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ─── Screen 6: CSV Extract ────────────────────────────── -->
-        <section class="screen" id="screen-csv-extract" aria-labelledby="heading-csv-extract">
-          <header class="screen-header">
-            <h2 id="heading-csv-extract">Regex + CSV Extraction</h2>
-            <p>Extrae datos (fechas, nombres, emails, teléfonos, direcciones) de texto usando expresiones regulares.</p>
-          </header>
-
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-note"></i></span> Texto de Entrada</div>
-              <div class="form-group" style="position: relative;">
-                <textarea class="form-textarea" id="regex-input" rows="12" placeholder="Pega aquí el texto a analizar...
-Ejemplo:
-John Smith was born on 15/03/1990.
-Contact: john.smith@email.com, +52 (81) 1234-5678
-Address: 123 Main St, Monterrey, NL"></textarea>
-                <div class="form-textarea" id="regex-backdrop" style="display: none; position: absolute; inset: 0; white-space: pre-wrap; overflow-y: auto; pointer-events: auto; background: var(--bg-input); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; line-height: 1.5; color: var(--text-primary); cursor: pointer; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-default);"></div>
-              </div>
-              <div class="regex-category-filters">
-                <button class="filter-chip active" data-cat="all">All</button>
-                <button class="filter-chip" data-cat="date"><i class="ph ph-calendar"></i> Dates</button>
-                <button class="filter-chip" data-cat="email"><i class="ph ph-envelope"></i> Emails</button>
-                <button class="filter-chip" data-cat="phone"><i class="ph ph-phone"></i> Phones</button>
-                <button class="filter-chip" data-cat="name"><i class="ph ph-user"></i> Names</button>
-                <button class="filter-chip" data-cat="address"><i class="ph ph-house"></i> Addresses</button>
-              </div>
-              <button class="btn btn-primary" id="btn-extract" style="width:100%"><i class="ph ph-magnifying-glass"></i> Extraer Datos</button>
-            </div>
-
-            <div>
-              <div class="card mb-md">
-                <div class="card-title flex-between">
-                  <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Resultados</div>
-                  <span class="badge badge-purple" id="regex-match-count">0 matches</span>
+                <div class="form-group">
+                  <label for="pr-algo">Algoritmo</label>
+                  <select class="form-select" id="pr-algo">
+                    <option value="FIFO">FIFO</option>
+                    <option value="LRU">LRU</option>
+                    <option value="Optimal">Optimal</option>
+                    <option value="Clock">Clock</option>
+                    <option value="Second Chance">Second Chance</option>
+                  </select>
                 </div>
-                <div class="stats-grid" style="grid-template-columns: repeat(5,1fr);">
-                  <div class="stat-card"><div class="stat-value" id="regex-dates">0</div><div class="stat-label">Dates</div></div>
-                  <div class="stat-card"><div class="stat-value" id="regex-emails">0</div><div class="stat-label">Emails</div></div>
-                  <div class="stat-card"><div class="stat-value" id="regex-phones">0</div><div class="stat-label">Phones</div></div>
-                  <div class="stat-card"><div class="stat-value" id="regex-names">0</div><div class="stat-label">Names</div></div>
-                  <div class="stat-card"><div class="stat-value" id="regex-addresses">0</div><div class="stat-label">Addresses</div></div>
+                <div class="form-group">
+                  <label for="pr-frames">Número de Frames</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    id="pr-frames"
+                    value="3"
+                    min="1"
+                    max="10"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="pr-refstring"
+                    >Reference String (separada por comas)</label
+                  >
+                  <input
+                    type="text"
+                    class="form-input"
+                    id="pr-refstring"
+                    value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1"
+                    placeholder="7,0,1,2,0,3..."
+                  />
+                </div>
+                <button
+                  class="btn btn-primary mt-md"
+                  id="btn-run-pr"
+                  style="width: 100%"
+                >
+                  <i class="ph ph-play"></i> Ejecutar
+                </button>
+                <div class="flex gap-md mt-md">
+                  <a
+                    href="page_replace_game.html"
+                    target="_blank"
+                    class="btn-holographic"
+                    style="
+                      text-decoration: none;
+                      flex-direction: row;
+                      font-weight: 600;
+                      width: 100%;
+                      font-family: var(--font-body);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    <i
+                      class="ph ph-game-controller"
+                      style="font-size: 1.2rem"
+                    ></i>
+                    Bowser's conquest
+                  </a>
                 </div>
               </div>
 
-              <div class="card">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Extracted Data</div>
-                <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
-                  <table id="regex-table">
-                    <thead>
-                      <tr>
-                        <th>Category</th>
-                        <th>Value</th>
-                        <th>Line</th>
-                      </tr>
-                    </thead>
-                    <tbody id="regex-tbody"></tbody>
-                  </table>
+              <div>
+                <div
+                  class="card mb-md"
+                  id="pr-metaphor-box"
+                  style="
+                    display: none;
+                    position: relative;
+                    overflow: hidden;
+                    padding-bottom: var(--space-lg);
+                  "
+                >
+                  <!-- Mario Galaxy Graphics -->
+                  <div class="galaxy-bg"></div>
+                  <div class="mario-sprite"></div>
+                  <div class="luma-sprite"></div>
+                  <div style="position: relative; z-index: 10">
+                    <div
+                      class="card-title"
+                      style="color: #fff; margin-bottom: 8px"
+                    >
+                      <span class="card-icon" style="color: #a78bfa"
+                        ><i class="ph ph-planet"></i
+                      ></span>
+                      Mario Galaxy Idea: FIFO
+                    </div>
+                    <p
+                      style="
+                        color: rgba(255, 255, 255, 0.85);
+                        font-size: 0.9rem;
+                        line-height: 1.6;
+                      "
+                      id="pr-metaphor-text"
+                    >
+                      Imagina que Mario atraviesa el espacio y solo puede
+                      mantener gravedad activa en
+                      <strong style="color: #a78bfa">planetas limitados</strong>
+                      a la vez (tus Frames). Cuando aterriza en un nuevo
+                      asteroide (Nueva Página) y ya no tiene energía, la
+                      gravedad desaparece del
+                      <strong style="color: #f87171"
+                        >primer planeta que pisó</strong
+                      >
+                      (First-In, First-Out), dejándolo atrás en el hoyo negro.
+                    </p>
+                  </div>
+                </div>
+                <div class="card mb-md">
+                  <div class="card-title">
+                    <span class="card-icon"
+                      ><i class="ph ph-chart-bar"></i
+                    ></span>
+                    Resultados
+                  </div>
+                  <div
+                    class="stats-grid"
+                    style="grid-template-columns: 1fr 1fr 1fr"
+                  >
+                    <div class="stat-card">
+                      <div class="stat-value" id="pr-total-faults">—</div>
+                      <div class="stat-label">Page Faults</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value" id="pr-fault-rate">—</div>
+                      <div class="stat-label">Fault Rate</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value" id="pr-total-refs">—</div>
+                      <div class="stat-label">Total Refs</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card mb-md">
+                  <div class="card-title">
+                    <span class="card-icon"
+                      ><i class="ph ph-list-numbers"></i
+                    ></span>
+                    Reference String
+                  </div>
+                  <div class="ref-string-visual" id="pr-ref-visual"></div>
+                </div>
+
+                <div class="card mb-md">
+                  <div class="card-title">
+                    <span class="card-icon"
+                      ><i class="ph ph-squares-four"></i
+                    ></span>
+                    Frames
+                  </div>
+                  <div class="page-frames-visual" id="pr-frames-visual"></div>
+                  <div
+                    class="step-controls"
+                    style="
+                      display: flex;
+                      flex-wrap: wrap;
+                      gap: 10px;
+                      align-items: center;
+                    "
+                  >
+                    <button class="btn btn-secondary btn-sm" id="pr-btn-reset">
+                      <i class="ph ph-skip-back"></i> Reset
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="pr-btn-prev">
+                      <i class="ph ph-caret-left"></i> Prev
+                    </button>
+                    <span class="step-counter" id="pr-step-counter"
+                      >Step 0 / 0</span
+                    >
+                    <button class="btn btn-secondary btn-sm" id="pr-btn-next">
+                      Next <i class="ph ph-caret-right"></i>
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="pr-btn-play">
+                      <i class="ph ph-play"></i> Play
+                    </button>
+                    <div
+                      class="playback-speed"
+                      style="
+                        margin-left: auto;
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                      "
+                    >
+                      <label for="pr-speed" style="font-size: 0.8rem; margin: 0"
+                        >Velocidad</label
+                      >
+                      <input
+                        type="range"
+                        id="pr-speed"
+                        min="0.25"
+                        max="3"
+                        step="0.25"
+                        value="1"
+                        style="width: 80px"
+                      />
+                      <span
+                        id="pr-speed-label"
+                        class="text-mono"
+                        style="font-size: 0.8rem"
+                        >1.0x</span
+                      >
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-title">
+                    <span class="card-icon"
+                      ><i class="ph ph-clipboard-text"></i
+                    ></span>
+                    Step History
+                  </div>
+                  <div
+                    class="table-wrapper"
+                    style="max-height: 300px; overflow-y: auto"
+                  >
+                    <table id="pr-steps-table">
+                      <thead>
+                        <tr>
+                          <th>Step</th>
+                          <th>Page</th>
+                          <th>Result</th>
+                          <th>Evicted</th>
+                          <th>Frames</th>
+                          <th>Faults</th>
+                        </tr>
+                      </thead>
+                      <tbody id="pr-steps-tbody"></tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <!-- Controles paso-a-paso de Regex (Sticky) -->
-          <div class="playback-controls sticky-playback" id="regex-playback" style="display: none;">
-            <button class="btn btn-secondary btn-sm" id="regex-btn-reset" title="Reiniciar" style="border-radius: 50%"><i class="ph ph-skip-back"></i></button>
-            <button class="btn btn-secondary btn-sm" id="regex-btn-prev" title="Paso atras" style="border-radius: 50%"><i class="ph ph-rewind"></i></button>
-            <button class="btn btn-primary btn-sm" id="regex-btn-play" title="Play/Pausa" style="border-radius: 24px; padding: 0 20px;"><i class="ph ph-play"></i> Play</button>
-            <button class="btn btn-secondary btn-sm" id="regex-btn-next" title="Paso adelante" style="border-radius: 50%"><i class="ph ph-fast-forward"></i></button>
-            <button class="btn btn-secondary btn-sm" id="regex-btn-end" title="Ir al final" style="border-radius: 50%"><i class="ph ph-skip-forward"></i></button>
-            <span class="step-counter" id="regex-step-counter" style="margin: 0 12px; min-width: 60px; text-align: center;">0 / 0</span>
-            <div class="playback-speed" style="margin-left: 8px;">
-              <label for="regex-speed" style="margin:0; font-size: 0.8rem;">Velocidad</label>
-              <input type="range" id="regex-speed" min="0.25" max="3" step="0.25" value="1" style="width: 80px" />
-              <span id="regex-speed-label" class="text-mono" style="font-size: 0.8rem;">1.0x</span>
-            </div>
-          </div>
-        </section>
+          <!-- ─── Screen 5: Comparison ─────────────────────────────── -->
+          <section
+            class="screen"
+            id="screen-comparison"
+            aria-labelledby="heading-comparison"
+          >
+            <header class="screen-header">
+              <h2 id="heading-comparison">Algorithm Comparison</h2>
+              <p>
+                Compara todos los algoritmos de scheduling con los mismos
+                procesos.
+              </p>
+            </header>
 
-        <!-- ─── Screen 7: Concurrency ────────────────────────────── -->
-        <section class="screen" id="screen-concurrency" aria-labelledby="heading-concurrency">
-          <header class="screen-header">
-            <h2 id="heading-concurrency">Concurrency Simulation</h2>
-            <p>Simulación de N hilos con y sin Lock para visualizar race conditions.</p>
-          </header>
-
-          <div class="grid-sidebar">
-            <div class="card">
-              <div class="card-title"><span class="card-icon"><i class="ph ph-gear"></i></span> Configuración</div>
-              <div class="form-group">
-                <label for="conc-threads">Número de Threads</label>
-                <input type="number" class="form-input" id="conc-threads" value="4" min="1" max="16" />
-              </div>
-              <div class="form-group">
-                <label for="conc-iters">Iteraciones por Thread</label>
-                <input type="number" class="form-input" id="conc-iters" value="50" min="1" max="200" />
-              </div>
-              <div class="form-group">
-                <label>Modo de Sincronización</label>
-                <div class="toggle-group mt-sm">
-                  <button class="toggle-option active" data-lock="true" id="toggle-safe"><i class="ph ph-lock-key"></i> Safe (Lock)</button>
-                  <button class="toggle-option" data-lock="false" id="toggle-unsafe"><i class="ph ph-warning"></i> Unsafe</button>
-                </div>
-              </div>
-              <button class="btn btn-primary mt-lg" id="btn-run-concurrency" style="width:100%">
-                <i class="ph ph-play"></i> Ejecutar Simulación
+            <div class="flex gap-md mb-lg">
+              <button class="btn btn-primary" id="btn-run-comparison">
+                <i class="ph ph-chart-bar"></i> Comparar Todos los Algoritmos
               </button>
             </div>
 
-            <div>
-              <div class="concurrency-result hidden" id="conc-result-banner">
-                <div class="text-center">
-                  <div class="result-value" id="conc-expected">—</div>
-                  <div class="result-label">Expected</div>
+            <div class="chart-grid" id="comparison-charts">
+              <div class="card" id="card-tat">
+                <div class="card-title flex-between">
+                  <div>
+                    <span class="card-icon"
+                      ><i class="ph ph-chart-bar"></i
+                    ></span>
+                    Avg Turnaround Time
+                  </div>
+                  <button
+                    class="btn-icon btn-expand"
+                    onclick="toggleChartExpanded('card-tat', 'chart-tat')"
+                    title="Expandir"
+                  >
+                    <i class="ph ph-arrows-out"></i>
+                  </button>
                 </div>
-                <div style="font-size:2rem; color: var(--text-muted);">vs</div>
-                <div class="text-center">
-                  <div class="result-value" id="conc-actual">—</div>
-                  <div class="result-label">Actual</div>
-                </div>
-                <div class="text-center">
-                  <div id="conc-verdict" class="badge" style="font-size:0.85rem; padding:6px 16px;">—</div>
-                  <div class="result-label mt-sm" id="conc-duration">—</div>
-                </div>
-              </div>
-
-              <div class="card mt-md">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Thread Timeline</div>
-                <div class="timeline-container">
-                  <canvas id="concurrency-canvas" height="300"></canvas>
+                <div class="chart-container">
+                  <canvas id="chart-tat" height="280"></canvas>
                 </div>
               </div>
-
-              <div class="card mt-md">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span> Thread Details</div>
-                <div class="table-wrapper">
-                  <table id="conc-table">
-                    <thead>
-                      <tr>
-                        <th>Thread</th>
-                        <th>Start</th>
-                        <th>End</th>
-                        <th>Duration</th>
-                        <th>Events</th>
-                      </tr>
-                    </thead>
-                    <tbody id="conc-tbody"></tbody>
-                  </table>
+              <div class="card" id="card-wt">
+                <div class="card-title flex-between">
+                  <div>
+                    <span class="card-icon"
+                      ><i class="ph ph-chart-bar"></i
+                    ></span>
+                    Avg Waiting Time
+                  </div>
+                  <button
+                    class="btn-icon btn-expand"
+                    onclick="toggleChartExpanded('card-wt', 'chart-wt')"
+                    title="Expandir"
+                  >
+                    <i class="ph ph-arrows-out"></i>
+                  </button>
+                </div>
+                <div class="chart-container">
+                  <canvas id="chart-wt" height="280"></canvas>
+                </div>
+              </div>
+              <div class="card" id="card-rt">
+                <div class="card-title flex-between">
+                  <div>
+                    <span class="card-icon"
+                      ><i class="ph ph-chart-bar"></i
+                    ></span>
+                    Avg Response Time
+                  </div>
+                  <button
+                    class="btn-icon btn-expand"
+                    onclick="toggleChartExpanded('card-rt', 'chart-rt')"
+                    title="Expandir"
+                  >
+                    <i class="ph ph-arrows-out"></i>
+                  </button>
+                </div>
+                <div class="chart-container">
+                  <canvas id="chart-rt" height="280"></canvas>
+                </div>
+              </div>
+              <div class="card" id="card-cpu">
+                <div class="card-title flex-between">
+                  <div>
+                    <span class="card-icon"
+                      ><i class="ph ph-chart-bar"></i
+                    ></span>
+                    CPU Utilization (%)
+                  </div>
+                  <button
+                    class="btn-icon btn-expand"
+                    onclick="toggleChartExpanded('card-cpu', 'chart-cpu')"
+                    title="Expandir"
+                  >
+                    <i class="ph ph-arrows-out"></i>
+                  </button>
+                </div>
+                <div class="chart-container">
+                  <canvas id="chart-cpu" height="280"></canvas>
                 </div>
               </div>
             </div>
+
+            <div class="card mt-lg">
+              <div class="card-title">
+                <span class="card-icon"
+                  ><i class="ph ph-clipboard-text"></i
+                ></span>
+                Comparison Table
+              </div>
+              <div class="table-wrapper">
+                <table id="comparison-table">
+                  <thead>
+                    <tr>
+                      <th>Algorithm</th>
+                      <th>Avg TAT</th>
+                      <th>Avg WT</th>
+                      <th>Avg RT</th>
+                      <th>CPU %</th>
+                      <th>Context Switches</th>
+                    </tr>
+                  </thead>
+                  <tbody id="comparison-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <!-- ─── Screen 6: CSV Extract ────────────────────────────── -->
+          <section
+            class="screen"
+            id="screen-csv-extract"
+            aria-labelledby="heading-csv-extract"
+          >
+            <header class="screen-header">
+              <h2 id="heading-csv-extract">Regex + CSV Extraction</h2>
+              <p>
+                Extrae datos (fechas, nombres, emails, teléfonos, direcciones)
+                de texto usando expresiones regulares.
+              </p>
+            </header>
+
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title">
+                  <span class="card-icon"><i class="ph ph-note"></i></span>
+                  Texto de Entrada
+                </div>
+                <div class="form-group" style="position: relative">
+                  <textarea
+                    class="form-textarea"
+                    id="regex-input"
+                    rows="12"
+                    placeholder="Pega aquí el texto a analizar...
+Ejemplo:
+John Smith was born on 15/03/1990.
+Contact: john.smith@email.com, +52 (81) 1234-5678
+Address: 123 Main St, Monterrey, NL"
+                  ></textarea>
+                  <div
+                    class="form-textarea"
+                    id="regex-backdrop"
+                    style="
+                      display: none;
+                      position: absolute;
+                      inset: 0;
+                      white-space: pre-wrap;
+                      overflow-y: auto;
+                      pointer-events: auto;
+                      background: var(--bg-input);
+                      font-family: &quot;JetBrains Mono&quot;, monospace;
+                      font-size: 0.9rem;
+                      line-height: 1.5;
+                      color: var(--text-primary);
+                      cursor: pointer;
+                      border: 1px solid var(--border);
+                      border-radius: var(--radius-sm);
+                      padding: var(--space-default);
+                    "
+                  ></div>
+                </div>
+                <div class="regex-category-filters">
+                  <button class="filter-chip active" data-cat="all">All</button>
+                  <button class="filter-chip" data-cat="date">
+                    <i class="ph ph-calendar"></i> Dates
+                  </button>
+                  <button class="filter-chip" data-cat="email">
+                    <i class="ph ph-envelope"></i> Emails
+                  </button>
+                  <button class="filter-chip" data-cat="phone">
+                    <i class="ph ph-phone"></i> Phones
+                  </button>
+                  <button class="filter-chip" data-cat="name">
+                    <i class="ph ph-user"></i> Names
+                  </button>
+                  <button class="filter-chip" data-cat="address">
+                    <i class="ph ph-house"></i> Addresses
+                  </button>
+                </div>
+                <button
+                  class="btn btn-primary"
+                  id="btn-extract"
+                  style="width: 100%"
+                >
+                  <i class="ph ph-magnifying-glass"></i> Extraer Datos
+                </button>
+              </div>
+
+              <div>
+                <div class="card mb-md">
+                  <div class="card-title flex-between">
+                    <div>
+                      <span class="card-icon"
+                        ><i class="ph ph-chart-bar"></i
+                      ></span>
+                      Resultados
+                    </div>
+                    <span class="badge badge-purple" id="regex-match-count"
+                      >0 matches</span
+                    >
+                  </div>
+                  <div
+                    class="stats-grid"
+                    style="grid-template-columns: repeat(5, 1fr)"
+                  >
+                    <div class="stat-card">
+                      <div class="stat-value" id="regex-dates">0</div>
+                      <div class="stat-label">Dates</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value" id="regex-emails">0</div>
+                      <div class="stat-label">Emails</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value" id="regex-phones">0</div>
+                      <div class="stat-label">Phones</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value" id="regex-names">0</div>
+                      <div class="stat-label">Names</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="stat-value" id="regex-addresses">0</div>
+                      <div class="stat-label">Addresses</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-title">
+                    <span class="card-icon"
+                      ><i class="ph ph-clipboard-text"></i
+                    ></span>
+                    Extracted Data
+                  </div>
+                  <div
+                    class="table-wrapper"
+                    style="max-height: 400px; overflow-y: auto"
+                  >
+                    <table id="regex-table">
+                      <thead>
+                        <tr>
+                          <th>Category</th>
+                          <th>Value</th>
+                          <th>Line</th>
+                        </tr>
+                      </thead>
+                      <tbody id="regex-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Controles paso-a-paso de Regex (Sticky) -->
+            <div
+              class="playback-controls sticky-playback"
+              id="regex-playback"
+              style="display: none"
+            >
+              <button
+                class="btn btn-secondary btn-sm"
+                id="regex-btn-reset"
+                title="Reiniciar"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-skip-back"></i>
+              </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="regex-btn-prev"
+                title="Paso atras"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-rewind"></i>
+              </button>
+              <button
+                class="btn btn-primary btn-sm"
+                id="regex-btn-play"
+                title="Play/Pausa"
+                style="border-radius: 24px; padding: 0 20px"
+              >
+                <i class="ph ph-play"></i> Play
+              </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="regex-btn-next"
+                title="Paso adelante"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-fast-forward"></i>
+              </button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="regex-btn-end"
+                title="Ir al final"
+                style="border-radius: 50%"
+              >
+                <i class="ph ph-skip-forward"></i>
+              </button>
+              <span
+                class="step-counter"
+                id="regex-step-counter"
+                style="margin: 0 12px; min-width: 60px; text-align: center"
+                >0 / 0</span
+              >
+              <div class="playback-speed" style="margin-left: 8px">
+                <label for="regex-speed" style="margin: 0; font-size: 0.8rem"
+                  >Velocidad</label
+                >
+                <input
+                  type="range"
+                  id="regex-speed"
+                  min="0.25"
+                  max="3"
+                  step="0.25"
+                  value="1"
+                  style="width: 80px"
+                />
+                <span
+                  id="regex-speed-label"
+                  class="text-mono"
+                  style="font-size: 0.8rem"
+                  >1.0x</span
+                >
+              </div>
+            </div>
+          </section>
+
+          <!-- ─── Screen 7: Concurrency ────────────────────────────── -->
+          <section
+            class="screen"
+            id="screen-concurrency"
+            aria-labelledby="heading-concurrency"
+          >
+            <header class="screen-header">
+              <h2 id="heading-concurrency">Concurrency Simulation</h2>
+              <p>
+                Simulación de N hilos con y sin Lock para visualizar race
+                conditions.
+              </p>
+            </header>
+
+            <div class="grid-sidebar">
+              <div class="card">
+                <div class="card-title">
+                  <span class="card-icon"><i class="ph ph-gear"></i></span>
+                  Configuración
+                </div>
+                <div class="form-group">
+                  <label for="conc-threads">Número de Threads</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    id="conc-threads"
+                    value="4"
+                    min="1"
+                    max="16"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="conc-iters">Iteraciones por Thread</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    id="conc-iters"
+                    value="50"
+                    min="1"
+                    max="200"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>Modo de Sincronización</label>
+                  <div class="toggle-group mt-sm">
+                    <button
+                      class="toggle-option active"
+                      data-lock="true"
+                      id="toggle-safe"
+                    >
+                      <i class="ph ph-lock-key"></i> Safe (Lock)
+                    </button>
+                    <button
+                      class="toggle-option"
+                      data-lock="false"
+                      id="toggle-unsafe"
+                    >
+                      <i class="ph ph-warning"></i> Unsafe
+                    </button>
+                  </div>
+                </div>
+                <button
+                  class="btn btn-primary mt-lg"
+                  id="btn-run-concurrency"
+                  style="width: 100%"
+                >
+                  <i class="ph ph-play"></i> Ejecutar Simulación
+                </button>
+              </div>
+
+              <div>
+                <div class="concurrency-result hidden" id="conc-result-banner">
+                  <div class="text-center">
+                    <div class="result-value" id="conc-expected">—</div>
+                    <div class="result-label">Expected</div>
+                  </div>
+                  <div style="font-size: 2rem; color: var(--text-muted)">
+                    vs
+                  </div>
+                  <div class="text-center">
+                    <div class="result-value" id="conc-actual">—</div>
+                    <div class="result-label">Actual</div>
+                  </div>
+                  <div class="text-center">
+                    <div
+                      id="conc-verdict"
+                      class="badge"
+                      style="font-size: 0.85rem; padding: 6px 16px"
+                    >
+                      —
+                    </div>
+                    <div class="result-label mt-sm" id="conc-duration">—</div>
+                  </div>
+                </div>
+
+                <div class="card mt-md">
+                  <div class="card-title">
+                    <span class="card-icon"
+                      ><i class="ph ph-chart-bar"></i
+                    ></span>
+                    Thread Timeline
+                  </div>
+                  <div class="timeline-container">
+                    <canvas id="concurrency-canvas" height="300"></canvas>
+                  </div>
+                </div>
+
+                <div class="card mt-md">
+                  <div class="card-title">
+                    <span class="card-icon"
+                      ><i class="ph ph-clipboard-text"></i
+                    ></span>
+                    Thread Details
+                  </div>
+                  <div class="table-wrapper">
+                    <table id="conc-table">
+                      <thead>
+                        <tr>
+                          <th>Thread</th>
+                          <th>Start</th>
+                          <th>End</th>
+                          <th>Duration</th>
+                          <th>Events</th>
+                        </tr>
+                      </thead>
+                      <tbody id="conc-tbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Status bar -->
+        <footer class="status-bar">
+          <div class="status-item">
+            <span><i class="ph ph-desktop"></i></span>
+            <span id="status-text"
+              >Ready — Configure processes and run a simulation</span
+            >
           </div>
-        </section>
+          <div style="flex: 1"></div>
+          <div class="status-item text-mono">
+            <span id="status-server">Server: localhost:5050</span>
+          </div>
+        </footer>
+      </main>
+    </div>
 
-      </div>
-
-      <!-- Status bar -->
-      <footer class="status-bar">
-        <div class="status-item">
-          <span><i class="ph ph-desktop"></i></span>
-          <span id="status-text">Ready — Configure processes and run a simulation</span>
-        </div>
-        <div style="flex:1"></div>
-        <div class="status-item text-mono">
-          <span id="status-server">Server: localhost:5050</span>
-        </div>
-      </footer>
-    </main>
-  </div>
-
-  <!-- Scripts -->
-  <script src="js/app.js"></script>
-  <script src="js/gantt.js"></script>
-  <script src="js/memory.js"></script>
-  <script src="js/pageReplace.js"></script>
-  <script src="js/comparison.js"></script>
-  <script src="js/concurrency.js"></script>
-  <script src="js/regex.js"></script>
-</body>
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/gantt.js"></script>
+    <script src="js/memory.js"></script>
+    <script src="js/pageReplace.js"></script>
+    <script src="js/comparison.js"></script>
+    <script src="js/concurrency.js"></script>
+    <script src="js/regex.js"></script>
+  </body>
 </html>
