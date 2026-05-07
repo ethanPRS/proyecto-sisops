@@ -41,6 +41,8 @@ const AppState = {
   nextPid: 1,
   lastScheduleResult: null,
   lastComparisonResult: null,
+  numCores: 1,
+  threadsEnabled: false,
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -128,8 +130,14 @@ function renderProcessTable() {
   const tbody = document.getElementById("process-tbody");
   const empty = document.getElementById("empty-processes");
   const countEl = document.getElementById("process-count");
+  const thThreads = document.getElementById("th-threads");
 
   countEl.textContent = AppState.processes.length;
+
+  // Show/hide threads column
+  if (thThreads) {
+    thThreads.style.display = AppState.threadsEnabled ? '' : 'none';
+  }
 
   if (AppState.processes.length === 0) {
     tbody.innerHTML = "";
@@ -138,9 +146,25 @@ function renderProcessTable() {
   }
   empty.style.display = "none";
 
-  tbody.innerHTML = AppState.processes
-    .map(
-      (p, i) => `
+  let html = '';
+  AppState.processes.forEach((p, i) => {
+    const threads = p.threads || [];
+    const threadCount = threads.length;
+    const maxThreads = 4;
+    const canAdd = AppState.threadsEnabled && threadCount < maxThreads;
+
+    const threadCell = AppState.threadsEnabled
+      ? `<td>
+          <div class="thread-actions-cell">
+            <button class="btn-add-thread" onclick="addThread(${p.pid})" title="Añadir thread" ${!canAdd ? 'disabled' : ''}>
+              <i class="ph ph-plus"></i>
+            </button>
+            <span class="thread-count-badge">${threadCount}/${maxThreads}</span>
+          </div>
+        </td>`
+      : '';
+
+    html += `
     <tr style="animation: fadeSlideIn 0.3s ease ${i * 0.05}s both;">
       <td>
         <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${pidColor(p.pid)};margin-right:8px;"></span>
@@ -150,13 +174,40 @@ function renderProcessTable() {
       <td>${p.burst_time}</td>
       <td>${p.priority}</td>
       <td>${p.num_pages}</td>
+      ${threadCell}
       <td>
         <button class="btn-remove" onclick="removeProcess(${p.pid})" title="Eliminar proceso" aria-label="Eliminar proceso P${p.pid}">✕</button>
       </td>
-    </tr>
-  `,
-    )
-    .join("");
+    </tr>`;
+
+    // Render thread sub-rows
+    if (AppState.threadsEnabled && threads.length > 0) {
+      threads.forEach((t, ti) => {
+        const tColor = pidColor(p.pid) + 'AA';
+        const emptyTds = AppState.threadsEnabled ? '<td></td>' : '';
+        html += `
+        <tr class="thread-sub-row" style="animation-delay: ${(i * 0.05) + (ti * 0.03)}s">
+          <td>
+            <span class="thread-pid-label">
+              <i class="ph ph-git-branch"></i>
+              <span class="thread-dot" style="background:${tColor}"></span>
+              P${p.pid}.T${t.tid}
+            </span>
+          </td>
+          <td>${p.arrival_time}</td>
+          <td>${t.burst_time}</td>
+          <td>${p.priority}</td>
+          <td>—</td>
+          ${emptyTds}
+          <td>
+            <button class="btn-remove-thread" onclick="removeThread(${p.pid}, ${t.tid})" title="Eliminar thread">✕</button>
+          </td>
+        </tr>`;
+      });
+    }
+  });
+
+  tbody.innerHTML = html;
 }
 
 function addProcess() {
@@ -177,6 +228,7 @@ function addProcess() {
     burst_time: burst,
     priority: priority,
     num_pages: pages,
+    threads: [],
   };
 
   AppState.processes.push(process);
@@ -197,18 +249,67 @@ function clearProcesses() {
 }
 
 function loadSampleProcesses() {
-  AppState.processes = [
-    { pid: 1, arrival_time: 0, burst_time: 5, priority: 2, num_pages: 3 },
-    { pid: 2, arrival_time: 1, burst_time: 3, priority: 1, num_pages: 2 },
-    { pid: 3, arrival_time: 2, burst_time: 8, priority: 3, num_pages: 4 },
-    { pid: 4, arrival_time: 3, burst_time: 2, priority: 4, num_pages: 1 },
-    { pid: 5, arrival_time: 4, burst_time: 4, priority: 2, num_pages: 2 },
-    { pid: 6, arrival_time: 6, burst_time: 6, priority: 3, num_pages: 3 },
-  ];
+  if (AppState.threadsEnabled) {
+    AppState.processes = [
+      { pid: 1, arrival_time: 0, burst_time: 5, priority: 2, num_pages: 3, threads: [
+        { tid: 1, burst_time: 2 }, { tid: 2, burst_time: 3 }
+      ]},
+      { pid: 2, arrival_time: 1, burst_time: 3, priority: 1, num_pages: 2, threads: [] },
+      { pid: 3, arrival_time: 2, burst_time: 8, priority: 3, num_pages: 4, threads: [
+        { tid: 1, burst_time: 3 }, { tid: 2, burst_time: 2 }, { tid: 3, burst_time: 3 }
+      ]},
+      { pid: 4, arrival_time: 3, burst_time: 2, priority: 4, num_pages: 1, threads: [] },
+      { pid: 5, arrival_time: 4, burst_time: 4, priority: 2, num_pages: 2, threads: [
+        { tid: 1, burst_time: 4 }
+      ]},
+      { pid: 6, arrival_time: 6, burst_time: 6, priority: 3, num_pages: 3, threads: [
+        { tid: 1, burst_time: 2 }, { tid: 2, burst_time: 4 }
+      ]},
+    ];
+  } else {
+    AppState.processes = [
+      { pid: 1, arrival_time: 0, burst_time: 5, priority: 2, num_pages: 3, threads: [] },
+      { pid: 2, arrival_time: 1, burst_time: 3, priority: 1, num_pages: 2, threads: [] },
+      { pid: 3, arrival_time: 2, burst_time: 8, priority: 3, num_pages: 4, threads: [] },
+      { pid: 4, arrival_time: 3, burst_time: 2, priority: 4, num_pages: 1, threads: [] },
+      { pid: 5, arrival_time: 4, burst_time: 4, priority: 2, num_pages: 2, threads: [] },
+      { pid: 6, arrival_time: 6, burst_time: 6, priority: 3, num_pages: 3, threads: [] },
+    ];
+  }
   AppState.nextPid = 7;
   renderProcessTable();
-  showToast("6 procesos de ejemplo cargados", "success");
+  showToast(AppState.threadsEnabled ? "6 procesos de ejemplo con threads cargados" : "6 procesos de ejemplo cargados", "success");
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Thread Management
+   ═══════════════════════════════════════════════════════════════════════ */
+function addThread(pid) {
+  const process = AppState.processes.find(p => p.pid === pid);
+  if (!process) return;
+  if (!process.threads) process.threads = [];
+  if (process.threads.length >= 4) {
+    showToast('Máximo 4 threads por proceso', 'warning');
+    return;
+  }
+  const nextTid = process.threads.length > 0
+    ? Math.max(...process.threads.map(t => t.tid)) + 1
+    : 1;
+  const burstTime = Math.max(1, Math.floor(process.burst_time / (process.threads.length + 2)));
+  process.threads.push({ tid: nextTid, burst_time: burstTime });
+  renderProcessTable();
+  showToast(`Thread T${nextTid} añadido a P${pid}`, 'success');
+}
+
+function removeThread(pid, tid) {
+  const process = AppState.processes.find(p => p.pid === pid);
+  if (!process || !process.threads) return;
+  process.threads = process.threads.filter(t => t.tid !== tid);
+  renderProcessTable();
+}
+
+window.addThread = addThread;
+window.removeThread = removeThread;
 
 /* ═══════════════════════════════════════════════════════════════════════
    Simulation Runner
@@ -641,6 +742,38 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("algo-select")
     .addEventListener("change", updateQuantumVisibility);
+
+  // Cores slider
+  const coresSlider = document.getElementById("cores-slider");
+  const coresValueBadge = document.getElementById("cores-value-badge");
+  if (coresSlider && coresValueBadge) {
+    coresSlider.addEventListener("input", (e) => {
+      const val = parseInt(e.target.value);
+      AppState.numCores = val;
+      coresValueBadge.textContent = val;
+      coresValueBadge.classList.remove('pop');
+      void coresValueBadge.offsetWidth;
+      coresValueBadge.classList.add('pop');
+    });
+  }
+
+  // Thread toggle (sparkle component)
+  const threadsToggle = document.getElementById("toggle");
+  const threadsStatusText = document.getElementById("threads-status-text");
+  if (threadsToggle) {
+    threadsToggle.addEventListener("change", (e) => {
+      AppState.threadsEnabled = e.target.checked;
+      if (threadsStatusText) {
+        threadsStatusText.textContent = e.target.checked ? 'Activado' : 'Desactivado';
+        threadsStatusText.classList.toggle('active', e.target.checked);
+      }
+      // Clear threads if disabled
+      if (!e.target.checked) {
+        AppState.processes.forEach(p => { p.threads = []; });
+      }
+      renderProcessTable();
+    });
+  }
 
   // Keyboard shortcut: Enter to add process
   ["input-arrival", "input-burst", "input-priority", "input-pages"].forEach(
