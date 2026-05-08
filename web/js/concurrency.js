@@ -15,7 +15,7 @@ async function runConcurrency() {
 
   const btn = document.getElementById('btn-run-concurrency');
   btn.disabled = true;
-  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;vertical-align:middle;"></div> Ejecutando...';
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;vertical-align:middle;"></div> Running...';
 
   try {
     const result = await apiCall('/api/concurrency', {
@@ -29,14 +29,14 @@ async function runConcurrency() {
     renderConcurrencyTable(result);
 
     const msg = result.is_correct
-      ? `✅ Resultado correcto: ${result.actual_value}`
-      : `⚠️ Race condition detectado! Expected: ${result.expected_value}, Got: ${result.actual_value}`;
+      ? `✅ Correct result: ${result.actual_value}`
+      : `⚠️ Race condition detected! Expected: ${result.expected_value}, Got: ${result.actual_value}`;
     showToast(msg, result.is_correct ? 'success' : 'warning');
   } catch (err) {
     // handled by apiCall
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '▶️ Ejecutar Simulación';
+    btn.innerHTML = '▶️ Run Simulation';
   }
 }
 
@@ -56,7 +56,7 @@ function displayConcurrencyResult(result) {
 
   const verdict = document.getElementById('conc-verdict');
   if (result.is_correct) {
-    verdict.textContent = '✅ CORRECTO';
+    verdict.textContent = '✅ CORRECT';
     verdict.className = 'badge badge-success';
   } else {
     verdict.textContent = '⚠️ RACE CONDITION';
@@ -155,7 +155,7 @@ function drawConcurrencyTimeline(result) {
         ctx.fillStyle = grad;
         ctx.fill();
 
-        // Sombra suave (mas limpio sobre fondo claro)
+        // Soft shadow (cleaner on light background)
         ctx.shadowColor = 'rgba(15, 23, 42, 0.10)';
         ctx.shadowBlur = 4;
         ctx.shadowOffsetY = 1;

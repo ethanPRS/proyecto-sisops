@@ -7,7 +7,7 @@
 
 async function allocateMemory() {
   if (AppState.processes.length === 0) {
-    showToast('Agrega procesos primero en la pantalla de Processes', 'warning');
+    showToast('Add processes first in the Processes screen', 'warning');
     return;
   }
 

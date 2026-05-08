@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description"
-    content="Simulador Visual de Sistemas Operativos — CPU Scheduling, Memory Paging, Page Replacement, Concurrency y más." />
-  <title>Sisops Galaxy — Simulador Visual de Sistemas Operativos</title>
+    content="OS Simulator — CPU Scheduling, Memory Paging, Page Replacement, Concurrency and more." />
+  <title>Sisops Galaxy — Visual Operating Systems Simulator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Press+Start+2P&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -33,6 +33,63 @@
   <!-- Toast container -->
   <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
 
+  <!-- CSV Import Modal -->
+  <dialog id="csv-import-dialog" class="csv-dialog" aria-labelledby="csv-dialog-title">
+    <form method="dialog" class="csv-dialog-form">
+      <header class="csv-dialog-header">
+        <div>
+          <h3 id="csv-dialog-title"><i class="ph ph-file-csv"></i> Import CSV</h3>
+          <p class="csv-dialog-sub">Expected format for processes</p>
+        </div>
+        <button type="button" class="csv-dialog-close" id="csv-dialog-close-btn" aria-label="Close">
+          <i class="ph ph-x"></i>
+        </button>
+      </header>
+
+      <div class="csv-dialog-body">
+        <p class="csv-dialog-text">
+          The file must include a header row with the following columns
+          (case-insensitive, flexible order):
+        </p>
+        <p class="csv-dialog-cols">
+          <code>PID</code>, <code>Arrival</code>, <code>Burst</code>,
+          <code>Priority</code>, <code>Pages</code>,
+          <code>Threads</code> <span class="csv-optional">(optional)</span>,
+          <code>Forks</code> <span class="csv-optional">(optional)</span>
+        </p>
+
+        <div class="csv-example-block">
+          <div class="csv-example-label">Example</div>
+<pre class="csv-example-code"><code>PID,Arrival,Burst,Priority,Pages,Threads,Forks
+1,0,5,2,3,2;3,
+2,1,3,1,2,,1
+3,2,8,3,4,3,2;3
+4,3,2,4,1,,
+5,4,4,2,2,4,
+6,6,6,3,3,2;4,3</code></pre>
+        </div>
+
+        <ul class="csv-help-list">
+          <li><strong>Threads / Forks</strong> accept three formats:</li>
+          <li><code>empty</code> · <code>0</code> · <code>-</code> &nbsp;→&nbsp; no children</li>
+          <li><code>2;3</code> &nbsp;→&nbsp; list of bursts separated by <code>;</code></li>
+          <li><code>3</code> &nbsp;→&nbsp; count N (burst split automatically)</li>
+          <li>If the CSV includes threads or forks, toggles will be enabled automatically.</li>
+          <li>Maximum: <strong>4 threads</strong> and <strong>3 forks</strong> per process.</li>
+        </ul>
+      </div>
+
+      <footer class="csv-dialog-footer">
+        <button type="button" class="btn btn-secondary" id="csv-dialog-cancel">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" id="csv-dialog-pick">
+          <i class="ph ph-upload-simple"></i> Select file
+        </button>
+      </footer>
+    </form>
+  </dialog>
+
   <div class="app-wrapper">
     <!-- ═══ Sidebar (Hidden, replaced by Top Pill Nav) ═══════════════════════════════════════════════════ -->
     <aside class="sidebar" role="navigation" aria-label="Navegación principal" style="display: none;">
@@ -51,7 +108,7 @@
           justify-content: space-between;
           padding: 24px 32px 8px 32px;
           position: relative;
-          z-index: 10;
+          z-index: 100;
           gap: 20px;
         }
 
@@ -63,55 +120,47 @@
           min-width: max-content;
         }
 
-        .nav-spacer {
-          flex: 1;
-        }
+        .nav-spacer { flex: 1; }
 
+        /* ─── Pill nav container ───────────────────────────────────── */
         .main-pill-nav {
           display: flex;
           flex-direction: row;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           align-items: center;
           justify-content: center;
           background: #110e28;
-          /* Solid dark background to match the image */
           border-radius: 40px;
           padding: 6px;
-          gap: 6px;
+          gap: 4px;
           border: 1px solid rgba(255, 255, 255, 0.1);
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
           flex: 0 1 auto;
+          position: relative;
         }
 
-        /* Overriding .nav-btn from style.css */
+        /* ─── Nav buttons ──────────────────────────────────────────── */
         .main-pill-nav .nav-btn {
           width: auto;
-          /* Fix horizontal layout */
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 20px;
+          padding: 10px 18px;
           border-radius: 30px;
           color: #9ca3af;
-          /* Light gray text for dark bg */
           font-weight: 600;
           font-size: 0.9rem;
           cursor: pointer;
           background: transparent;
           border: none;
           transition: all 0.2s ease;
+          white-space: nowrap;
         }
-
-        .main-pill-nav .nav-btn::before {
-          display: none;
-          /* Hide the sidebar active indicator line */
-        }
-
+        .main-pill-nav .nav-btn::before { display: none; }
         .main-pill-nav .nav-btn:hover {
           color: #ffffff;
           background: rgba(255, 255, 255, 0.05);
         }
-
         .main-pill-nav .nav-btn.active {
           background: linear-gradient(135deg, #8b5cf6, #d946ef) !important;
           color: #ffffff !important;
@@ -119,21 +168,90 @@
           font-weight: 600;
         }
 
-        /* Responsive fixes to prevent overlapping */
-        @media (max-width: 1200px) {
-          .top-nav-wrapper {
-            flex-direction: column;
-            padding-top: 16px;
-          }
+        /* ─── "Más" dropdown button ────────────────────────────────── */
+        #nav-more-btn {
+          display: none;
+          align-items: center;
+          gap: 6px;
+          padding: 10px 16px;
+          border-radius: 30px;
+          background: rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.12);
+          color: #d1d5db;
+          font-weight: 600;
+          font-size: 0.85rem;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.2s ease;
+        }
+        #nav-more-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+        #nav-more-btn.has-active {
+          background: linear-gradient(135deg, #8b5cf6, #d946ef);
+          color: #fff;
+          border-color: transparent;
+          box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+        }
 
-          .brand-logo {
-            flex: 0 0 auto;
-            margin-bottom: 8px;
-          }
+        /* ─── Dropdown panel ───────────────────────────────────────── */
+        #nav-more-dropdown {
+          display: none;
+          flex-direction: column;
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          min-width: 200px;
+          background: #1a1535;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 16px;
+          padding: 6px;
+          gap: 2px;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+          z-index: 200;
+          animation: dropdownIn 0.18s ease;
+        }
+        #nav-more-dropdown.open { display: flex; }
 
-          .nav-spacer {
-            display: none;
-          }
+        @keyframes dropdownIn {
+          from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        #nav-more-dropdown .nav-btn {
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-size: 0.85rem;
+          justify-content: flex-start;
+        }
+        #nav-more-dropdown .nav-btn.active {
+          background: linear-gradient(135deg, #8b5cf6, #d946ef) !important;
+        }
+
+        /* ─── Responsive breakpoints ───────────────────────────────── */
+        /* Hide overflow items at each breakpoint */
+        @media (max-width: 1100px) {
+          .nav-hide-1100 { display: none !important; }
+          #nav-more-btn  { display: flex; }
+        }
+        @media (max-width: 860px) {
+          .nav-hide-860  { display: none !important; }
+        }
+        @media (max-width: 700px) {
+          .nav-hide-700  { display: none !important; }
+          .top-nav-wrapper { padding: 12px 16px 6px; gap: 10px; }
+        }
+        @media (max-width: 540px) {
+          .nav-hide-540  { display: none !important; }
+          .brand-logo h1 { display: none; }
+        }
+        @media (max-width: 400px) {
+          .nav-hide-400  { display: none !important; }
+        }
+
+        @media (max-width: 1100px) {
+          .top-nav-wrapper { flex-wrap: wrap; justify-content: center; }
+          .brand-logo { flex: 0 0 auto; }
+          .nav-spacer { display: none; }
+          .main-pill-nav { flex: 0 0 auto; }
         }
       </style>
       <header class="top-nav-wrapper">
@@ -143,34 +261,44 @@
             <img src="img/Sisops%20Galaxy.png" alt="Sisops Galaxy Logo"
               style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;" />
           </div>
-          <h1
-            style="font-size: 1.2rem; font-weight: 700; background: var(--gradient-accent-h); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+          <h1 style="font-size: 1.2rem; font-weight: 700; background: var(--gradient-accent-h); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
             Sisops Galaxy</h1>
         </div>
 
-        <div class="main-pill-nav">
+        <nav class="main-pill-nav" aria-label="Navegación principal">
+          <!-- Always visible -->
           <button class="nav-btn active" data-screen="processes" id="nav-processes">
             <i class="ph ph-desktop"></i> Processes
           </button>
-          <button class="nav-btn" data-screen="scheduling" id="nav-scheduling">
+          <button class="nav-btn nav-hide-400" data-screen="scheduling" id="nav-scheduling">
             <i class="ph ph-chart-line-up"></i> Scheduling
           </button>
-          <button class="nav-btn" data-screen="memory" id="nav-memory">
+          <button class="nav-btn nav-hide-540" data-screen="exec-modes" id="nav-exec-modes">
+            <i class="ph ph-cpu"></i> CPU Cores
+          </button>
+          <button class="nav-btn nav-hide-700" data-screen="memory" id="nav-memory">
             <i class="ph ph-brain"></i> Memory
           </button>
-          <button class="nav-btn" data-screen="page-replace" id="nav-page-replace">
+          <button class="nav-btn nav-hide-860" data-screen="page-replace" id="nav-page-replace">
             <i class="ph ph-file-text"></i> Page Replace
           </button>
-          <button class="nav-btn" data-screen="comparison" id="nav-comparison">
+          <button class="nav-btn nav-hide-1100" data-screen="comparison" id="nav-comparison">
             <i class="ph ph-scales"></i> Comparison
           </button>
-          <button class="nav-btn" data-screen="csv-extract" id="nav-csv-extract">
+          <button class="nav-btn nav-hide-1100" data-screen="csv-extract" id="nav-csv-extract">
             <i class="ph ph-file-code"></i> CSV Extract
           </button>
-          <button class="nav-btn" data-screen="concurrency" id="nav-concurrency">
-            <i class="ph ph-arrows-clockwise"></i> Concurrency
+
+
+          <!-- "Más" overflow button + dropdown -->
+          <button id="nav-more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-dropdown">
+            <i class="ph ph-dots-three"></i> Más
           </button>
-        </div>
+
+          <div id="nav-more-dropdown" role="menu" aria-label="Más opciones">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </nav>
 
         <div class="nav-spacer"></div>
       </header>
@@ -181,8 +309,8 @@
           <header class="screen-header">
             <h2 id="heading-processes">Process Input</h2>
             <p>
-              Agrega procesos, selecciona un algoritmo de scheduling y ejecuta
-              la simulación.
+              Add processes, select a scheduling algorithm and run
+              the simulation.
             </p>
           </header>
 
@@ -191,11 +319,11 @@
             <div class="card">
               <div class="card-title">
                 <span class="card-icon"><i class="ph ph-gear"></i></span>
-                Configuración
+                Configuration
               </div>
 
               <div class="form-group">
-                <label for="algo-select">Algoritmo</label>
+                <label for="algo-select">Algorithm</label>
                 <select class="form-select" id="algo-select">
                   <option value="FCFS">
                     FCFS (First Come, First Served)
@@ -222,59 +350,44 @@
               <div class="form-group">
                 <label for="cores-slider">CPU Cores</label>
                 <div class="cores-slider-wrapper">
-                  <input type="range" class="cores-slider" id="cores-slider" min="1" max="16" value="1" />
+                  <input type="range" class="cores-slider" id="cores-slider" min="1" max="4" value="1" />
                   <div class="cores-value-badge" id="cores-value-badge">1</div>
                 </div>
               </div>
 
               <div class="form-group">
-                <label class="toggle-switch-label" style="margin-bottom:var(--space-sm)">Threads</label>
+                <label class="toggle-switch-label" for="toggle" style="margin-bottom:var(--space-sm)">Threads</label>
                 <div class="thread-toggle-row">
-                  <div class="toggle-cont">
+                  <label class="toggle-switch" for="toggle">
                     <input class="toggle-input" id="toggle" name="toggle" type="checkbox" />
-                    <label class="toggle-label" for="toggle">
-                      <div class="cont-icon">
-                        <span style="--width: 2; --deg: 25; --duration: 11" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 100; --duration: 18" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 280; --duration: 5" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 200; --duration: 3" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 30; --duration: 20" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 300; --duration: 9" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 250; --duration: 4" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 210; --duration: 8" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 100; --duration: 9" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 15; --duration: 13" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 75; --duration: 18" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 65; --duration: 6" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 50; --duration: 7" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 320; --duration: 5" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 220; --duration: 5" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 215; --duration: 2" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 135; --duration: 9" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 45; --duration: 4" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 78; --duration: 16" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 89; --duration: 19" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 65; --duration: 14" class="sparkle"></span>
-                        <span style="--width: 2; --deg: 97; --duration: 1" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 174; --duration: 10" class="sparkle"></span>
-                        <span style="--width: 1; --deg: 236; --duration: 5" class="sparkle"></span>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 30 30" class="icon">
-                          <path d="M0.96233 28.61C1.36043 29.0081 1.96007 29.1255 2.47555 28.8971L10.4256 25.3552C13.2236 24.11 16.4254 24.1425 19.2107 25.4401L27.4152 29.2747C27.476 29.3044 27.5418 29.3023 27.6047 29.32C27.6563 29.3348 27.7079 29.3497 27.761 29.3574C27.843 29.3687 27.9194 29.3758 28 29.3688C28.1273 29.3617 28.2531 29.3405 28.3726 29.2945C28.4447 29.262 28.5162 29.2287 28.5749 29.1842C28.6399 29.1446 28.6993 29.0994 28.7509 29.0477L28.9008 28.8582C28.9468 28.7995 28.9793 28.7274 29.0112 28.656C29.0599 28.5322 29.0811 28.4036 29.0882 28.2734C29.0939 28.1957 29.0868 28.1207 29.0769 28.0415C29.0705 27.9955 29.0585 27.9524 29.0472 27.9072C29.0295 27.8343 29.0302 27.7601 28.9984 27.6901L25.1638 19.4855C23.8592 16.7073 23.8273 13.5048 25.0726 10.7068L28.6145 2.75679C28.8429 2.24131 28.7318 1.63531 28.3337 1.2372C27.9165 0.820011 27.271 0.721743 26.7491 0.9961L19.8357 4.59596C16.8418 6.15442 13.2879 6.18696 10.2615 4.70062L1.80308 0.520214C1.7055 0.474959 1.60722 0.441742 1.50964 0.421943C1.44459 0.409215 1.37882 0.395769 1.3074 0.402133C1.14406 0.395769 0.981436 0.428275 0.818095 0.499692C0.77284 0.519491 0.719805 0.545671 0.67455 0.578198C0.596061 0.617088 0.524653 0.675786 0.4596 0.74084C0.394546 0.805894 0.335843 0.877306 0.296245 0.956502C0.263718 1.00176 0.237561 1.05477 0.217762 1.10003C0.152708 1.24286 0.126545 1.40058 0.120181 1.54978C0.120181 1.61483 0.126527 1.6735 0.132891 1.73219C0.15269 1.85664 0.178881 1.97332 0.237571 2.08434L4.41798 10.5427C5.91139 13.5621 5.8725 17.1238 4.3204 20.1099L0.720514 27.0233C0.440499 27.5536 0.545137 28.1928 0.96233 28.61Z"></path>
-                        </svg>
-                      </div>
-                    </label>
-                  </div>
-                  <span class="toggle-status-text" id="threads-status-text">Desactivado</span>
+                    <span class="toggle-track">
+                      <span class="toggle-thumb"></span>
+                    </span>
+                  </label>
+                  <span class="toggle-status-text" id="threads-status-text">Disabled</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="toggle-switch-label" for="toggle-forks" style="margin-bottom:var(--space-sm)">Forks</label>
+                <div class="thread-toggle-row">
+                  <label class="toggle-switch toggle-switch-fork" for="toggle-forks">
+                    <input class="toggle-input" id="toggle-forks" name="toggle-forks" type="checkbox" />
+                    <span class="toggle-track">
+                      <span class="toggle-thumb"></span>
+                    </span>
+                  </label>
+                  <span class="toggle-status-text" id="forks-status-text">Disabled</span>
                 </div>
               </div>
 
               <div class="form-group" id="execution-mode-group">
-                <label for="exec-mode-select">Modo de Ejecución</label>
+                <label for="exec-mode-select">Execution Mode</label>
                 <select class="form-select" id="exec-mode-select">
-                  <option value="Secuencial">Secuencial (Default)</option>
+                  <option value="Concurrency" selected>Concurrency</option>
                   <option value="Multithreading">Multithreading</option>
-                  <option value="Concurrency">Concurrency</option>
                   <option value="Parallelism">Parallelism</option>
+                  <option value="Multiprocessing">Multiprocessing</option>
                 </select>
               </div>
 
@@ -301,23 +414,27 @@
 
               <div class="flex gap-sm mt-md">
                 <button class="btn btn-primary" id="btn-add-process">
-                  <i class="ph ph-plus"></i> Agregar
+                  <i class="ph ph-plus"></i> Add
                 </button>
                 <button class="btn btn-secondary" id="btn-load-sample">
                   <i class="ph ph-folder-open"></i> Sample
                 </button>
+                <button class="btn btn-secondary" id="btn-import-csv" title="Importar procesos desde un CSV (PID, Arrival, Burst, Priority, Pages, Threads, Forks)">
+                  <i class="ph ph-file-csv"></i> CSV
+                </button>
+                <input type="file" id="input-csv-file" accept=".csv,text/csv" hidden />
               </div>
 
               <div class="sidebar-divider mt-md mb-md"></div>
 
               <div class="flex gap-sm">
                 <button class="btn btn-primary btn-lg" id="btn-run-simulation" style="flex: 1">
-                  <i class="ph ph-play"></i> Ejecutar Simulación
+                  <i class="ph ph-play"></i> Run Simulation
                 </button>
               </div>
               <div class="flex gap-sm mt-sm">
                 <button class="btn btn-danger btn-sm" id="btn-clear-processes" style="flex: 1">
-                  <i class="ph ph-trash"></i> Limpiar
+                  <i class="ph ph-trash"></i> Clear
                 </button>
               </div>
               <div class="flex gap-md mt-md" id="fcfs-game-link-container">
@@ -417,7 +534,7 @@
               <div class="card-title flex-between">
                 <div>
                   <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
-                  Procesos (<span id="process-count">0</span>)
+                  Processes (<span id="process-count">0</span>)
                 </div>
               </div>
               <div class="process-table-container">
@@ -431,6 +548,7 @@
                         <th>Priority</th>
                         <th>Pages</th>
                         <th class="th-threads" id="th-threads" style="display:none;">Threads</th>
+                        <th class="th-forks" id="th-forks" style="display:none;">Forks</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -440,8 +558,8 @@
                 <div class="empty-state" id="empty-processes">
                   <div class="empty-icon"><i class="ph ph-mailbox"></i></div>
                   <p>
-                    No hay procesos aún. Agrega procesos usando el formulario
-                    o carga los datos de ejemplo.
+                    No processes yet. Add processes using the form
+                    or load sample data.
                   </p>
                 </div>
               </div>
@@ -460,11 +578,10 @@
               ">
             <div>
               <h2 id="heading-scheduling" style="font-size: 2.2rem; margin-bottom: 5px">
-                Esperando Algoritmo...
+                Waiting for Algorithm...
               </h2>
               <p>
-                Diagrama de Gantt animado, cola de listas y métricas
-                algorítmicas.
+                Animated Gantt chart, ready queue and algorithm metrics.
               </p>
             </div>
             <!-- Mario Algo Tooltip Component -->
@@ -477,7 +594,7 @@
                 <div class="algo-popup" style="top: 50px; bottom: auto; right: -25px">
                   <h4 id="algo-popup-title">Algoritmo</h4>
                   <p id="algo-popup-desc">
-                    Ejecuta la simulación para aprender de cada algoritmo.
+                    Run the simulation to learn about each algorithm.
                   </p>
                 </div>
               </div>
@@ -513,6 +630,7 @@
               <div>
                 <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
                 Gantt Chart
+                <span class="exec-mode-badge" id="gantt-mode-badge"><i class="ph ph-clock"></i> Sequential</span>
               </div>
               <div class="gantt-tick-label" id="gantt-tick-label">t = 0</div>
             </div>
@@ -527,26 +645,26 @@
               <div class="card-title flex-between">
                 <div>
                   <span class="card-icon"><i class="ph ph-cpu"></i></span>
-                  Cores en Vivo
+                  Live Cores
                 </div>
                 <div class="cores-live-tick" id="cores-live-tick">t = 0</div>
               </div>
               <div class="cores-live-grid" id="cores-live-grid">
                 <div class="cores-live-empty">
-                  Ejecuta una simulación para ver la actividad por core.
+                  Run a simulation to see per-core activity.
                 </div>
               </div>
               <p class="state-diagram-help">
-                Cada barra muestra la utilización acumulada del core hasta el
-                tick actual. La barra se ilumina con el color del proceso o
-                thread que está ejecutando en ese instante.
+                Each bar shows the accumulated utilization of the core up to the
+                current tick. The bar lights up with the process or thread color
+                that is executing at that instant.
               </p>
             </div>
 
             <div class="card">
               <div class="card-title">
                 <span class="card-icon"><i class="ph ph-crosshair"></i></span>
-                CPU &amp; Cola Ready
+                CPU &amp; Ready Queue
               </div>
               <div class="cpu-panel">
                 <div class="cpu-core" id="cpu-core">
@@ -556,7 +674,7 @@
                 <div class="ready-queue" id="ready-queue">
                   <div class="queue-label">Ready Queue</div>
                   <div class="queue-items" id="queue-items">
-                    <span class="queue-empty">vacia</span>
+                    <span class="queue-empty">empty</span>
                   </div>
                 </div>
               </div>
@@ -566,7 +684,7 @@
           <div class="card">
             <div class="card-title">
               <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
-              Métricas por Proceso
+              Per-Process Metrics
             </div>
             <div class="table-wrapper">
               <table id="metrics-table">
@@ -606,15 +724,15 @@
 
           <!-- Controles paso-a-paso del Gantt (Sticky) -->
           <div class="playback-controls sticky-playback" id="gantt-playback">
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reiniciar (R)"
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reset (R)"
               style="border-radius: 50%">
               <i class="ph ph-skip-back"></i>
             </button>
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Paso atras (←)"
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Step Back (←)"
               style="border-radius: 50%">
               <i class="ph ph-rewind"></i>
             </button>
-            <button class="btn btn-primary" id="gantt-btn-play" title="Play/Pausa (Espacio)" style="
+            <button class="btn btn-primary" id="gantt-btn-play" title="Play/Pause (Space)" style="
                   border-radius: 24px;
                   padding: 8px 28px;
                   font-size: 1.1rem;
@@ -622,17 +740,17 @@
                 ">
               <i class="ph ph-play"></i> Play
             </button>
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Paso adelante (→)"
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-next" title="Step Forward (→)"
               style="border-radius: 50%">
               <i class="ph ph-fast-forward"></i>
             </button>
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Ir al final" style="border-radius: 50%">
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-end" title="Go to End" style="border-radius: 50%">
               <i class="ph ph-skip-forward"></i>
             </button>
             <span class="step-counter" id="gantt-step-counter"
               style="margin: 0 12px; min-width: 60px; text-align: center">0 / 0</span>
             <div class="playback-speed" style="margin-left: 8px">
-              <label for="gantt-speed" style="margin: 0; font-size: 0.8rem">Velocidad</label>
+              <label for="gantt-speed" style="margin: 0; font-size: 0.8rem">Speed</label>
               <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
               <span id="gantt-speed-label" class="text-mono" style="
                     font-size: 0.85rem;
@@ -656,7 +774,7 @@
                   text-decoration: none;
                 ">
               <i class="ph ph-game-controller" id="sticky-game-icon" style="font-size: 1.1rem"></i>
-              <span id="sticky-game-text">Jugar</span>
+              <span id="sticky-game-text">Play</span>
             </a>
           </div>
         </section>
@@ -665,25 +783,25 @@
         <section class="screen" id="screen-memory" aria-labelledby="heading-memory">
           <header class="screen-header">
             <h2 id="heading-memory">Memory Visualization</h2>
-            <p>Grid de frames de memoria con asignación paginada.</p>
+            <p>Memory frame grid with paged allocation.</p>
           </header>
 
           <div class="grid-sidebar">
             <div class="card">
               <div class="card-title">
                 <span class="card-icon"><i class="ph ph-gear"></i></span>
-                Configuración de Memoria
+                Memory Configuration
               </div>
               <div class="form-group">
-                <label for="mem-size">Tamaño de Memoria (bytes)</label>
+                <label for="mem-size">Memory Size (bytes)</label>
                 <input type="number" class="form-input" id="mem-size" value="1024" min="64" step="64" />
               </div>
               <div class="form-group">
-                <label for="page-size">Tamaño de Página (bytes)</label>
+                <label for="page-size">Page Size (bytes)</label>
                 <input type="number" class="form-input" id="page-size" value="64" min="16" step="16" />
               </div>
               <button class="btn btn-primary mt-md" id="btn-allocate-memory" style="width: 100%">
-                <i class="ph ph-brain"></i> Asignar Memoria
+                <i class="ph ph-brain"></i> Allocate Memory
               </button>
               <div class="flex gap-md mt-md">
                 <a href="memory_game.html" target="_blank" class="btn-holographic" style="
@@ -695,7 +813,7 @@
                       font-size: 0.85rem;
                     ">
                   <i class="ph ph-game-controller" style="font-size: 1.2rem"></i>
-                  Paginación (Luigi)
+                  Paging (Luigi)
                 </a>
               </div>
 
@@ -730,7 +848,7 @@
                     <i class="ph ph-squares-four"></i>
                   </div>
                   <p>
-                    Ejecuta una simulación para ver la asignación de memoria.
+                    Run a simulation to see the memory allocation.
                   </p>
                 </div>
               </div>
@@ -746,7 +864,7 @@
               <div class="empty-state">
                 <div class="empty-icon"><i class="ph ph-book-open"></i></div>
                 <p>
-                  Las tablas de páginas aparecerán después de la asignación.
+                  Page tables will appear after allocation.
                 </p>
               </div>
             </div>
@@ -756,192 +874,236 @@
         <!-- ─── Screen 4: Page Replacement ────────────────────────── -->
         <section class="screen" id="screen-page-replace" aria-labelledby="heading-page-replace">
           <header class="screen-header">
-            <h2 id="heading-page-replace">Page Replacement</h2>
-            <p>
-              Animación paso a paso de algoritmos de reemplazo de páginas.
-            </p>
+            <h2 id="heading-page-replace">📚 Library Study Table</h2>
+            <p>Page Replacement simulation — a student's desk with limited space for reference folders.</p>
           </header>
 
-          <div class="grid-sidebar">
-            <div class="card">
+          <!-- ══ TOP ROW: Config + Workload ══════════════════════════════ -->
+          <div class="pr-top-row">
+
+            <!-- ── Panel 1: Infrastructure (The Table) ─────────────────── -->
+            <div class="card pr-config-card">
               <div class="card-title">
-                <span class="card-icon"><i class="ph ph-gear"></i></span>
-                Configuración
+                <span class="card-icon"><i class="ph ph-desk"></i></span>
+                The Table (Memory)
               </div>
+
+              <!-- Memory Size Slider -->
               <div class="form-group">
-                <label for="pr-algo">Algoritmo</label>
-                <select class="form-select" id="pr-algo">
-                  <option value="FIFO">FIFO</option>
-                  <option value="LRU">LRU</option>
-                  <option value="Optimal">Optimal</option>
-                  <option value="Clock">Clock</option>
-                  <option value="Second Chance">Second Chance</option>
+                <label for="pr-mem-size" class="pr-label">
+                  <i class="ph ph-ruler"></i> Table Size (Memory)
+                  <span class="pr-value-badge" id="pr-mem-size-val">256 B</span>
+                </label>
+                <input type="range" id="pr-mem-size" class="cores-slider" min="64" max="1024" step="64" value="256" />
+                <div class="pr-slider-track-labels">
+                  <span>64 B</span><span>512 B</span><span>1 KB</span>
+                </div>
+              </div>
+
+              <!-- Page Size Dropdown -->
+              <div class="form-group">
+                <label for="pr-page-size"><i class="ph ph-folder"></i> Folder Size (Page)</label>
+                <select class="form-select" id="pr-page-size">
+                  <option value="16">16 B</option>
+                  <option value="32">32 B</option>
+                  <option value="64" selected>64 B</option>
+                  <option value="128">128 B</option>
+                  <option value="256">256 B</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label for="pr-frames">Número de Frames</label>
-                <input type="number" class="form-input" id="pr-frames" value="3" min="1" max="10" />
+
+              <!-- Auto-calculated Frames -->
+              <div class="pr-frames-calc" id="pr-frames-calc">
+                <div class="pr-frames-calc-icon">🗂️</div>
+                <div>
+                  <div class="pr-frames-calc-label">Spots on the Table</div>
+                  <div class="pr-frames-calc-value" id="pr-frames-display">4 frames</div>
+                  <div class="pr-frames-calc-sub">256 B ÷ 64 B = <strong id="pr-calc-formula">4</strong></div>
+                </div>
               </div>
+
+              <!-- Algorithm Pills -->
               <div class="form-group">
-                <label for="pr-refstring">Reference String (separada por comas)</label>
-                <input type="text" class="form-input" id="pr-refstring" value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1"
-                  placeholder="7,0,1,2,0,3..." />
+                <label><i class="ph ph-strategy"></i> Replacement Strategy</label>
+                <div class="pr-algo-pills" id="pr-algo-pills" role="radiogroup" aria-label="Algorithm">
+                  <label class="pr-pill active"><input type="radio" name="pr-algo-radio" value="FIFO" checked hidden />FIFO</label>
+                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="LRU" hidden />LRU</label>
+                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Optimal" hidden />Optimal</label>
+                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Clock" hidden />Clock</label>
+                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Second Chance" hidden />2nd Chance</label>
+                </div>
               </div>
-              <button class="btn btn-primary mt-md" id="btn-run-pr" style="width: 100%">
-                <i class="ph ph-play"></i> Ejecutar
-              </button>
+
+              <!-- Bowser Game Button -->
               <div class="flex gap-md mt-md">
-                <a href="page_replace_game.html" target="_blank" class="btn-holographic" style="
-                      text-decoration: none;
-                      flex-direction: row;
-                      font-weight: 600;
-                      width: 100%;
-                      font-family: var(--font-body);
-                      font-size: 0.85rem;
-                    ">
-                  <i class="ph ph-game-controller" style="font-size: 1.2rem"></i>
-                  Bowser's conquest
+                <a href="page_replace_game.html" target="_blank" class="btn-holographic" style="text-decoration:none;flex-direction:row;font-weight:600;width:100%;font-family:var(--font-body);font-size:0.85rem;">
+                  <i class="ph ph-game-controller" style="font-size:1.2rem"></i>
+                  Bowser's Conquest
                 </a>
               </div>
             </div>
 
-            <div>
-              <div class="card mb-md" id="pr-metaphor-box" style="
-                    display: none;
-                    position: relative;
-                    overflow: hidden;
-                    padding-bottom: var(--space-lg);
-                  ">
-                <!-- Mario Galaxy Graphics -->
-                <div class="galaxy-bg"></div>
-                <div class="mario-sprite"></div>
-                <div class="luma-sprite"></div>
-                <div style="position: relative; z-index: 10">
-                  <div class="card-title" style="color: #fff; margin-bottom: 8px">
-                    <span class="card-icon" style="color: #a78bfa"><i class="ph ph-planet"></i></span>
-                    Mario Galaxy Idea: FIFO
-                  </div>
-                  <p style="
-                        color: rgba(255, 255, 255, 0.85);
-                        font-size: 0.9rem;
-                        line-height: 1.6;
-                      " id="pr-metaphor-text">
-                    Imagina que Mario atraviesa el espacio y solo puede
-                    mantener gravedad activa en
-                    <strong style="color: #a78bfa">planetas limitados</strong>
-                    a la vez (tus Frames). Cuando aterriza en un nuevo
-                    asteroide (Nueva Página) y ya no tiene energía, la
-                    gravedad desaparece del
-                    <strong style="color: #f87171">primer planeta que pisó</strong>
-                    (First-In, First-Out), dejándolo atrás en el hoyo negro.
-                  </p>
+            <!-- ── Panel 2: Workload ────────────────────────────────────── -->
+            <div class="card pr-workload-card">
+              <div class="card-title">
+                <span class="card-icon"><i class="ph ph-stack"></i></span>
+                Workload (Reference String)
+              </div>
+
+              <!-- Reference String Input -->
+              <div class="form-group">
+                <label for="pr-refstring"><i class="ph ph-list-numbers"></i> Page Request Sequence</label>
+                <div class="pr-refstring-row">
+                  <input type="text" class="form-input" id="pr-refstring"
+                    value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1"
+                    placeholder="e.g. 1,4,2,5,1,2,3" />
+                  <button class="btn btn-secondary btn-sm" id="pr-btn-random" title="Generate random sequence">
+                    <i class="ph ph-shuffle"></i>
+                  </button>
                 </div>
               </div>
-              <div class="card mb-md">
-                <div class="card-title">
-                  <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
-                  Resultados
-                </div>
-                <div class="stats-grid" style="grid-template-columns: 1fr 1fr 1fr">
-                  <div class="stat-card">
-                    <div class="stat-value" id="pr-total-faults">—</div>
-                    <div class="stat-label">Page Faults</div>
+
+              <!-- Process Steppers -->
+              <div class="form-group">
+                <label><i class="ph ph-code-block"></i> Pages per Process</label>
+                <div class="pr-process-steppers">
+                  <div class="pr-stepper-row">
+                    <div class="pr-stepper-label">
+                      <span class="pr-process-dot" style="background:#3B82F6"></span>
+                      <span>Process A — Backend</span>
+                    </div>
+                    <div class="pr-stepper-ctrl">
+                      <button class="pr-step-btn" id="pr-step-a-dec" aria-label="Decrease">−</button>
+                      <span class="pr-step-val" id="pr-step-a-val">3</span>
+                      <button class="pr-step-btn" id="pr-step-a-inc" aria-label="Increase">+</button>
+                    </div>
                   </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="pr-fault-rate">—</div>
-                    <div class="stat-label">Fault Rate</div>
+                  <div class="pr-stepper-row">
+                    <div class="pr-stepper-label">
+                      <span class="pr-process-dot" style="background:#10B981"></span>
+                      <span>Process B — Frontend</span>
+                    </div>
+                    <div class="pr-stepper-ctrl">
+                      <button class="pr-step-btn" id="pr-step-b-dec" aria-label="Decrease">−</button>
+                      <span class="pr-step-val" id="pr-step-b-val">2</span>
+                      <button class="pr-step-btn" id="pr-step-b-inc" aria-label="Increase">+</button>
+                    </div>
                   </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="pr-total-refs">—</div>
-                    <div class="stat-label">Total Refs</div>
+                  <div class="pr-stepper-row">
+                    <div class="pr-stepper-label">
+                      <span class="pr-process-dot" style="background:#F59E0B"></span>
+                      <span>Process C — Testing</span>
+                    </div>
+                    <div class="pr-stepper-ctrl">
+                      <button class="pr-step-btn" id="pr-step-c-dec" aria-label="Decrease">−</button>
+                      <span class="pr-step-val" id="pr-step-c-val">2</span>
+                      <button class="pr-step-btn" id="pr-step-c-inc" aria-label="Increase">+</button>
+                    </div>
                   </div>
                 </div>
               </div>
 
+              <!-- Run Button -->
+              <button class="btn btn-primary mt-md" id="btn-run-pr" style="width:100%">
+                <i class="ph ph-play"></i> Start Simulation
+              </button>
+            </div>
+          </div>
+
+          <!-- ══ MAIN CANVAS: Study Table ════════════════════════════════ -->
+          <div class="pr-canvas-row" id="pr-canvas-row" style="display:none">
+
+            <!-- Left: Table + Reference Strip + Controls -->
+            <div class="pr-left-col">
+
+              <!-- Reference String Visual -->
               <div class="card mb-md">
-                <div class="card-title">
-                  <span class="card-icon"><i class="ph ph-list-numbers"></i></span>
-                  Reference String
+                <div class="card-title flex-between">
+                  <div><span class="card-icon"><i class="ph ph-list-numbers"></i></span> Page Request Queue</div>
+                  <span class="step-counter" id="pr-step-counter">Step 0 / 0</span>
                 </div>
                 <div class="ref-string-visual" id="pr-ref-visual"></div>
               </div>
 
+              <!-- Study Table (Frames Grid) -->
               <div class="card mb-md">
-                <div class="card-title">
-                  <span class="card-icon"><i class="ph ph-squares-four"></i></span>
-                  Frames
+                <div class="card-title flex-between">
+                  <div><span class="card-icon"><i class="ph ph-squares-four"></i></span> Study Table — Frames</div>
+                  <span class="pr-algo-badge" id="pr-algo-badge">FIFO</span>
                 </div>
-                <div class="page-frames-visual" id="pr-frames-visual"></div>
-                <div class="step-controls" style="
-                      display: flex;
-                      flex-wrap: wrap;
-                      gap: 10px;
-                      align-items: center;
-                    ">
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-reset">
-                    <i class="ph ph-skip-back"></i> Reset
-                  </button>
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-prev">
-                    <i class="ph ph-caret-left"></i> Prev
-                  </button>
-                  <span class="step-counter" id="pr-step-counter">Step 0 / 0</span>
-                  <button class="btn btn-secondary btn-sm" id="pr-btn-next">
-                    Next <i class="ph ph-caret-right"></i>
-                  </button>
-                  <button class="btn btn-primary btn-sm" id="pr-btn-play">
-                    <i class="ph ph-play"></i> Play
-                  </button>
-                  <div class="playback-speed" style="
-                        margin-left: auto;
-                        display: flex;
-                        gap: 8px;
-                        align-items: center;
-                      ">
-                    <label for="pr-speed" style="font-size: 0.8rem; margin: 0">Velocidad</label>
-                    <input type="range" id="pr-speed" min="0.25" max="3" step="0.25" value="1" style="width: 80px" />
-                    <span id="pr-speed-label" class="text-mono" style="font-size: 0.8rem">1.0x</span>
-                  </div>
+                <div class="pr-study-table-grid" id="pr-frames-visual"></div>
+              </div>
+
+              <!-- Media Controls -->
+              <div class="playback-controls" id="pr-playback">
+                <button class="btn btn-secondary btn-sm" id="pr-btn-reset" title="Clear Table (Reset)" style="border-radius:50%">
+                  <i class="ph ph-eraser"></i>
+                </button>
+                <button class="btn btn-secondary btn-sm" id="pr-btn-prev" title="Step Back" style="border-radius:50%">
+                  <i class="ph ph-rewind"></i>
+                </button>
+                <button class="btn btn-primary" id="pr-btn-play" style="border-radius:24px;padding:8px 28px;font-size:1.1rem;font-weight:700">
+                  <i class="ph ph-play"></i> Play
+                </button>
+                <button class="btn btn-secondary btn-sm" id="pr-btn-next" title="Step Forward" style="border-radius:50%">
+                  <i class="ph ph-fast-forward"></i>
+                </button>
+                <div class="playback-speed" style="margin-left:8px">
+                  <label for="pr-speed" style="margin:0;font-size:0.8rem">Speed</label>
+                  <input type="range" id="pr-speed" min="0.25" max="3" step="0.25" value="1" style="width:80px" />
+                  <span id="pr-speed-label" class="text-mono" style="font-size:0.85rem;font-weight:600;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:6px;color:#fff;border:1px solid rgba(255,255,255,0.2)">1.0x</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Fault Counter + Event Log -->
+            <div class="pr-right-col">
+
+              <!-- Giant Fault Counter -->
+              <div class="card pr-fault-counter-card mb-md">
+                <div class="pr-fault-number" id="pr-total-faults">0</div>
+                <div class="pr-fault-label">Page Faults</div>
+                <div class="pr-fault-sub-stats">
+                  <div class="pr-fault-sub"><span id="pr-fault-rate">—</span><small>Fault Rate</small></div>
+                  <div class="pr-fault-sub"><span id="pr-total-refs">—</span><small>Total Refs</small></div>
                 </div>
               </div>
 
-              <div class="card">
-                <div class="card-title">
-                  <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
-                  Step History
+              <!-- Event Log -->
+              <div class="card pr-log-card">
+                <div class="card-title flex-between">
+                  <div><span class="card-icon"><i class="ph ph-scroll"></i></span> Event Log</div>
+                  <button class="btn-icon" id="pr-log-clear" title="Clear log" style="font-size:0.75rem;padding:4px 8px">
+                    <i class="ph ph-trash"></i>
+                  </button>
                 </div>
-                <div class="table-wrapper" style="max-height: 300px; overflow-y: auto">
-                  <table id="pr-steps-table">
-                    <thead>
-                      <tr>
-                        <th>Step</th>
-                        <th>Page</th>
-                        <th>Result</th>
-                        <th>Evicted</th>
-                        <th>Frames</th>
-                        <th>Faults</th>
-                      </tr>
-                    </thead>
-                    <tbody id="pr-steps-tbody"></tbody>
-                  </table>
+                <div class="pr-event-log" id="pr-event-log">
+                  <div class="pr-log-empty"><i class="ph ph-books"></i><p>Run a simulation to see the log.</p></div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
+
+
+
+
+
+
+
         <!-- ─── Screen 5: Comparison ─────────────────────────────── -->
         <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
           <header class="screen-header">
             <h2 id="heading-comparison">Algorithm Comparison</h2>
             <p>
-              Compara todos los algoritmos de scheduling con los mismos
-              procesos.
+              Compare all scheduling algorithms with the same processes.
             </p>
           </header>
 
           <div class="flex gap-md mb-lg">
             <button class="btn btn-primary" id="btn-run-comparison">
-              <i class="ph ph-chart-bar"></i> Comparar Todos los Algoritmos
+              <i class="ph ph-chart-bar"></i> Compare All Algorithms
             </button>
           </div>
 
@@ -1031,13 +1193,126 @@
           </div>
         </section>
 
+        <!-- ─── Screen: Execution Modes (Retro CPU Visualizer) ────── -->
+        <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
+          <header class="screen-header text-center"
+            style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
+            <h2 id="heading-exec-modes">CPU Execution Modes</h2>
+            <p>Retro animations showing how processes are distributed across cores in each mode.</p>
+
+            <!-- Mode Tabs -->
+            <div class="em-tabs mt-md" id="em-tabs">
+              <button class="em-tab active" data-mode="concurrency">
+                <i class="ph ph-fire"></i>
+                <span>Concurrency</span>
+                <small>Mario alone · Alternating</small>
+              </button>
+              <button class="em-tab" data-mode="parallelism">
+                <i class="ph ph-users"></i>
+                <span>Parallelism</span>
+                <small>Mario &amp; Luigi simultaneous</small>
+              </button>
+              <button class="em-tab" data-mode="multithreading">
+                <i class="ph ph-users-three"></i>
+                <span>Multithreading</span>
+                <small>Same table &amp; cooler</small>
+              </button>
+              <button class="em-tab" data-mode="multiprocessing">
+                <i class="ph ph-house-line"></i>
+                <span>Multiprocessing</span>
+                <small>Separate yards</small>
+              </button>
+            </div>
+          </header>
+
+          <!-- Tutorial mushroom popup -->
+          <div class="em-mushroom-tip" id="em-mushroom-tip">
+            <div class="em-mushroom-icon">🍄</div>
+            <div class="em-mushroom-bubble" id="em-mushroom-bubble">
+              <strong id="em-tip-title">Concurrency</strong>
+              <p id="em-tip-text">Mario rapidly alternating tasks. Drops the tongs, mashes the avocado, runs back to check the meat.</p>
+            </div>
+          </div>
+
+          <!-- Stage Card -->
+          <div class="card em-stage-card">
+            <div class="card-title flex-between">
+              <div>
+                <span class="card-icon"><i class="ph ph-monitor-play"></i></span>
+                <span id="em-stage-title">CPU Stage — Concurrency</span>
+              </div>
+              <div class="em-tick" id="em-tick">t = 0 / 0</div>
+            </div>
+
+            <!-- Empty state -->
+            <div class="em-empty" id="em-empty">
+              <div class="em-empty-icon">🎮</div>
+              <p>No processes loaded.</p>
+              <p class="em-empty-hint">
+                Go to <strong>Processes</strong> and add processes (or use <em>Sample</em>),
+                then come back here to see the animation.
+              </p>
+            </div>
+
+            <!-- Stage canvas -->
+            <div class="em-stage" id="em-stage" style="display:none;">
+              <canvas id="em-canvas"></canvas>
+              <div class="em-scanlines" aria-hidden="true"></div>
+            </div>
+
+            <!-- Playback controls -->
+            <div class="em-controls" id="em-controls" style="display:none;">
+              <button class="btn btn-secondary btn-sm" id="em-btn-reset" title="Reiniciar">
+                <i class="ph ph-skip-back"></i>
+              </button>
+              <button class="btn btn-primary btn-sm" id="em-btn-play" title="Play/Pause">
+                <i class="ph ph-play"></i> Play
+              </button>
+              <div class="em-speed-wrap">
+                <label for="em-speed">Speed</label>
+                <input type="range" id="em-speed" min="0.25" max="3" step="0.25" value="1" />
+                <span id="em-speed-label">1.0x</span>
+              </div>
+              <button class="btn btn-secondary btn-sm em-sound-btn" id="em-btn-sound" title="Sonido">
+                <i class="ph ph-speaker-high"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Stats Card -->
+          <div class="card em-stats-card" id="em-stats-card" style="display:none;">
+            <div class="card-title">
+              <span class="card-icon"><i class="ph ph-chart-line-up"></i></span>
+              Mode Metrics
+            </div>
+            <div class="em-stats-grid">
+              <div class="em-stat">
+                <div class="em-stat-label">Total Time</div>
+                <div class="em-stat-value" id="em-stat-time">—</div>
+              </div>
+              <div class="em-stat">
+                <div class="em-stat-label">Throughput</div>
+                <div class="em-stat-value" id="em-stat-throughput">—</div>
+              </div>
+              <div class="em-stat em-stat-speedup">
+                <div class="em-stat-label">Speedup vs Sequential</div>
+                <div class="em-stat-value" id="em-stat-speedup">—</div>
+              </div>
+              <div class="em-stat">
+                <div class="em-stat-label">Processes</div>
+                <div class="em-stat-value" id="em-stat-procs">—</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- ─── Screen 6: CSV Extract ────────────────────────────── -->
         <section class="screen" id="screen-csv-extract" aria-labelledby="heading-csv-extract">
           <header class="screen-header">
             <h2 id="heading-csv-extract">Regex + CSV Extraction</h2>
             <p>
-              Extrae datos (fechas, nombres, emails, teléfonos, direcciones)
-              de texto usando expresiones regulares.
+              Extract data (dates, names, emails, phones, addresses)
+              from text using regular expressions.
             </p>
           </header>
 
@@ -1045,7 +1320,7 @@
             <div class="card">
               <div class="card-title">
                 <span class="card-icon"><i class="ph ph-note"></i></span>
-                Texto de Entrada
+                Input Text
               </div>
               <div class="form-group" style="position: relative">
                 <textarea class="form-textarea" id="regex-input" rows="12" placeholder="Pega aquí el texto a analizar...
@@ -1090,7 +1365,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
                 </button>
               </div>
               <button class="btn btn-primary" id="btn-extract" style="width: 100%">
-                <i class="ph ph-magnifying-glass"></i> Extraer Datos
+                <i class="ph ph-magnifying-glass"></i> Extract Data
               </button>
             </div>
 
@@ -1099,7 +1374,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
                 <div class="card-title flex-between">
                   <div>
                     <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
-                    Resultados
+                    Results
                   </div>
                   <span class="badge badge-purple" id="regex-match-count">0 matches</span>
                 </div>
@@ -1170,241 +1445,15 @@ Address: 123 Main St, Monterrey, NL"></textarea>
             <span class="step-counter" id="regex-step-counter"
               style="margin: 0 12px; min-width: 60px; text-align: center">0 / 0</span>
             <div class="playback-speed" style="margin-left: 8px">
-              <label for="regex-speed" style="margin: 0; font-size: 0.8rem">Velocidad</label>
+              <label for="regex-speed" style="margin: 0; font-size: 0.8rem">Speed</label>
               <input type="range" id="regex-speed" min="0.25" max="3" step="0.25" value="1" style="width: 80px" />
               <span id="regex-speed-label" class="text-mono" style="font-size: 0.8rem">1.0x</span>
             </div>
           </div>
         </section>
 
-        <!-- ─── Screen 7: Concurrency ────────────────────────────── -->
-        <section class="screen" id="screen-concurrency" aria-labelledby="heading-concurrency">
-          <header class="screen-header text-center"
-            style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
-            <h2 id="heading-concurrency">Concurrency Simulation</h2>
-            <p>Visualización de Multithreading, Concurrency y Parallelism con animaciones y race conditions.</p>
 
-            <!-- PILL TABS -->
-            <div class="conc-pill-nav mt-md">
-              <button class="conc-pill-tab conc-sim-tab active" id="conc-tab-mt" onclick="concSwitchTab('mt')">
-                <i class="ph ph-git-branch"></i> Multithreading
-              </button>
-              <button class="conc-pill-tab conc-sim-tab" id="conc-tab-cc" onclick="concSwitchTab('cc')">
-                <i class="ph ph-arrows-merge"></i> Concurrency
-              </button>
-              <button class="conc-pill-tab conc-sim-tab" id="conc-tab-pl" onclick="concSwitchTab('pl')">
-                <i class="ph ph-rows"></i> Parallelism
-              </button>
-            </div>
-          </header>
 
-          <div class="conc-panel active" id="conc-panel-mt">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-title flex-between">
-                  <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span> Multithreading Gantt</div>
-                  <div class="playback-controls" style="margin:0; padding:0; background:transparent; box-shadow:none;">
-                    <button class="btn btn-secondary btn-sm" onclick="resetMT()"><i
-                        class="ph ph-skip-back"></i></button>
-                    <button class="btn btn-primary btn-sm" id="btn-mt" onclick="toggleMT()"><i class="ph ph-play"></i>
-                      Play</button>
-                    <button class="btn btn-secondary btn-sm" onclick="concStepMT()"><i
-                        class="ph ph-step-forward"></i></button>
-                  </div>
-                </div>
-                <canvas id="c-mt"></canvas>
-                <div class="stats-grid mt-md">
-                  <div class="stat-card">
-                    <div class="stat-value" id="mt-t">0.00</div>
-                    <div class="stat-label">Time</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="mt-m2">0</div>
-                    <div class="stat-label">Switches</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="mt-m3">—</div>
-                    <div class="stat-label">Avg TAT</div>
-                  </div>
-                </div>
-                <div class="table-wrapper mt-sm">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>PID</th>
-                        <th>BT</th>
-                        <th>CT</th>
-                        <th>TAT</th>
-                        <th>WT</th>
-                        <th>RT</th>
-                      </tr>
-                    </thead>
-                    <tbody id="mt-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-              <div class="card">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-trophy"></i></span> Progress Race</div>
-                <div id="mt-br-area" style="position:relative;width:100%;min-height:150px;margin-bottom:12px;"></div>
-                <canvas id="mt-spark"></canvas>
-                <div class="state-diagram mt-md" id="mt-state-diagram">
-                  <div class="state-node">
-                    <div class="state-badge">READY</div>
-                    <div class="state-pids" id="mt-state-ready">—</div>
-                  </div>
-                  <div class="state-arrow">→</div>
-                  <div class="state-node">
-                    <div class="state-badge" style="background:var(--state-running)">RUNNING</div>
-                    <div class="state-pids" id="mt-state-running">—</div>
-                  </div>
-                  <div class="state-arrow">→</div>
-                  <div class="state-node">
-                    <div class="state-badge" style="background:var(--state-terminated)">DONE</div>
-                    <div class="state-pids" id="mt-state-done">—</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="conc-panel" id="conc-panel-cc">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-title flex-between">
-                  <div><span class="card-icon"><i class="ph ph-lock-key"></i></span> Concurrency & Mutex</div>
-                  <div class="playback-controls" style="margin:0; padding:0; background:transparent; box-shadow:none;">
-                    <button class="btn btn-secondary btn-sm" onclick="resetCC()"><i
-                        class="ph ph-skip-back"></i></button>
-                    <button class="btn btn-primary btn-sm" id="btn-cc" onclick="toggleCC()"><i class="ph ph-play"></i>
-                      Play</button>
-                    <button class="btn btn-secondary btn-sm" onclick="concStepCC()"><i
-                        class="ph ph-step-forward"></i></button>
-                  </div>
-                </div>
-                <canvas id="c-cc"></canvas>
-                <div class="stats-grid mt-md">
-                  <div class="stat-card">
-                    <div class="stat-value" id="cc-t">0.00</div>
-                    <div class="stat-label">Time</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="cc-m2" style="color:#3B6D11">LIBRE</div>
-                    <div class="stat-label">Mutex Status</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="cc-m3">0</div>
-                    <div class="stat-label">Blocked Steps</div>
-                  </div>
-                </div>
-                <div class="table-wrapper mt-sm">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>Thread</th>
-                        <th>Total</th>
-                        <th>End</th>
-                        <th>TAT</th>
-                        <th>WT</th>
-                        <th>CS Slots</th>
-                      </tr>
-                    </thead>
-                    <tbody id="cc-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-              <div class="card">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-trophy"></i></span> Progress Race</div>
-                <div id="cc-br-area" style="position:relative;width:100%;min-height:100px;margin-bottom:12px;"></div>
-                <canvas id="cc-spark"></canvas>
-                <div class="state-diagram mt-md" id="cc-state-diagram">
-                  <div class="state-node">
-                    <div class="state-badge">READY</div>
-                    <div class="state-pids" id="cc-state-ready">—</div>
-                  </div>
-                  <div class="state-arrow">→</div>
-                  <div class="state-node">
-                    <div class="state-badge" style="background:var(--state-running)">RUNNING</div>
-                    <div class="state-pids" id="cc-state-running">—</div>
-                  </div>
-                  <div class="state-arrow">→</div>
-                  <div class="state-node">
-                    <div class="state-badge" style="background:var(--state-terminated)">DONE</div>
-                    <div class="state-pids" id="cc-state-done">—</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="conc-panel" id="conc-panel-pl">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-title flex-between">
-                  <div><span class="card-icon"><i class="ph ph-cpu"></i></span> Parallelism</div>
-                  <div class="flex gap-sm align-center">
-                    <select id="sl-cores" class="form-select" style="padding:4px; font-size:12px;"
-                      onchange="onCoresChange()">
-                      <option value="2">2 Cores</option>
-                      <option value="3">3 Cores</option>
-                      <option value="4" selected>4 Cores</option>
-                    </select>
-                    <div class="playback-controls"
-                      style="margin:0; padding:0; background:transparent; box-shadow:none;">
-                      <button class="btn btn-secondary btn-sm" onclick="resetPL()"><i
-                          class="ph ph-skip-back"></i></button>
-                      <button class="btn btn-primary btn-sm" id="btn-pl" onclick="togglePL()"><i class="ph ph-play"></i>
-                        Play</button>
-                      <button class="btn btn-secondary btn-sm" onclick="concStepPL()"><i
-                          class="ph ph-step-forward"></i></button>
-                    </div>
-                  </div>
-                </div>
-                <canvas id="c-pl"></canvas>
-                <div class="stats-grid mt-md">
-                  <div class="stat-card">
-                    <div class="stat-value" id="pl-t">0.00</div>
-                    <div class="stat-label">Time</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="pl-m2">0/4</div>
-                    <div class="stat-label">Cores Done</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="pl-m3">—</div>
-                    <div class="stat-label">Speedup</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-value" id="pl-m4">—</div>
-                    <div class="stat-label">Efficiency</div>
-                  </div>
-                </div>
-                <div class="table-wrapper mt-sm">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>Core</th>
-                        <th>Task</th>
-                        <th>BT</th>
-                        <th>End</th>
-                        <th>TAT</th>
-                        <th>% Seq</th>
-                      </tr>
-                    </thead>
-                    <tbody id="pl-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-              <div class="card">
-                <div class="card-title"><span class="card-icon"><i class="ph ph-trophy"></i></span> Progress Race</div>
-                <div id="br-area" style="position:relative;width:100%;min-height:200px;margin-bottom:12px;"></div>
-                <canvas id="c-spark"></canvas>
-              </div>
-            </div>
-          </div>
-        </section>
       </div>
 
       <!-- Status bar -->
@@ -1422,14 +1471,101 @@ Address: 123 Main St, Monterrey, NL"></textarea>
   </div>
 
   <!-- Scripts -->
-  <script src="js/app.js"></script>
-  <script src="js/gantt.js"></script>
-  <script src="js/memory.js"></script>
-  <script src="js/pageReplace.js"></script>
-  <script src="js/comparison.js"></script>
-  <script src="js/concurrency.js"></script>
-  <script src="js/concurrency_sim.js"></script>
-  <script src="js/regex.js"></script>
+  <script src="js/app.js?v=4"></script>
+  <script src="js/gantt.js?v=6"></script>
+  <script src="js/memory.js?v=4"></script>
+  <script src="js/pageReplace.js?v=5"></script>
+  <script src="js/comparison.js?v=4"></script>
+
+  <script src="js/exec_modes.js?v=4"></script>
+  <script src="js/regex.js?v=4"></script>
+
+  <!-- ── Responsive "Más" dropdown ───────────────────────────────── -->
+  <script>
+  (function () {
+    const moreBtn    = document.getElementById('nav-more-btn');
+    const dropdown   = document.getElementById('nav-more-dropdown');
+    const hiddenClasses = ['nav-hide-400', 'nav-hide-540', 'nav-hide-700',
+                           'nav-hide-860', 'nav-hide-1100'];
+
+    /* Build / refresh dropdown contents based on which items are hidden */
+    function syncDropdown() {
+      dropdown.innerHTML = '';
+      let anyHidden = false;
+
+      document.querySelectorAll('.main-pill-nav .nav-btn:not(#nav-more-btn)').forEach(btn => {
+        const hidden = hiddenClasses.some(c => {
+          if (!btn.classList.contains(c)) return false;
+          // Check if that class is currently hiding the element
+          return getComputedStyle(btn).display === 'none';
+        });
+
+        if (hidden) {
+          anyHidden = true;
+          // Clone and strip hide classes so it's always visible inside dropdown
+          const clone = btn.cloneNode(true);
+          hiddenClasses.forEach(c => clone.classList.remove(c));
+          clone.addEventListener('click', () => {
+            closeDropdown();
+            btn.click(); // trigger original nav logic
+          });
+          dropdown.appendChild(clone);
+        }
+      });
+
+      moreBtn.style.display = anyHidden ? 'flex' : 'none';
+      updateMoreBtnState();
+    }
+
+    /* Highlight "Más" button if the active screen is inside the dropdown */
+    function updateMoreBtnState() {
+      const hasActive = !!dropdown.querySelector('.nav-btn.active');
+      moreBtn.classList.toggle('has-active', hasActive);
+    }
+
+    function openDropdown() {
+      syncDropdown();
+      dropdown.classList.add('open');
+      moreBtn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeDropdown() {
+      dropdown.classList.remove('open');
+      moreBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleDropdown() {
+      if (dropdown.classList.contains('open')) closeDropdown();
+      else openDropdown();
+    }
+
+    moreBtn.addEventListener('click', e => { e.stopPropagation(); toggleDropdown(); });
+
+    // Close when clicking outside
+    document.addEventListener('click', e => {
+      if (!dropdown.contains(e.target) && e.target !== moreBtn) closeDropdown();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDropdown(); });
+
+    // Re-sync on resize (breakpoints change which items are hidden)
+    window.addEventListener('resize', () => {
+      if (dropdown.classList.contains('open')) syncDropdown();
+      else updateMoreBtnState();
+    });
+
+    // Observe active-class changes on nav buttons so "Más" badge updates live
+    const observer = new MutationObserver(updateMoreBtnState);
+    document.querySelectorAll('.main-pill-nav .nav-btn:not(#nav-more-btn)').forEach(btn => {
+      observer.observe(btn, { attributes: true, attributeFilter: ['class'] });
+    });
+
+    // Initial sync after a tick (lets app.js finish setting up)
+    setTimeout(syncDropdown, 100);
+    window.addEventListener('resize', syncDropdown);
+  })();
+  </script>
 </body>
 
 </html>

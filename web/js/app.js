@@ -34,6 +34,45 @@ function pidColor(pid) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Execution mode helpers
+   ═══════════════════════════════════════════════════════════════════════ */
+const EXEC_MODE_META = {
+  'Secuencial':     { icon: 'ph-clock',         color: '#64748B', label: 'Sequential' },
+  'Multithreading': { icon: 'ph-git-branch',    color: '#2563EB', label: 'Multithreading' },
+  'Concurrency':    { icon: 'ph-arrows-merge',  color: '#F97316', label: 'Concurrency' },
+  'Parallelism':    { icon: 'ph-cpu',           color: '#8B5CF6', label: 'Parallelism' },
+  'Multiprocessing':{ icon: 'ph-house-line',    color: '#10B981', label: 'Multiprocessing' },
+};
+
+function getExecutionMode() {
+  return (window.AppState && window.AppState.executionMode) || 'Concurrency';
+}
+
+function getEffectiveVisibility() {
+  const mode = getExecutionMode();
+  const showsThreads = mode === 'Multithreading' || mode === 'Concurrency' || mode === 'Parallelism';
+  const showsForks   = mode === 'Concurrency' || mode === 'Parallelism';
+  return {
+    mode,
+    threadsVisible: !!(window.AppState && window.AppState.threadsEnabled) && showsThreads,
+    forksVisible:   !!(window.AppState && window.AppState.forksEnabled) && showsForks,
+  };
+}
+
+function updateExecutionModeBadge() {
+  const badge = document.getElementById('gantt-mode-badge');
+  if (!badge) return;
+  const meta = EXEC_MODE_META[getExecutionMode()] || EXEC_MODE_META['Concurrency'];
+  badge.innerHTML = `<i class="ph ${meta.icon}"></i> ${meta.label}`;
+  badge.style.color = meta.color;
+  badge.style.borderColor = meta.color + '55';
+  badge.style.background = meta.color + '15';
+}
+
+window.getEffectiveVisibility = getEffectiveVisibility;
+window.getExecutionMode = getExecutionMode;
+
+/* ═══════════════════════════════════════════════════════════════════════
    Global State
    ═══════════════════════════════════════════════════════════════════════ */
 const AppState = {
@@ -43,6 +82,8 @@ const AppState = {
   lastComparisonResult: null,
   numCores: 1,
   threadsEnabled: false,
+  forksEnabled: false,
+  executionMode: 'Concurrency',
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -131,12 +172,16 @@ function renderProcessTable() {
   const empty = document.getElementById("empty-processes");
   const countEl = document.getElementById("process-count");
   const thThreads = document.getElementById("th-threads");
+  const thForks = document.getElementById("th-forks");
 
   countEl.textContent = AppState.processes.length;
 
-  // Show/hide threads column
+  // Show/hide threads & forks columns
   if (thThreads) {
     thThreads.style.display = AppState.threadsEnabled ? '' : 'none';
+  }
+  if (thForks) {
+    thForks.style.display = AppState.forksEnabled ? '' : 'none';
   }
 
   if (AppState.processes.length === 0) {
@@ -149,17 +194,32 @@ function renderProcessTable() {
   let html = '';
   AppState.processes.forEach((p, i) => {
     const threads = p.threads || [];
+    const forks = p.forks || [];
     const threadCount = threads.length;
+    const forkCount = forks.length;
     const maxThreads = 4;
-    const canAdd = AppState.threadsEnabled && threadCount < maxThreads;
+    const maxForks = 3;
+    const canAddThread = AppState.threadsEnabled && threadCount < maxThreads;
+    const canAddFork = AppState.forksEnabled && forkCount < maxForks;
 
     const threadCell = AppState.threadsEnabled
       ? `<td>
           <div class="thread-actions-cell">
-            <button class="btn-add-thread" onclick="addThread(${p.pid})" title="Añadir thread" ${!canAdd ? 'disabled' : ''}>
+            <button class="btn-add-thread" onclick="addThread(${p.pid})" title="Añadir thread" ${!canAddThread ? 'disabled' : ''}>
               <i class="ph ph-plus"></i>
             </button>
             <span class="thread-count-badge">${threadCount}/${maxThreads}</span>
+          </div>
+        </td>`
+      : '';
+
+    const forkCell = AppState.forksEnabled
+      ? `<td>
+          <div class="fork-actions-cell">
+            <button class="btn-add-fork" onclick="addFork(${p.pid})" title="Añadir fork (proceso hijo)" ${!canAddFork ? 'disabled' : ''}>
+              <i class="ph ph-plus"></i>
+            </button>
+            <span class="fork-count-badge">${forkCount}/${maxForks}</span>
           </div>
         </td>`
       : '';
@@ -175,6 +235,7 @@ function renderProcessTable() {
       <td>${p.priority}</td>
       <td>${p.num_pages}</td>
       ${threadCell}
+      ${forkCell}
       <td>
         <button class="btn-remove" onclick="removeProcess(${p.pid})" title="Eliminar proceso" aria-label="Eliminar proceso P${p.pid}">✕</button>
       </td>
@@ -184,7 +245,8 @@ function renderProcessTable() {
     if (AppState.threadsEnabled && threads.length > 0) {
       threads.forEach((t, ti) => {
         const tColor = pidColor(p.pid) + 'AA';
-        const emptyTds = AppState.threadsEnabled ? '<td></td>' : '';
+        const threadTd = AppState.threadsEnabled ? '<td></td>' : '';
+        const forkTd = AppState.forksEnabled ? '<td></td>' : '';
         html += `
         <tr class="thread-sub-row" style="animation-delay: ${(i * 0.05) + (ti * 0.03)}s">
           <td>
@@ -198,9 +260,37 @@ function renderProcessTable() {
           <td>${t.burst_time}</td>
           <td>${p.priority}</td>
           <td>—</td>
-          ${emptyTds}
+          ${threadTd}
+          ${forkTd}
           <td>
             <button class="btn-remove-thread" onclick="removeThread(${p.pid}, ${t.tid})" title="Eliminar thread">✕</button>
+          </td>
+        </tr>`;
+      });
+    }
+
+    // Render fork sub-rows
+    if (AppState.forksEnabled && forks.length > 0) {
+      forks.forEach((f, fi) => {
+        const threadTd = AppState.threadsEnabled ? '<td></td>' : '';
+        const forkTd = AppState.forksEnabled ? '<td></td>' : '';
+        html += `
+        <tr class="fork-sub-row" style="animation-delay: ${(i * 0.05) + (fi * 0.03)}s">
+          <td>
+            <span class="fork-pid-label">
+              <i class="ph ph-git-fork"></i>
+              <span class="fork-dot" style="background:#10B981"></span>
+              P${p.pid}⑂F${f.fid}
+            </span>
+          </td>
+          <td>${p.arrival_time + (f.delay || 0)}</td>
+          <td>${f.burst_time}</td>
+          <td>${p.priority}</td>
+          <td>—</td>
+          ${threadTd}
+          ${forkTd}
+          <td>
+            <button class="btn-remove-fork" onclick="removeFork(${p.pid}, ${f.fid})" title="Eliminar fork">✕</button>
           </td>
         </tr>`;
       });
@@ -229,6 +319,7 @@ function addProcess() {
     priority: priority,
     num_pages: pages,
     threads: [],
+    forks: [],
   };
 
   AppState.processes.push(process);
@@ -245,40 +336,171 @@ function clearProcesses() {
   AppState.processes = [];
   AppState.nextPid = 1;
   renderProcessTable();
-  showToast("Todos los procesos eliminados", "info");
+  showToast("All processes cleared", "info");
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Sample Datasets  (7 variantes — se elige una random distinta a la anterior)
+   ═══════════════════════════════════════════════════════════════════════ */
+const SAMPLE_SETS = [
+  // 0 — Clásico balanceado (sin threads/forks)
+  {
+    label: 'Clásico balanceado',
+    procs: [
+      { pid:1, arrival_time:0, burst_time:5, priority:2, num_pages:3 },
+      { pid:2, arrival_time:1, burst_time:3, priority:1, num_pages:2 },
+      { pid:3, arrival_time:2, burst_time:8, priority:3, num_pages:4 },
+      { pid:4, arrival_time:3, burst_time:2, priority:4, num_pages:1 },
+      { pid:5, arrival_time:4, burst_time:4, priority:2, num_pages:2 },
+      { pid:6, arrival_time:6, burst_time:6, priority:3, num_pages:3 },
+    ],
+    threads: { 1:[{tid:1,burst_time:2},{tid:2,burst_time:3}], 3:[{tid:1,burst_time:3},{tid:2,burst_time:2}], 5:[{tid:1,burst_time:4}] },
+    forks:   { 2:[{fid:1,burst_time:2,delay:1}], 3:[{fid:1,burst_time:3,delay:1},{fid:2,burst_time:2,delay:2}] },
+  },
+  // 1 — Muchos threads, sin forks
+  {
+    label: 'Heavy Multithreading',
+    procs: [
+      { pid:1, arrival_time:0, burst_time:10, priority:1, num_pages:4 },
+      { pid:2, arrival_time:0, burst_time:8,  priority:2, num_pages:3 },
+      { pid:3, arrival_time:2, burst_time:6,  priority:3, num_pages:2 },
+      { pid:4, arrival_time:3, burst_time:12, priority:1, num_pages:5 },
+      { pid:5, arrival_time:5, burst_time:4,  priority:2, num_pages:2 },
+    ],
+    threads: {
+      1:[{tid:1,burst_time:3},{tid:2,burst_time:3},{tid:3,burst_time:4}],
+      2:[{tid:1,burst_time:2},{tid:2,burst_time:2},{tid:3,burst_time:2},{tid:4,burst_time:2}],
+      4:[{tid:1,burst_time:4},{tid:2,burst_time:4},{tid:3,burst_time:4}],
+    },
+    forks: {},
+  },
+  // 2 — Muchos forks, sin threads
+  {
+    label: 'Fork Storm',
+    procs: [
+      { pid:1, arrival_time:0, burst_time:8,  priority:3, num_pages:3 },
+      { pid:2, arrival_time:1, burst_time:6,  priority:2, num_pages:2 },
+      { pid:3, arrival_time:2, burst_time:10, priority:1, num_pages:4 },
+      { pid:4, arrival_time:4, burst_time:5,  priority:3, num_pages:2 },
+      { pid:5, arrival_time:5, burst_time:7,  priority:2, num_pages:3 },
+    ],
+    threads: {},
+    forks: {
+      1:[{fid:1,burst_time:3,delay:1},{fid:2,burst_time:2,delay:2}],
+      2:[{fid:1,burst_time:2,delay:1}],
+      3:[{fid:1,burst_time:4,delay:1},{fid:2,burst_time:3,delay:2},{fid:3,burst_time:2,delay:3}],
+      5:[{fid:1,burst_time:3,delay:1},{fid:2,burst_time:3,delay:2}],
+    },
+  },
+  // 3 — Rafagas cortas, alta concurrencia (Round Robin ideal)
+  {
+    label: 'Ráfagas Cortas RR',
+    procs: [
+      { pid:1, arrival_time:0, burst_time:2, priority:1, num_pages:1 },
+      { pid:2, arrival_time:0, burst_time:3, priority:2, num_pages:1 },
+      { pid:3, arrival_time:1, burst_time:2, priority:1, num_pages:2 },
+      { pid:4, arrival_time:1, burst_time:4, priority:3, num_pages:2 },
+      { pid:5, arrival_time:2, burst_time:2, priority:2, num_pages:1 },
+      { pid:6, arrival_time:2, burst_time:3, priority:1, num_pages:2 },
+      { pid:7, arrival_time:3, burst_time:2, priority:3, num_pages:1 },
+    ],
+    threads: {},
+    forks: {},
+  },
+  // 4 — Mix completo: threads + forks en distintos procesos
+  {
+    label: 'Mix Threads + Forks',
+    procs: [
+      { pid:1, arrival_time:0, burst_time:9,  priority:2, num_pages:4 },
+      { pid:2, arrival_time:1, burst_time:5,  priority:1, num_pages:2 },
+      { pid:3, arrival_time:2, burst_time:7,  priority:3, num_pages:3 },
+      { pid:4, arrival_time:3, burst_time:4,  priority:4, num_pages:2 },
+      { pid:5, arrival_time:4, burst_time:11, priority:1, num_pages:5 },
+      { pid:6, arrival_time:5, burst_time:6,  priority:2, num_pages:3 },
+    ],
+    threads: {
+      1:[{tid:1,burst_time:3},{tid:2,burst_time:3}],
+      5:[{tid:1,burst_time:3},{tid:2,burst_time:4},{tid:3,burst_time:4}],
+    },
+    forks: {
+      2:[{fid:1,burst_time:2,delay:1}],
+      3:[{fid:1,burst_time:3,delay:1},{fid:2,burst_time:2,delay:2}],
+      6:[{fid:1,burst_time:3,delay:1}],
+    },
+  },
+  // 5 — Proceso largo dominante (convoy effect visible)
+  {
+    label: 'Efecto Convoy',
+    procs: [
+      { pid:1, arrival_time:0,  burst_time:20, priority:3, num_pages:6 },
+      { pid:2, arrival_time:0,  burst_time:2,  priority:1, num_pages:1 },
+      { pid:3, arrival_time:1,  burst_time:3,  priority:2, num_pages:1 },
+      { pid:4, arrival_time:2,  burst_time:2,  priority:1, num_pages:1 },
+      { pid:5, arrival_time:3,  burst_time:1,  priority:1, num_pages:1 },
+    ],
+    threads: { 1:[{tid:1,burst_time:8},{tid:2,burst_time:8}] },
+    forks:   {},
+  },
+  // 6 — Llegadas tardías + prioridades extremas
+  {
+    label: 'Llegadas Tardías',
+    procs: [
+      { pid:1, arrival_time:0,  burst_time:4,  priority:1, num_pages:2 },
+      { pid:2, arrival_time:5,  burst_time:6,  priority:4, num_pages:3 },
+      { pid:3, arrival_time:8,  burst_time:3,  priority:2, num_pages:2 },
+      { pid:4, arrival_time:10, burst_time:8,  priority:5, num_pages:4 },
+      { pid:5, arrival_time:12, burst_time:5,  priority:3, num_pages:2 },
+      { pid:6, arrival_time:15, burst_time:2,  priority:1, num_pages:1 },
+    ],
+    threads: { 4:[{tid:1,burst_time:3},{tid:2,burst_time:3}] },
+    forks:   { 2:[{fid:1,burst_time:2,delay:1},{fid:2,burst_time:2,delay:2}] },
+  },
+];
+
+let _lastSampleIdx = -1;
+
 function loadSampleProcesses() {
-  if (AppState.threadsEnabled) {
-    AppState.processes = [
-      { pid: 1, arrival_time: 0, burst_time: 5, priority: 2, num_pages: 3, threads: [
-        { tid: 1, burst_time: 2 }, { tid: 2, burst_time: 3 }
-      ]},
-      { pid: 2, arrival_time: 1, burst_time: 3, priority: 1, num_pages: 2, threads: [] },
-      { pid: 3, arrival_time: 2, burst_time: 8, priority: 3, num_pages: 4, threads: [
-        { tid: 1, burst_time: 3 }, { tid: 2, burst_time: 2 }, { tid: 3, burst_time: 3 }
-      ]},
-      { pid: 4, arrival_time: 3, burst_time: 2, priority: 4, num_pages: 1, threads: [] },
-      { pid: 5, arrival_time: 4, burst_time: 4, priority: 2, num_pages: 2, threads: [
-        { tid: 1, burst_time: 4 }
-      ]},
-      { pid: 6, arrival_time: 6, burst_time: 6, priority: 3, num_pages: 3, threads: [
-        { tid: 1, burst_time: 2 }, { tid: 2, burst_time: 4 }
-      ]},
-    ];
-  } else {
-    AppState.processes = [
-      { pid: 1, arrival_time: 0, burst_time: 5, priority: 2, num_pages: 3, threads: [] },
-      { pid: 2, arrival_time: 1, burst_time: 3, priority: 1, num_pages: 2, threads: [] },
-      { pid: 3, arrival_time: 2, burst_time: 8, priority: 3, num_pages: 4, threads: [] },
-      { pid: 4, arrival_time: 3, burst_time: 2, priority: 4, num_pages: 1, threads: [] },
-      { pid: 5, arrival_time: 4, burst_time: 4, priority: 2, num_pages: 2, threads: [] },
-      { pid: 6, arrival_time: 6, burst_time: 6, priority: 3, num_pages: 3, threads: [] },
-    ];
+  // Pick a random index different from the last one
+  let idx;
+  do { idx = Math.floor(Math.random() * SAMPLE_SETS.length); }
+  while (idx === _lastSampleIdx && SAMPLE_SETS.length > 1);
+  _lastSampleIdx = idx;
+
+  const set = SAMPLE_SETS[idx];
+
+  // Auto-enable toggles if this dataset has threads / forks
+  const hasThreads = Object.keys(set.threads).length > 0;
+  const hasForks   = Object.keys(set.forks).length > 0;
+
+  if (hasThreads && !AppState.threadsEnabled) {
+    AppState.threadsEnabled = true;
+    const t = document.getElementById('toggle');
+    const txt = document.getElementById('threads-status-text');
+    if (t) t.checked = true;
+    if (txt) { txt.textContent = 'Enabled'; txt.classList.add('active'); }
   }
-  AppState.nextPid = 7;
+  if (hasForks && !AppState.forksEnabled) {
+    AppState.forksEnabled = true;
+    const f = document.getElementById('toggle-forks');
+    const txt = document.getElementById('forks-status-text');
+    if (f) f.checked = true;
+    if (txt) { txt.textContent = 'Enabled'; txt.classList.add('active'); }
+  }
+
+  AppState.processes = set.procs.map(p => ({
+    ...p,
+    threads: AppState.threadsEnabled ? (set.threads[p.pid] || []) : [],
+    forks:   AppState.forksEnabled   ? (set.forks[p.pid]   || []) : [],
+  }));
+
+  AppState.nextPid = Math.max(...AppState.processes.map(p => p.pid)) + 1;
   renderProcessTable();
-  showToast(AppState.threadsEnabled ? "6 procesos de ejemplo con threads cargados" : "6 procesos de ejemplo cargados", "success");
+
+  const extras = [];
+  if (hasThreads) extras.push('threads');
+  if (hasForks)   extras.push('forks');
+  const tail = extras.length ? ` · ${extras.join(' + ')}` : '';
+  showToast(`Sample #${idx + 1}: ${set.label}${tail}`, 'success');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -289,7 +511,7 @@ function addThread(pid) {
   if (!process) return;
   if (!process.threads) process.threads = [];
   if (process.threads.length >= 4) {
-    showToast('Máximo 4 threads por proceso', 'warning');
+    showToast('Maximum 4 threads per process', 'warning');
     return;
   }
   const nextTid = process.threads.length > 0
@@ -298,7 +520,7 @@ function addThread(pid) {
   const burstTime = Math.max(1, Math.floor(process.burst_time / (process.threads.length + 2)));
   process.threads.push({ tid: nextTid, burst_time: burstTime });
   renderProcessTable();
-  showToast(`Thread T${nextTid} añadido a P${pid}`, 'success');
+  showToast(`Thread T${nextTid} added to P${pid}`, 'success');
 }
 
 function removeThread(pid, tid) {
@@ -312,11 +534,202 @@ window.addThread = addThread;
 window.removeThread = removeThread;
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Fork Management
+   ═══════════════════════════════════════════════════════════════════════ */
+function addFork(pid) {
+  const process = AppState.processes.find(p => p.pid === pid);
+  if (!process) return;
+  if (!process.forks) process.forks = [];
+  if (process.forks.length >= 3) {
+    showToast('Maximum 3 forks per process', 'warning');
+    return;
+  }
+  const nextFid = process.forks.length > 0
+    ? Math.max(...process.forks.map(f => f.fid)) + 1
+    : 1;
+  const burstTime = Math.max(1, Math.ceil(process.burst_time / 2));
+  const delay = process.forks.length + 1;
+  process.forks.push({ fid: nextFid, burst_time: burstTime, delay });
+  renderProcessTable();
+  showToast(`Fork F${nextFid} added to P${pid}`, 'success');
+}
+
+function removeFork(pid, fid) {
+  const process = AppState.processes.find(p => p.pid === pid);
+  if (!process || !process.forks) return;
+  process.forks = process.forks.filter(f => f.fid !== fid);
+  renderProcessTable();
+}
+
+window.addFork = addFork;
+window.removeFork = removeFork;
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CSV Import
+   ═══════════════════════════════════════════════════════════════════════
+   Expected columns (header is required, case-insensitive, order-flexible):
+     PID, Arrival, Burst, Priority, Pages, Threads, Forks
+
+   Threads / Forks accept:
+     - empty or "0" / "-" → none
+     - single integer N → N children, parent burst auto-split
+     - semicolon-separated burst times → "2;3" → two children with those bursts
+   ═══════════════════════════════════════════════════════════════════════ */
+function parseCSVLine(line) {
+  // Minimal CSV split: supports quoted fields with commas inside.
+  const out = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { cur += ch; }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      out.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+function parseChildrenSpec(spec, parentBurst) {
+  // Returns an array of { burst_time }. Empty / "0" / "-" → [].
+  if (spec == null) return [];
+  const s = String(spec).trim();
+  if (s === '' || s === '0' || s === '-') return [];
+
+  // Semicolon-separated burst times wins over a plain integer.
+  if (s.includes(';')) {
+    return s.split(';')
+      .map(x => parseInt(x.trim(), 10))
+      .filter(n => Number.isFinite(n) && n > 0)
+      .map(burst_time => ({ burst_time }));
+  }
+
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n) || n <= 0) return [];
+  // Plain count → split parent burst across N children.
+  const each = Math.max(1, Math.floor(parentBurst / (n + 1)));
+  return Array.from({ length: n }, () => ({ burst_time: each }));
+}
+
+function importProcessesFromCSV(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    showToast('Empty CSV', 'warning');
+    return;
+  }
+
+  const header = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+  const required = ['pid', 'arrival', 'burst', 'priority', 'pages'];
+  const missing = required.filter(c => !header.includes(c));
+  if (missing.length) {
+    showToast(`CSV missing columns: ${missing.join(', ')}`, 'error');
+    return;
+  }
+
+  const colIdx = (name) => header.indexOf(name);
+  const idx = {
+    pid: colIdx('pid'),
+    arrival: colIdx('arrival'),
+    burst: colIdx('burst'),
+    priority: colIdx('priority'),
+    pages: colIdx('pages'),
+    threads: colIdx('threads'),       // -1 if absent
+    forks: colIdx('forks'),
+  };
+
+  const processes = [];
+  let anyThreads = false, anyForks = false;
+  let skipped = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseCSVLine(lines[i]);
+    const pid = parseInt(cells[idx.pid], 10);
+    const arrival = parseInt(cells[idx.arrival], 10);
+    const burst = parseInt(cells[idx.burst], 10);
+    const priority = parseInt(cells[idx.priority], 10);
+    const pages = parseInt(cells[idx.pages], 10);
+
+    if (!Number.isFinite(pid) || !Number.isFinite(burst) || burst < 1) {
+      skipped++; continue;
+    }
+
+    const threadsSpec = idx.threads >= 0 ? cells[idx.threads] : '';
+    const forksSpec = idx.forks >= 0 ? cells[idx.forks] : '';
+
+    const threads = parseChildrenSpec(threadsSpec, burst)
+      .slice(0, 4)
+      .map((t, k) => ({ tid: k + 1, burst_time: t.burst_time }));
+
+    const forks = parseChildrenSpec(forksSpec, burst)
+      .slice(0, 3)
+      .map((f, k) => ({ fid: k + 1, burst_time: f.burst_time, delay: k + 1 }));
+
+    if (threads.length) anyThreads = true;
+    if (forks.length) anyForks = true;
+
+    processes.push({
+      pid,
+      arrival_time: Number.isFinite(arrival) ? arrival : 0,
+      burst_time: burst,
+      priority: Number.isFinite(priority) ? priority : 0,
+      num_pages: Number.isFinite(pages) && pages > 0 ? pages : 1,
+      threads,
+      forks,
+    });
+  }
+
+  if (processes.length === 0) {
+    showToast('No valid rows found in the CSV', 'error');
+    return;
+  }
+
+  // Auto-enable toggles if the CSV brought threads/forks
+  if (anyThreads && !AppState.threadsEnabled) {
+    AppState.threadsEnabled = true;
+    const t = document.getElementById('toggle');
+    const txt = document.getElementById('threads-status-text');
+    if (t) t.checked = true;
+    if (txt) { txt.textContent = 'Activado'; txt.classList.add('active'); }
+  }
+  if (anyForks && !AppState.forksEnabled) {
+    AppState.forksEnabled = true;
+    const f = document.getElementById('toggle-forks');
+    const txt = document.getElementById('forks-status-text');
+    if (f) f.checked = true;
+    if (txt) { txt.textContent = 'Activado'; txt.classList.add('active'); }
+  }
+
+  AppState.processes = processes;
+  AppState.nextPid = Math.max(...processes.map(p => p.pid)) + 1;
+  renderProcessTable();
+
+  const tail = skipped ? ` (${skipped} invalid rows skipped)` : '';
+  showToast(`Imported ${processes.length} processes from CSV${tail}`, 'success');
+}
+
+function handleCSVFileChange(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => importProcessesFromCSV(String(reader.result || ''));
+  reader.onerror = () => showToast('Error leyendo el archivo', 'error');
+  reader.readAsText(file);
+  e.target.value = '';   // allow re-importing the same file
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Simulation Runner
    ═══════════════════════════════════════════════════════════════════════ */
 async function runSimulation() {
   if (AppState.processes.length === 0) {
-    showToast("Agrega al menos un proceso antes de ejecutar", "warning");
+    showToast("Add at least one process before running", "warning");
     return;
   }
 
@@ -326,7 +739,7 @@ async function runSimulation() {
   const runBtn = document.getElementById("btn-run-simulation");
   runBtn.disabled = true;
   runBtn.innerHTML =
-    '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div> Ejecutando...';
+    '<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div> Running...';
 
   try {
     const result = await apiCall("/api/schedule", {
@@ -355,12 +768,12 @@ async function runSimulation() {
     document.getElementById("status-text").textContent =
       `Simulation complete — ${algo} | Avg TAT: ${result.avg_turnaround} | CPU: ${result.cpu_utilization}%`;
 
-    showToast(`Simulación ${algo} completada exitosamente`, "success");
+    showToast(`${algo} simulation completed successfully`, "success");
   } catch (err) {
     // Error already shown by apiCall
   } finally {
     runBtn.disabled = false;
-    runBtn.innerHTML = "▶️ Ejecutar Simulación";
+    runBtn.innerHTML = "▶️ Run Simulation";
   }
 }
 
@@ -390,40 +803,40 @@ function updateSchedulingStats(result) {
       stickyLink.style.display = "flex";
       stickyLink.href = "fcfs_game.html";
       document.getElementById("sticky-game-text").textContent =
-        "Jugar FCFS (Mario)";
+        "Play FCFS (Mario)";
       document.getElementById("sticky-game-icon").className =
         "ph ph-game-controller";
     } else if (result.algorithm === "SJF") {
       stickyLink.style.display = "flex";
       stickyLink.href = "sjf_game.html";
       document.getElementById("sticky-game-text").textContent =
-        "Jugar SJF (Mario)";
+        "Play SJF (Mario)";
       document.getElementById("sticky-game-icon").className = "ph ph-rocket";
     } else if (result.algorithm === "HRRN") {
       stickyLink.style.display = "flex";
       stickyLink.href = "hrrn_game.html";
       document.getElementById("sticky-game-text").textContent =
-        "Jugar HRRN (Mario)";
+        "Play HRRN (Mario)";
       document.getElementById("sticky-game-icon").className = "ph ph-star";
     } else if (result.algorithm === "Round Robin") {
       stickyLink.style.display = "flex";
       stickyLink.href = "rr_game.html";
       document.getElementById("sticky-game-text").textContent =
-        "Jugar Round Robin (Mario)";
+        "Play Round Robin (Mario)";
       document.getElementById("sticky-game-icon").className =
         "ph ph-arrows-clockwise";
     } else if (result.algorithm === "Multilevel Queue") {
       stickyLink.style.display = "flex";
       stickyLink.href = "multilevel_game.html";
       document.getElementById("sticky-game-text").textContent =
-        "Jugar Multilevel Queue (Mario)";
+        "Play Multilevel Queue (Mario)";
       document.getElementById("sticky-game-icon").className =
         "ph ph-arrows-clockwise";
     } else if (result.algorithm === "MLFQ") {
       stickyLink.style.display = "flex";
       stickyLink.href = "mlfq_game.html";
       document.getElementById("sticky-game-text").textContent =
-        "Jugar MLFQ (Mario)";
+        "Play MLFQ (Mario)";
       document.getElementById("sticky-game-icon").className =
         "ph ph-arrows-clockwise";
     } else {
@@ -442,38 +855,38 @@ function updateSchedulingStats(result) {
     switch (result.algorithm) {
       case "FCFS":
         desc =
-          'First-Come, First-Served: El primer proceso en llegar a la cola de listos es el primero en recibir CPU. Es no expulsivo. Su simplicidad es ideal, pero suele sufir del "efecto convoy" (procesos cortos esperando a uno largo).';
+          'First-Come, First-Served: The first process to arrive in the ready queue is the first to receive the CPU. It is non-preemptive. Its simplicity is ideal, but it often suffers from the "convoy effect" (short processes waiting for a long one).';
         break;
       case "SJF":
         desc =
-          "Shortest Job First: Selecciona el proceso con la ráfaga de CPU (Burst Time) más corta disponible. Minimiza el tiempo de espera promedio, pero puede causar inanición a los procesos más largos.";
+          "Shortest Job First: Selects the process with the shortest CPU burst time available. Minimizes the average waiting time, but can cause starvation for longer processes.";
         break;
       case "HRRN":
         desc =
-          'Highest Response Ratio Next: Selecciona dinámicamente aquel proceso con la mayor "Tasa de Respuesta", calculada como (Espera + Ráfaga) / Ráfaga. ¡Es la cura contra la inanición!, ya que la paciencia aumenta matemáticamente el valor del proceso.';
+          'Highest Response Ratio Next: Dynamically selects the process with the highest "Response Ratio", calculated as (Waiting + Burst) / Burst. It is the cure for starvation, as patience mathematically increases the value of the process.';
         break;
       case "Round Robin":
         desc =
-          'Round Robin: A cada proceso se le asigna un "Quantum" o intervalo máximo de tiempo. Si no termina en ese Quantum, es pausado y enviado al final de la cola. Muy equitativo, ideal para sistemas interactivos y de tiempo compartido.';
+          'Round Robin: Each process is assigned a "Quantum" or maximum time interval. If it does not finish within that Quantum, it is paused and sent to the back of the queue. Very fair, ideal for interactive and time-sharing systems.';
         break;
       case "SRTF":
         desc =
-          "Shortest Remaining Time First: La variante expulsiva de SJF. Si llega un nuevo proceso con una ráfaga más corta que el tiempo restante del proceso actual, el sistema lo pausa para ejecutar al más rápido primero.";
+          "Shortest Remaining Time First: The preemptive version of SJF. If a new process arrives with a shorter burst than the remaining time of the current process, the system pauses it to execute the faster one first.";
         break;
       case "Priority (Preemptive)":
         desc =
-          "Priority Scheduling (Expulsivo): La CPU se asigna siempre al proceso con la mayor prioridad. Si un proceso más importante aterriza en la cola, expulsa al actual de la CPU de inmediato.";
+          "Priority Scheduling (Preemptive): The CPU is always assigned to the process with the highest priority. If a more important process lands in the queue, it preempts the current one from the CPU immediately.";
         break;
       case "Multilevel Queue":
         desc =
-          "Colas Multinivel: El sistema mantiene varías colas estrictamente separadas (por prioridad o tipo). Cada proceso es asignado a una sola cola de forma permanente según sus características.";
+          "Multilevel Queues: The system maintains several strictly separated queues (by priority or type). Each process is assigned to a single queue permanently based on its characteristics.";
         break;
       case "MLFQ":
         desc =
-          'Multilevel Feedback Queue: Múltiples colas interconectadas. Los procesos pueden "subir" o "bajar" de prioridad dependiendo de su comportamiento. Si un proceso gasta mucho CPU, baja de cola; si espera demasiado, sube de nivel.';
+          'Multilevel Feedback Queue: Multiple interconnected queues. Processes can "move up" or "move down" in priority depending on their behavior. If a process uses too much CPU, it moves down a queue; if it waits too long, it moves up a level.';
         break;
       default:
-        desc = "Simulación de planificación de la CPU.";
+        desc = "CPU Scheduling simulation.";
         break;
     }
     popupDesc.textContent = desc;
@@ -507,7 +920,7 @@ window.updateLiveMetricsTable = function (result, t) {
           </td>
           <td>${m.arrival_time}</td>
           <td>${m.burst_time}</td>
-          <td colspan="4" class="text-muted" style="text-align:center;font-style:italic">Llega en t=${m.arrival_time}...</td>
+          <td colspan="4" class="text-muted" style="text-align:center;font-style:italic">Arrives at t=${m.arrival_time}...</td>
         </tr>`;
       }
 
@@ -518,14 +931,14 @@ window.updateLiveMetricsTable = function (result, t) {
       // Completion Time
       let compHtml = completed
         ? `<strong>${m.completion_time}</strong>`
-        : `<span class="text-muted">⏳ en proceso</span>`;
+        : `<span class="text-muted">⏳ in progress</span>`;
 
       // RT
       let rtHtml = "—";
       if (hasStarted) {
         rtHtml = `<span style="font-size:0.75rem; color:var(--info)">${firstStarts[m.pid]} - ${m.arrival_time}</span> = <strong>${m.response_time}</strong>`;
       } else {
-        rtHtml = `<span class="text-muted">esperando CPU...</span>`;
+        rtHtml = `<span class="text-muted">waiting for CPU...</span>`;
       }
 
       // TAT
@@ -736,6 +1149,31 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("btn-clear-processes")
     .addEventListener("click", clearProcesses);
+  const csvBtn = document.getElementById("btn-import-csv");
+  const csvInput = document.getElementById("input-csv-file");
+  const csvDialog = document.getElementById("csv-import-dialog");
+  const csvDialogPick = document.getElementById("csv-dialog-pick");
+  const csvDialogCancel = document.getElementById("csv-dialog-cancel");
+  const csvDialogClose = document.getElementById("csv-dialog-close-btn");
+  if (csvBtn && csvInput && csvDialog) {
+    csvBtn.addEventListener("click", () => {
+      if (typeof csvDialog.showModal === "function") csvDialog.showModal();
+      else csvInput.click();   // fallback for ancient browsers
+    });
+    csvInput.addEventListener("change", handleCSVFileChange);
+    if (csvDialogPick) {
+      csvDialogPick.addEventListener("click", () => {
+        csvDialog.close();
+        csvInput.click();
+      });
+    }
+    if (csvDialogCancel) csvDialogCancel.addEventListener("click", () => csvDialog.close());
+    if (csvDialogClose) csvDialogClose.addEventListener("click", () => csvDialog.close());
+    // Click on backdrop closes the dialog
+    csvDialog.addEventListener("click", (e) => {
+      if (e.target === csvDialog) csvDialog.close();
+    });
+  }
   document
     .getElementById("btn-run-simulation")
     .addEventListener("click", runSimulation);
@@ -757,19 +1195,64 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Thread toggle (sparkle component)
+  // Thread toggle
   const threadsToggle = document.getElementById("toggle");
   const threadsStatusText = document.getElementById("threads-status-text");
   if (threadsToggle) {
     threadsToggle.addEventListener("change", (e) => {
       AppState.threadsEnabled = e.target.checked;
       if (threadsStatusText) {
-        threadsStatusText.textContent = e.target.checked ? 'Activado' : 'Desactivado';
+        threadsStatusText.textContent = e.target.checked ? 'Enabled' : 'Disabled';
         threadsStatusText.classList.toggle('active', e.target.checked);
       }
-      // Clear threads if disabled
       if (!e.target.checked) {
         AppState.processes.forEach(p => { p.threads = []; });
+      }
+      renderProcessTable();
+    });
+  }
+
+  // Execution mode select
+  const execModeSelect = document.getElementById("exec-mode-select");
+  if (execModeSelect) {
+    AppState.executionMode = execModeSelect.value || 'Concurrency';
+    updateExecutionModeBadge();
+    execModeSelect.addEventListener("change", (e) => {
+      AppState.executionMode = e.target.value;
+      updateExecutionModeBadge();
+      // Re-render the Gantt if a result is already on screen
+      if (AppState.lastScheduleResult && typeof window.drawGanttChart === 'function') {
+        window.drawGanttChart(AppState.lastScheduleResult);
+      }
+      if (AppState.executionMode === 'Parallelism' && AppState.numCores < 2) {
+        showToast('Parallelism requires at least 2 cores. Increase the CPU Cores slider.', 'warning');
+      }
+      // Sync Modos CPU tab to the selected execution mode
+      const modeMap = {
+        'Concurrency':     'concurrency',
+        'Multithreading':  'multithreading',
+        'Parallelism':     'parallelism',
+        'Multiprocessing': 'multiprocessing',
+      };
+      const mapped = modeMap[e.target.value];
+      if (mapped && window.ExecModes) {
+        window.ExecModes.setMode(mapped);
+      }
+    });
+  }
+
+  // Fork toggle
+  const forksToggle = document.getElementById("toggle-forks");
+  const forksStatusText = document.getElementById("forks-status-text");
+  if (forksToggle) {
+    forksToggle.addEventListener("change", (e) => {
+      AppState.forksEnabled = e.target.checked;
+      if (forksStatusText) {
+        forksStatusText.textContent = e.target.checked ? 'Enabled' : 'Disabled';
+        forksStatusText.classList.toggle('active', e.target.checked);
+      }
+      if (!e.target.checked) {
+        AppState.processes.forEach(p => { p.forks = []; });
       }
       renderProcessTable();
     });

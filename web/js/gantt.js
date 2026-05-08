@@ -42,6 +42,8 @@ const _R = '#e52521';    // red — hat, shirt
 const _S = '#fbd000';    // skin / yellow buttons
 const _B = '#5b3a1e';    // brown — hair, shoes
 const _O = '#f28030';    // orange — overalls
+const _W = '#FFFFFF';    // white — Toad cap brim/dots
+const _U = '#1D4ED8';    // blue — Toad vest
 
 const MARIO_SPRITE_FRAMES = {
   stand: [
@@ -249,8 +251,311 @@ function updateMarioState(dt, tick, gantt, pidToRow, pids, LEFT_MARGIN, TOP_MARG
 
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Entry point — draws the Gantt for a new result
+   🟡 TOAD SPRITE — faithful 16×16 pixel art with black outlines
+   Based on classic Mario Bros Toad: big red polka-dot cap, peach face,
+   blue overalls, white belly, brown shoes — 3-frame run animation.
    ═══════════════════════════════════════════════════════════════════════ */
+const TOAD_SCALE = 3;  // 48×48 — same visible size as Mario
+const TOAD_H = 16 * TOAD_SCALE;
+
+// Extra toad palette (on top of Mario's _m _R _S _B _O _W _U)
+const _k = '#110800';  // near-black outline
+const _P = '#FFBB88';  // peach — Toad face/hands
+const _T = '#DD0000';  // deeper red — cap shading
+const _G = '#FFFFFF';  // white — cap dots & belly
+const _V = '#1A3EC8';  // blue — overalls
+const _N = '#6B3010';  // brown — shoes
+
+const TOAD_SPRITE_FRAMES = {
+  stand: [
+    [_m,_m,_k,_k,_k,_k,_k,_k,_k,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_T,_T,_T,_T,_T,_T,_T,_T,_k,_m,_m,_m,_m,_m],
+    [_k,_T,_G,_G,_T,_T,_T,_T,_G,_G,_T,_k,_m,_m,_m,_m],
+    [_k,_T,_G,_G,_T,_T,_T,_T,_G,_G,_T,_k,_m,_m,_m,_m],
+    [_k,_T,_T,_T,_T,_T,_T,_T,_T,_T,_T,_k,_m,_m,_m,_m],
+    [_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_P,_P,_P,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_k,_P,_k,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_P,_P,_P,_k,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_P,_k,_V,_G,_V,_k,_P,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_P,_k,_V,_G,_V,_k,_P,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_k,_G,_G,_G,_k,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_V,_k,_G,_k,_V,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_N,_k,_m,_k,_N,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_N,_N,_k,_m,_k,_N,_N,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+  ],
+  run1: [
+    [_m,_m,_k,_k,_k,_k,_k,_k,_k,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_T,_T,_T,_T,_T,_T,_T,_T,_k,_m,_m,_m,_m,_m],
+    [_k,_T,_G,_G,_T,_T,_T,_T,_G,_G,_T,_k,_m,_m,_m,_m],
+    [_k,_T,_G,_G,_T,_T,_T,_T,_G,_G,_T,_k,_m,_m,_m,_m],
+    [_k,_T,_T,_T,_T,_T,_T,_T,_T,_T,_T,_k,_m,_m,_m,_m],
+    [_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_P,_P,_P,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_k,_P,_k,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_P,_k,_P,_k,_P,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_P,_k,_V,_G,_V,_k,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_k,_V,_G,_V,_k,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_k,_G,_G,_G,_k,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_k,_V,_k,_k,_m,_G,_k,_V,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_k,_N,_k,_m,_m,_m,_k,_N,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_N,_N,_k,_m,_m,_m,_k,_N,_N,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+  ],
+  run2: [
+    [_m,_m,_k,_k,_k,_k,_k,_k,_k,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_T,_T,_T,_T,_T,_T,_T,_T,_k,_m,_m,_m,_m,_m],
+    [_k,_T,_G,_G,_T,_T,_T,_T,_G,_G,_T,_k,_m,_m,_m,_m],
+    [_k,_T,_G,_G,_T,_T,_T,_T,_G,_G,_T,_k,_m,_m,_m,_m],
+    [_k,_T,_T,_T,_T,_T,_T,_T,_T,_T,_T,_k,_m,_m,_m,_m],
+    [_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_k,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_P,_P,_P,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_k,_P,_k,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_P,_P,_k,_P,_k,_P,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_V,_G,_V,_k,_P,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_V,_G,_V,_k,_k,_m,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_k,_k,_G,_G,_G,_k,_k,_m,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_V,_k,_G,_m,_k,_k,_V,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_N,_k,_m,_m,_m,_k,_N,_k,_m,_m,_m,_m,_m,_m],
+    [_m,_k,_N,_N,_k,_m,_m,_k,_N,_N,_m,_m,_m,_m,_m,_m],
+    [_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m,_m],
+  ],
+};
+
+const TOAD_RUN_KEYS = ['stand', 'run1', 'run2', 'run1'];
+
+function drawToadSprite(ctx, mx, my, jumping, frame, scale) {
+  const s = scale || TOAD_SCALE;
+  const frameKey = jumping ? 'stand' : TOAD_RUN_KEYS[(frame || 0) % TOAD_RUN_KEYS.length];
+  const grid = TOAD_SPRITE_FRAMES[frameKey] || TOAD_SPRITE_FRAMES.stand;
+  for (let row = 0; row < 16; row++) {
+    for (let col = 0; col < 16; col++) {
+      const c = grid[row][col];
+      if (c === null) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.round(mx + col * s), Math.round(my + row * s), s, s);
+    }
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   🎬 CHARACTER INTRO SYSTEM
+   Pauses the Gantt and shows a zoom overlay the first time a Thread
+   (Toad) or Fork (Mario Clone) appears in the animation.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+// Inject CSS animations once
+(function injectIntroStyles() {
+  if (document.getElementById('gantt-intro-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'gantt-intro-styles';
+  style.textContent = `
+    @keyframes ganttIntroFadeIn  { from { opacity:0 } to { opacity:1 } }
+    @keyframes ganttIntroFadeOut { from { opacity:1 } to { opacity:0 } }
+    @keyframes ganttIntroZoom {
+      from { transform: scale(0.6) translateY(20px); opacity:0 }
+      to   { transform: scale(1)   translateY(0);    opacity:1 }
+    }
+    @keyframes ganttSpritePulse {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.12); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #gantt-intro-overlay, #gantt-intro-overlay * { animation: none !important; }
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+const GanttIntro = {
+  introduced: new Set(),   // keys like 'p2.t1' or 'p2.f1'
+  queue: [],
+  showing: false,
+};
+
+function resetGanttIntro() {
+  GanttIntro.introduced.clear();
+  GanttIntro.queue = [];
+  GanttIntro.showing = false;
+  const el = document.getElementById('gantt-intro-overlay');
+  if (el) el.remove();
+}
+
+function _dismissIntro(overlay, timer) {
+  clearTimeout(timer);
+  overlay.style.animation = 'ganttIntroFadeOut 0.25s ease forwards';
+  setTimeout(() => {
+    overlay.remove();
+    GanttIntro.showing = false;
+    if (GanttIntro.queue.length > 0) {
+      setTimeout(_showNextIntro, 200);
+    } else {
+      // Resume gantt playback
+      if (!GanttPlayer.playing) {
+        const btn = document.getElementById('gantt-btn-play');
+        if (btn) { btn.innerHTML = '<i class="ph ph-play"></i> Play'; btn.click(); }
+      }
+    }
+  }, 260);
+}
+
+function _showNextIntro() {
+  if (GanttIntro.showing || GanttIntro.queue.length === 0) return;
+  GanttIntro.showing = true;
+  const intro = GanttIntro.queue.shift();
+
+  const isThread = intro.type === 'thread';
+  const accentColor  = isThread ? '#3B82F6' : '#10B981';
+  const accentBg     = isThread ? 'rgba(37,99,235,0.25)' : 'rgba(16,185,129,0.25)';
+  const accentBorder = isThread ? 'rgba(59,130,246,0.55)' : 'rgba(16,185,129,0.55)';
+
+  // --- overlay ---
+  const overlay = document.createElement('div');
+  overlay.id = 'gantt-intro-overlay';
+  Object.assign(overlay.style, {
+    position: 'absolute', inset: '0', zIndex: '100',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(8,12,36,0.75)', backdropFilter: 'blur(6px)',
+    animation: 'ganttIntroFadeIn 0.3s ease', cursor: 'pointer',
+  });
+
+  // --- card ---
+  const card = document.createElement('div');
+  Object.assign(card.style, {
+    background: 'linear-gradient(145deg,#1e1b4b 0%,#1a2744 100%)',
+    border: `1.5px solid ${accentBorder}`,
+    borderRadius: '20px', padding: '28px 36px',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', gap: '14px', maxWidth: '320px',
+    boxShadow: `0 28px 72px rgba(0,0,0,0.6), 0 0 0 1px ${accentBorder}`,
+    animation: 'ganttIntroZoom 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+  });
+
+  // --- sprite canvas (zoomed) ---
+  const spriteScale = 5;
+  const sc = document.createElement('canvas');
+  sc.width = 16 * spriteScale;
+  sc.height = 16 * spriteScale;
+  Object.assign(sc.style, {
+    imageRendering: 'pixelated',
+    animation: 'ganttSpritePulse 1.4s ease-in-out infinite',
+    marginBottom: '4px',
+  });
+  const sCtx = sc.getContext('2d');
+  sCtx.imageSmoothingEnabled = false;
+  if (isThread) {
+    drawToadSprite(sCtx, 0, 0, false, 0, spriteScale);
+  } else {
+    // Clone Mario (same pixel art, red palette)
+    const grid = MARIO_SPRITE_FRAMES.stand;
+    for (let row = 0; row < 16; row++)
+      for (let col = 0; col < 16; col++) {
+        const c = grid[row][col];
+        if (c === null) continue;
+        sCtx.fillStyle = c;
+        sCtx.fillRect(col * spriteScale, row * spriteScale, spriteScale, spriteScale);
+      }
+  }
+
+  // --- badge ---
+  const badge = document.createElement('div');
+  Object.assign(badge.style, {
+    fontSize: '0.65rem', fontWeight: '700', letterSpacing: '0.12em',
+    padding: '3px 12px', borderRadius: '99px',
+    background: accentBg, color: accentColor,
+    border: `1px solid ${accentBorder}`,
+    textTransform: 'uppercase', fontFamily: 'Inter, sans-serif',
+  });
+  badge.textContent = isThread ? '🧵 Thread — Toad' : '🌿 Fork — Mario Clone';
+
+  // --- title ---
+  const title = document.createElement('div');
+  Object.assign(title.style, {
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: '0.68rem', color: '#FFFFFF', textAlign: 'center',
+    lineHeight: '1.5',
+  });
+  title.textContent = intro.label;
+
+  // --- description ---
+  const desc = document.createElement('p');
+  Object.assign(desc.style, {
+    fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center', lineHeight: '1.65',
+    margin: '0', fontFamily: 'Inter, sans-serif',
+  });
+  desc.textContent = intro.description;
+
+  // --- hint ---
+  const hint = document.createElement('div');
+  Object.assign(hint.style, {
+    fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)',
+    fontFamily: 'Inter, sans-serif', marginTop: '2px',
+  });
+  hint.textContent = 'Click anywhere or wait to continue';
+
+  card.append(badge, sc, title, desc, hint);
+  overlay.appendChild(card);
+  overlay.addEventListener('click', () => _dismissIntro(overlay, timer));
+
+  const container = document.getElementById('gantt-container');
+  if (!container) { GanttIntro.showing = false; return; }
+  container.style.position = 'relative';
+  container.appendChild(overlay);
+
+  const timer = setTimeout(() => _dismissIntro(overlay, timer), 3500);
+}
+
+function _queueIntro(key, type, label, description) {
+  if (GanttIntro.introduced.has(key)) return false;
+  GanttIntro.introduced.add(key);
+  GanttIntro.queue.push({ key, type, label, description });
+  return true;
+}
+
+function _checkForNewIntros(revealedTime, threadGanttRef, forkGanttRef, rowsRef) {
+  if (GanttIntro.showing) return;
+  let queued = false;
+
+  rowsRef.filter(r => r.isThread).forEach(row => {
+    const key = `p${row.pid}.t${row.tid}`;
+    const entries = threadGanttRef.filter(te => te.rowKey === `${row.pid}.t${row.tid}`);
+    if (entries.some(te => te.start < revealedTime)) {
+      const added = _queueIntro(key, 'thread',
+        `Thread T${row.tid}  ·  Process P${row.pid}`,
+        `This Toad represents Thread T${row.tid} spawned by Process P${row.pid}. Threads share the same memory space as their parent and run concurrently within it.`
+      );
+      if (added) queued = true;
+    }
+  });
+
+  rowsRef.filter(r => r.isFork).forEach(row => {
+    const key = `p${row.pid}.f${row.fid}`;
+    const entries = forkGanttRef.filter(fe => fe.rowKey === `${row.pid}.f${row.fid}`);
+    if (entries.some(fe => fe.start < revealedTime)) {
+      const added = _queueIntro(key, 'fork',
+        `Fork F${row.fid}  ·  Process P${row.pid}`,
+        `This Mario Clone is a child process (fork) of P${row.pid}. Unlike threads, forks get their own independent memory copy and run as a separate process.`
+      );
+      if (added) queued = true;
+    }
+  });
+
+  if (queued && GanttIntro.queue.length > 0) {
+    // Pause Gantt
+    if (GanttPlayer.playing) {
+      GanttPlayer.playing = false;
+      cancelAnimationFrame(GanttPlayer.rafId);
+      const btn = document.getElementById('gantt-btn-play');
+      if (btn) btn.innerHTML = '<i class="ph ph-play"></i> Play';
+    }
+    _showNextIntro();
+  }
+}
+
+
 function drawGanttChart(result) {
   const container = document.getElementById('gantt-container');
   const canvas = document.getElementById('gantt-canvas');
@@ -259,44 +564,61 @@ function drawGanttChart(result) {
   const gantt = result.gantt || [];
   if (gantt.length === 0) return;
 
+  // Reset intro state so every new simulation starts fresh
+  resetGanttIntro();
+
   const totalTime = Math.max(...gantt.map(e => e.end));
   const basePids = [...new Set(gantt.filter(e => e.pid >= 0).map(e => e.pid))].sort((a, b) => a - b);
 
-  // Build row list: if threads enabled, interleave thread rows after each process
-  const threadsEnabled = window.AppState && window.AppState.threadsEnabled;
+  // Build row list: if threads/forks enabled (and the current execution mode
+  // makes them visible), interleave child rows after each process.
+  const visibility = (typeof window.getEffectiveVisibility === 'function')
+    ? window.getEffectiveVisibility()
+    : { mode: 'Concurrency',
+        threadsVisible: !!(window.AppState && window.AppState.threadsEnabled),
+        forksVisible:   !!(window.AppState && window.AppState.forksEnabled) };
+  const threadsEnabled = visibility.threadsVisible;
+  const forksEnabled   = visibility.forksVisible;
+  const execMode       = visibility.mode;
   const appProcesses = (window.AppState && window.AppState.processes) || [];
 
-  // rows: array of { label, pid, tid (null if process), isThread }
+  // rows: array of { label, pid, tid|fid (null if process), isThread, isFork }
   const rows = [];
   const pidToRow = {};
-  // Map: rowKey → row index.  rowKey = pid for process, `${pid}.${tid}` for thread
+  // Map: rowKey → row index.  rowKey = pid | `${pid}.t${tid}` | `${pid}.f${fid}`
   const rowKeyToIndex = {};
 
   basePids.forEach(pid => {
     const rowIdx = rows.length;
     pidToRow[pid] = rowIdx;           // main Mario uses pidToRow
     rowKeyToIndex[`${pid}`] = rowIdx;
-    rows.push({ label: `P${pid}`, pid, tid: null, isThread: false });
+    rows.push({ label: `P${pid}`, pid, tid: null, fid: null, isThread: false, isFork: false });
 
-    if (threadsEnabled) {
-      const proc = appProcesses.find(p => p.pid === pid);
-      if (proc && proc.threads && proc.threads.length > 0) {
-        proc.threads.forEach(t => {
-          const tIdx = rows.length;
-          rowKeyToIndex[`${pid}.${t.tid}`] = tIdx;
-          rows.push({ label: `P${pid}.T${t.tid}`, pid, tid: t.tid, isThread: true, burstTime: t.burst_time });
-        });
-      }
+    const proc = appProcesses.find(p => p.pid === pid);
+
+    if (threadsEnabled && proc && proc.threads && proc.threads.length > 0) {
+      proc.threads.forEach(t => {
+        const tIdx = rows.length;
+        rowKeyToIndex[`${pid}.t${t.tid}`] = tIdx;
+        rows.push({ label: `P${pid}.T${t.tid}`, pid, tid: t.tid, fid: null, isThread: true, isFork: false, burstTime: t.burst_time });
+      });
+    }
+
+    if (forksEnabled && proc && proc.forks && proc.forks.length > 0) {
+      proc.forks.forEach(f => {
+        const fIdx = rows.length;
+        rowKeyToIndex[`${pid}.f${f.fid}`] = fIdx;
+        rows.push({ label: `P${pid}⑂F${f.fid}`, pid, tid: null, fid: f.fid, isThread: false, isFork: true, burstTime: f.burst_time, forkDelay: f.delay || 0 });
+      });
     }
   });
 
-  // Build thread gantt entries (earliest-core per thread row within its parent window)
+  // Build thread gantt entries (within parent windows, allocating from start)
   const threadGantt = [];  // { pid, tid, start, end, rowKey }
   if (threadsEnabled) {
     basePids.forEach(pid => {
       const proc = appProcesses.find(p => p.pid === pid);
       if (!proc || !proc.threads || proc.threads.length === 0) return;
-      // Find parent process windows from gantt
       const parentWindows = gantt.filter(e => e.pid === pid);
       let cursor = 0;
       proc.threads.forEach(t => {
@@ -307,7 +629,36 @@ function drawGanttChart(result) {
           if (winStart >= win.end) continue;
           const canUse = win.end - winStart;
           const used = Math.min(canUse, remaining);
-          threadGantt.push({ pid, tid: t.tid, start: winStart, end: winStart + used, rowKey: `${pid}.${t.tid}` });
+          threadGantt.push({ pid, tid: t.tid, start: winStart, end: winStart + used, rowKey: `${pid}.t${t.tid}` });
+          cursor = winStart + used;
+          remaining -= used;
+        }
+      });
+    });
+  }
+
+  // Build fork gantt entries — children "inherit" the parent's CPU windows
+  // but start `delay` ticks after the parent first runs (classic fork() semantics).
+  const forkGantt = [];   // { pid, fid, start, end, rowKey }
+  if (forksEnabled) {
+    basePids.forEach(pid => {
+      const proc = appProcesses.find(p => p.pid === pid);
+      if (!proc || !proc.forks || proc.forks.length === 0) return;
+      const parentWindows = gantt.filter(e => e.pid === pid);
+      if (parentWindows.length === 0) return;
+      const parentFirstStart = Math.min(...parentWindows.map(w => w.start));
+      proc.forks.forEach(f => {
+        const forkAt = parentFirstStart + (f.delay || 0);
+        let remaining = f.burst_time;
+        let cursor = forkAt;
+        for (const win of parentWindows) {
+          if (remaining <= 0) break;
+          if (win.end <= cursor) continue;
+          const winStart = Math.max(win.start, cursor);
+          if (winStart >= win.end) continue;
+          const canUse = win.end - winStart;
+          const used = Math.min(canUse, remaining);
+          forkGantt.push({ pid, fid: f.fid, start: winStart, end: winStart + used, rowKey: `${pid}.f${f.fid}` });
           cursor = winStart + used;
           remaining -= used;
         }
@@ -318,7 +669,14 @@ function drawGanttChart(result) {
   // Clone Mario state — one per thread row
   const cloneMarios = rows
     .filter(r => r.isThread)
-    .map(r => ({ pid: r.pid, tid: r.tid, rowKey: `${r.pid}.${r.tid}`,
+    .map(r => ({ pid: r.pid, tid: r.tid, rowKey: `${r.pid}.t${r.tid}`,
+                 x: 0, y: 0, frame: 0, frameTimer: 0, jumping: false,
+                 jumpVel: 0, baseY: 0, lastBlock: null, visible: false }));
+
+  // Fork Mario state — one per fork row
+  const forkMarios = rows
+    .filter(r => r.isFork)
+    .map(r => ({ pid: r.pid, fid: r.fid, rowKey: `${r.pid}.f${r.fid}`,
                  x: 0, y: 0, frame: 0, frameTimer: 0, jumping: false,
                  jumpVel: 0, baseY: 0, lastBlock: null, visible: false }));
 
@@ -394,6 +752,31 @@ function drawGanttChart(result) {
     }
     ctx.setLineDash([]);
 
+    // Concurrency mode: highlight context-switch boundaries (where the
+    // running PID changes from one gantt entry to the next).
+    if (execMode === 'Concurrency') {
+      const switches = [];
+      for (let k = 1; k < gantt.length; k++) {
+        if (gantt[k].pid !== gantt[k - 1].pid && gantt[k].start <= revealedTime) {
+          switches.push(gantt[k].start);
+        }
+      }
+      if (switches.length) {
+        ctx.strokeStyle = 'rgba(249, 115, 22, 0.55)';   // orange
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 4]);
+        for (const t of switches) {
+          const x = LEFT_MARGIN + t * scale;
+          ctx.beginPath();
+          ctx.moveTo(x, TOP_MARGIN - 6);
+          ctx.lineTo(x, neededHeight - BOTTOM_MARGIN + 6);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1;
+      }
+    }
+
     // Current tick vertical line
     if (revealedTime > 0 && revealedTime < totalTime) {
       const xTick = LEFT_MARGIN + revealedTime * scale;
@@ -418,13 +801,14 @@ function drawGanttChart(result) {
     // Row labels (left column)
     ctx.textAlign = 'left';
     rows.forEach((r, i) => {
-      ctx.fillStyle = pidColor(r.pid);
-      ctx.font = r.isThread
-        ? 'italic 10px "JetBrains Mono", monospace'
-        : 'bold 12px "Inter", sans-serif';
-      ctx.globalAlpha = r.isThread ? 0.75 : 1;
+      ctx.fillStyle = r.isFork ? '#10B981' : pidColor(r.pid);
+      if (r.isThread) ctx.font = 'italic 10px "JetBrains Mono", monospace';
+      else if (r.isFork) ctx.font = 'bold 10px "JetBrains Mono", monospace';
+      else ctx.font = 'bold 12px "Inter", sans-serif';
+      ctx.globalAlpha = r.isThread ? 0.75 : (r.isFork ? 0.95 : 1);
       const y = TOP_MARGIN + i * (BAR_HEIGHT + ROW_GAP);
-      ctx.fillText(r.label, r.isThread ? 8 : 12, y + BAR_HEIGHT * 0.62);
+      const indent = r.isThread ? 8 : (r.isFork ? 6 : 12);
+      ctx.fillText(r.label, indent, y + BAR_HEIGHT * 0.62);
       ctx.globalAlpha = 1;
     });
 
@@ -493,6 +877,43 @@ function drawGanttChart(result) {
       }
     }
 
+    // Fork bars — drawn on the fork row, parent-color base with a green
+    // "child" overlay + solid emerald left edge to mark them as separate processes.
+    if (forksEnabled) {
+      for (const fe of forkGantt) {
+        if (fe.start >= revealedTime) continue;
+        const rowIdx = rowKeyToIndex[fe.rowKey];
+        if (rowIdx === undefined) continue;
+        const visibleEnd = Math.min(fe.end, revealedTime);
+        const x = LEFT_MARGIN + fe.start * scale;
+        const barW = (visibleEnd - fe.start) * scale;
+        const y = TOP_MARGIN + rowIdx * (BAR_HEIGHT + ROW_GAP);
+        const parentColor = pidColor(fe.pid);
+        // Linear blend: parent color → emerald (green) so the bar reads as
+        // a child of the parent process.
+        const grad = ctx.createLinearGradient(x, y, x+barW, y+BAR_HEIGHT);
+        grad.addColorStop(0, parentColor + 'CC');
+        grad.addColorStop(1, '#10B981');
+        const r=6, bx=x+1, by=y+1, bw=Math.max(barW-2,2), bh=BAR_HEIGHT-2;
+        ctx.beginPath();
+        ctx.moveTo(bx+r,by); ctx.lineTo(bx+bw-r,by);
+        ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+r); ctx.lineTo(bx+bw,by+bh-r);
+        ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-r,by+bh);
+        ctx.lineTo(bx+r,by+bh); ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-r);
+        ctx.lineTo(bx,by+r); ctx.quadraticCurveTo(bx,by,bx+r,by);
+        ctx.closePath();
+        ctx.fillStyle = grad; ctx.fill();
+        // Solid emerald left edge — marks the fork point.
+        ctx.strokeStyle = '#10B981'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, by+bh); ctx.stroke();
+        ctx.lineWidth = 1;
+        if (bw > 38) {
+          ctx.fillStyle='#fff'; ctx.font='bold 9px "JetBrains Mono",monospace'; ctx.textAlign='center';
+          ctx.fillText(`⑂F${fe.fid}`, bx+bw/2, by+bh*0.62); ctx.textAlign='left';
+        }
+      }
+    }
+
     // 🍄 MARIO — main Mario on process rows
     if (revealedTime > 0 && pids.length > 0) {
       updateMarioState(dt, revealedTime, gantt, pidToRow, pids,
@@ -534,15 +955,59 @@ function drawGanttChart(result) {
           if (cm.y >= baseY) { cm.y = baseY; cm.jumping = false; cm.jumpVel = 0; }
         } else { cm.y = baseY; }
 
-        // Animate frame
+        // Animate frame — 6fps for smooth Toad run cycle
         if (!cm.jumping) {
           cm.frameTimer = (cm.frameTimer || 0) + dt;
-          if (cm.frameTimer >= 1/8) { cm.frameTimer=0; cm.frame=(cm.frame+1)%4; }
+          if (cm.frameTimer >= 1 / 6) { cm.frameTimer = 0; cm.frame = (cm.frame + 1) % 4; }
         }
 
-        drawCloneMarioSprite(ctx, cm.x, cm.y, cm.jumping, cm.frame);
+        drawToadSprite(ctx, cm.x, cm.y, cm.jumping, cm.frame, TOAD_SCALE);
       });
     }
+
+    // 🌱 FORK MARIOS — one per fork (child), tracking along fork gantt
+    if (forksEnabled && revealedTime > 0) {
+      forkMarios.forEach(fm => {
+        const fEntries = forkGantt.filter(fe => fe.rowKey === fm.rowKey);
+        let runBlock = fEntries.find(fe => revealedTime > fe.start && revealedTime < fe.end);
+        const rowIdx = rowKeyToIndex[fm.rowKey];
+        if (rowIdx === undefined) return;
+
+        const hasWork = fEntries.some(fe => fe.start < revealedTime);
+        fm.visible = hasWork;
+        if (!fm.visible) return;
+
+        let targetX;
+        if (runBlock) {
+          targetX = LEFT_MARGIN + Math.min(runBlock.end, revealedTime) * scale - CLONE_SCALE*8;
+        } else {
+          const lastDone = fEntries.filter(fe => fe.end <= revealedTime);
+          const lastEnd = lastDone.length ? Math.max(...lastDone.map(fe => fe.end)) : 0;
+          targetX = LEFT_MARGIN + lastEnd * scale - CLONE_SCALE*8;
+        }
+        fm.x += (targetX - fm.x) * Math.min(1, dt * 14);
+
+        const baseY = TOP_MARGIN + rowIdx * (BAR_HEIGHT + ROW_GAP) - CLONE_H;
+        if (runBlock && fm.lastBlock !== runBlock && fm.lastBlock !== null && !fm.jumping) {
+          fm.jumping = true; fm.jumpVel = -90;
+        }
+        fm.lastBlock = runBlock || fm.lastBlock;
+        if (fm.jumping) {
+          fm.y += fm.jumpVel * dt; fm.jumpVel += 280 * dt;
+          if (fm.y >= baseY) { fm.y = baseY; fm.jumping = false; fm.jumpVel = 0; }
+        } else { fm.y = baseY; }
+
+        if (!fm.jumping) {
+          fm.frameTimer = (fm.frameTimer || 0) + dt;
+          if (fm.frameTimer >= 1/8) { fm.frameTimer=0; fm.frame=(fm.frame+1)%4; }
+        }
+
+        drawCloneMarioSprite(ctx, fm.x, fm.y, fm.jumping, fm.frame);
+      });
+    }
+
+    // 🎬 CHARACTER INTRO — check if a new Toad or Clone just appeared
+    _checkForNewIntros(revealedTime, threadGantt, forkGantt, rows);
 
     // Update step counter + tick label
     const counter = document.getElementById('gantt-step-counter');
@@ -591,6 +1056,26 @@ function drawGanttChart(result) {
         const y = TOP_MARGIN + rowIdx * (BAR_HEIGHT + ROW_GAP);
         if (mx >= x && mx <= x + barW && my >= y && my <= y + BAR_HEIGHT) {
           tooltip.innerHTML = `<strong style="color:${pidColor(te.pid)}">Process ${te.pid} — Thread ${te.tid}</strong><br>Start: ${te.start} · End: ${te.end}<br>Duration: ${te.end - te.start}`;
+          tooltip.style.left = (e.clientX + 12) + 'px';
+          tooltip.style.top = (e.clientY - 10) + 'px';
+          tooltip.classList.add('visible');
+          canvas.style.cursor = 'pointer';
+          render(0);
+          return;
+        }
+      }
+    }
+
+    // Fork bar hover (drawn on fork rows)
+    if (forksEnabled) {
+      for (const fe of forkGantt) {
+        const rowIdx = rowKeyToIndex[fe.rowKey];
+        if (rowIdx === undefined) continue;
+        const x = LEFT_MARGIN + fe.start * scale;
+        const barW = (fe.end - fe.start) * scale;
+        const y = TOP_MARGIN + rowIdx * (BAR_HEIGHT + ROW_GAP);
+        if (mx >= x && mx <= x + barW && my >= y && my <= y + BAR_HEIGHT) {
+          tooltip.innerHTML = `<strong style="color:#10B981">Process ${fe.pid} — Fork ${fe.fid}</strong><br>Start: ${fe.start} · End: ${fe.end}<br>Duration: ${fe.end - fe.start}`;
           tooltip.style.left = (e.clientX + 12) + 'px';
           tooltip.style.top = (e.clientY - 10) + 'px';
           tooltip.classList.add('visible');
@@ -867,26 +1352,34 @@ const CORE_COLORS = [
 function buildCoreSchedules(result, numCores) {
   const gantt = result.gantt || [];
   const processes = result.metrics || [];
-  const threadsEnabled = window.AppState && window.AppState.threadsEnabled;
+  const visibility = (typeof window.getEffectiveVisibility === 'function')
+    ? window.getEffectiveVisibility()
+    : { threadsVisible: !!(window.AppState && window.AppState.threadsEnabled),
+        forksVisible:   !!(window.AppState && window.AppState.forksEnabled) };
+  const threadsEnabled = visibility.threadsVisible;
+  const forksEnabled   = visibility.forksVisible;
   const appProcesses = window.AppState ? window.AppState.processes : [];
-  
+
   if (numCores <= 1) {
     // Single core — all work on core 0
     const entries = gantt.filter(e => e.pid >= 0).map(e => ({
       ...e,
       label: `P${e.pid}`,
       isThread: false,
+      isFork: false,
     }));
     return [entries];
   }
 
   // Multi-core: distribute execution units across cores
-  const units = []; // execution units (processes + their threads)
-  
-  if (threadsEnabled) {
+  const units = []; // execution units (processes + their threads + their forks)
+
+  if (threadsEnabled || forksEnabled) {
     appProcesses.forEach(p => {
-      if (p.threads && p.threads.length > 0) {
-        // Process has threads — each thread is a schedulable unit
+      const hasThreads = threadsEnabled && p.threads && p.threads.length > 0;
+      const hasForks = forksEnabled && p.forks && p.forks.length > 0;
+
+      if (hasThreads) {
         p.threads.forEach(t => {
           units.push({
             pid: p.pid,
@@ -895,10 +1388,29 @@ function buildCoreSchedules(result, numCores) {
             burst_time: t.burst_time,
             label: `P${p.pid}.T${t.tid}`,
             isThread: true,
+            isFork: false,
           });
         });
-      } else {
-        // Process without threads — it is the unit itself
+      }
+
+      if (hasForks) {
+        p.forks.forEach(f => {
+          units.push({
+            pid: p.pid,
+            fid: f.fid,
+            arrival_time: p.arrival_time + (f.delay || 0),
+            burst_time: f.burst_time,
+            label: `P${p.pid}⑂F${f.fid}`,
+            isThread: false,
+            isFork: true,
+          });
+        });
+      }
+
+      // If the process has neither, it runs as itself.
+      // (When it has threads/forks, the parent's CPU time is already represented
+      // by the children — we don't double-count it here.)
+      if (!hasThreads && !hasForks) {
         units.push({
           pid: p.pid,
           tid: null,
@@ -906,6 +1418,7 @@ function buildCoreSchedules(result, numCores) {
           burst_time: p.burst_time,
           label: `P${p.pid}`,
           isThread: false,
+          isFork: false,
         });
       }
     });
@@ -918,6 +1431,7 @@ function buildCoreSchedules(result, numCores) {
         burst_time: p.burst_time,
         label: `P${p.pid}`,
         isThread: false,
+        isFork: false,
       });
     });
   }
@@ -947,10 +1461,12 @@ function buildCoreSchedules(result, numCores) {
     coreSchedules[bestCore].push({
       pid: unit.pid,
       tid: unit.tid,
+      fid: unit.fid,
       start: startTime,
       end: endTime,
       label: unit.label,
       isThread: unit.isThread,
+      isFork: unit.isFork,
     });
     
     coreEndTimes[bestCore] = endTime;
@@ -1073,17 +1589,24 @@ function drawCoreUsageChart(result) {
         lastEnd = entry.end;
       });
 
-      // Process/thread bars
+      // Process/thread/fork bars
       schedule.forEach(entry => {
         const x1 = LEFT_MARGIN + entry.start * scale;
         const barW = (entry.end - entry.start) * scale;
         const color = pidColor(entry.pid);
 
-        // Bar with slight transparency for threads
-        const alpha = entry.isThread ? 'CC' : '';
+        // Bar gradient: parent color (or blended with green for forks)
         const grad = ctx.createLinearGradient(x1, y, x1 + barW, y + BAR_HEIGHT);
-        grad.addColorStop(0, color + alpha);
-        grad.addColorStop(1, color + (entry.isThread ? '99' : 'CC'));
+        if (entry.isFork) {
+          grad.addColorStop(0, color + 'CC');
+          grad.addColorStop(1, '#10B981');
+        } else if (entry.isThread) {
+          grad.addColorStop(0, color + 'CC');
+          grad.addColorStop(1, color + '99');
+        } else {
+          grad.addColorStop(0, color);
+          grad.addColorStop(1, color + 'CC');
+        }
 
         // Rounded bar
         const br = 4;
@@ -1104,7 +1627,7 @@ function drawCoreUsageChart(result) {
 
         // Highlight on hover
         if (hoveredBlock === entry && hoveredCore === c) {
-          ctx.shadowColor = color;
+          ctx.shadowColor = entry.isFork ? '#10B981' : color;
           ctx.shadowBlur = 12;
           ctx.fill();
           ctx.shadowBlur = 0;
@@ -1122,10 +1645,23 @@ function drawCoreUsageChart(result) {
           ctx.setLineDash([]);
         }
 
+        // Fork indicator (solid emerald left edge)
+        if (entry.isFork) {
+          ctx.strokeStyle = '#10B981';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x1, y + 1);
+          ctx.lineTo(x1, y + BAR_HEIGHT - 1);
+          ctx.stroke();
+          ctx.lineWidth = 1;
+        }
+
         // Label
         if (barW > 28) {
           ctx.fillStyle = '#FFFFFF';
-          ctx.font = entry.isThread ? '600 9px "JetBrains Mono", monospace' : 'bold 10px "JetBrains Mono", monospace';
+          ctx.font = (entry.isThread || entry.isFork)
+            ? '600 9px "JetBrains Mono", monospace'
+            : 'bold 10px "JetBrains Mono", monospace';
           ctx.textAlign = 'center';
           ctx.fillText(entry.label, x1 + barW / 2, y + BAR_HEIGHT * 0.62);
         }
@@ -1167,8 +1703,9 @@ function drawCoreUsageChart(result) {
         if (mx >= x1 && mx <= x1 + barW && my >= y && my <= y + BAR_HEIGHT) {
           hoveredBlock = entry;
           hoveredCore = c;
-          const typeLabel = entry.isThread ? 'Thread' : 'Process';
-          tooltip.innerHTML = `<strong style="color:${pidColor(entry.pid)}">${entry.label}</strong> (${typeLabel})<br>Core ${c + 1} · t=${entry.start}→${entry.end} · Duration: ${entry.end - entry.start}`;
+          const typeLabel = entry.isFork ? 'Fork' : (entry.isThread ? 'Thread' : 'Process');
+          const labelColor = entry.isFork ? '#10B981' : pidColor(entry.pid);
+          tooltip.innerHTML = `<strong style="color:${labelColor}">${entry.label}</strong> (${typeLabel})<br>Core ${c + 1} · t=${entry.start}→${entry.end} · Duration: ${entry.end - entry.start}`;
           tooltip.style.left = (e.clientX + 14) + 'px';
           tooltip.style.top = (e.clientY - 10) + 'px';
           tooltip.classList.add('visible');
@@ -1201,7 +1738,10 @@ function drawCoreUsageChart(result) {
     const threadLegend = window.AppState && window.AppState.threadsEnabled
       ? `<span class="core-legend-item"><span class="core-legend-dot" style="background:var(--brand-primary);opacity:0.7;border:1px dashed rgba(255,255,255,0.5)"></span>Thread</span>`
       : '';
-    legendContainer.innerHTML = idleLegend + processLegend + threadLegend;
+    const forkLegend = window.AppState && window.AppState.forksEnabled
+      ? `<span class="core-legend-item"><span class="core-legend-dot" style="background:linear-gradient(90deg,var(--brand-primary),#10B981);border-left:2px solid #10B981"></span>Fork</span>`
+      : '';
+    legendContainer.innerHTML = idleLegend + processLegend + threadLegend + forkLegend;
   }
 
   // Build per-core stats
@@ -1343,8 +1883,8 @@ function buildLiveCoresChart(coreSchedules, numCores) {
         `<strong>Core ${c + 1}</strong>`,
         `Utilización: ${data.percent ?? 0}%`,
         data.runningLabel
-          ? `Ejecutando: <strong>${data.runningLabel}</strong>`
-          : 'Estado: <strong>IDLE</strong>',
+          ? `Running: <strong>${data.runningLabel}</strong>`
+          : 'Status: <strong>IDLE</strong>',
         `Tick actual: t = ${tick}`,
       ];
       tooltip.innerHTML = lines.join('<br>');
