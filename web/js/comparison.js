@@ -664,7 +664,7 @@ function lockCell(id, val){
   el.textContent=val;
   el.dataset.finalVal=val;
   el.dataset.locked='1';
-  // color normal al terminar (no verde)
+  el.style.color='var(--text-primary)';
 }
 
 function updateLiveCellsSched(idx,d,tick,totalTime){
@@ -1103,6 +1103,7 @@ function fillTableFinal(entries, isSched){
       con el menor Waiting Time promedio (${minWT.toFixed(2)} ms).
       También registró CPU: ${entries[winIdx][1].cpu_utilization.toFixed(1)}% y ${entries[winIdx][1].context_switches||0} context switches.`;
     winnerRow.style.display='';
+    buildProcessSubtables(entries, true);
 
   } else {
     const vals_pf = entries.map(([,d])=>d.total_faults||0);
