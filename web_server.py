@@ -166,6 +166,114 @@ def compare_algorithms():
     return jsonify(results)
 
 
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# API: Compare selected scheduling algorithms (con threads reales)
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.route("/api/schedule/compare-selected", methods=["POST"])
+def compare_selected_algorithms():
+    """
+    Corre solo los algoritmos seleccionados por el usuario.
+    Cada algoritmo se ejecuta en un thread real (threading.Thread).
+    Un semáforo limita el paralelismo al número de cores solicitado.
+    """
+    import time as _time
+    data = request.get_json()
+    selected   = data.get("algorithms", list(ALGORITHM_MAP.keys()))
+    quantum    = data.get("quantum", 2)
+    num_cores  = max(1, int(data.get("num_cores", 4)))
+    processes  = _parse_processes(data)
+
+    if not processes:
+        return jsonify({"error": "No processes provided"}), 400
+
+    results = {}
+    lock = threading.Lock()
+    sem  = threading.Semaphore(num_cores)
+
+    def run_one(name):
+        sem.acquire()
+        try:
+            t0 = _time.perf_counter()
+            cls = ALGORITHM_MAP.get(name)
+            if not cls:
+                return
+            sched = cls(quantum=quantum) if name in ("Round Robin", "MLFQ") else cls()
+            result = sched.schedule([p.clone() for p in processes])
+            elapsed = (_time.perf_counter() - t0) * 1000
+            row = _result_to_dict(result, name)
+            row["elapsed_ms"] = round(elapsed, 2)
+            with lock:
+                results[name] = row
+        except Exception as e:
+            with lock:
+                results[name] = {"error": str(e)}
+        finally:
+            sem.release()
+
+    threads = [threading.Thread(target=run_one, args=(name,)) for name in selected]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    return jsonify(results)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# API: Compare selected page replacement algorithms (con threads reales)
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.route("/api/page-replacement/compare", methods=["POST"])
+def compare_page_algorithms():
+    """
+    Corre los algoritmos de paginación seleccionados en threads reales.
+    """
+    import time as _time
+    data = request.get_json()
+    selected   = data.get("algorithms", list(PAGE_REPLACEMENT_MAP.keys()))
+    ref_string = data.get("reference_string", [7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1])
+    num_frames = max(1, int(data.get("num_frames", 3)))
+    num_cores  = max(1, int(data.get("num_cores", 4)))
+
+    results = {}
+    lock = threading.Lock()
+    sem  = threading.Semaphore(num_cores)
+
+    def run_one(name):
+        sem.acquire()
+        try:
+            t0 = _time.perf_counter()
+            cls = PAGE_REPLACEMENT_MAP.get(name)
+            if not cls:
+                return
+            algo   = cls()
+            result = algo.run(ref_string, num_frames)
+            elapsed = (_time.perf_counter() - t0) * 1000
+            hits = len(ref_string) - result.total_faults
+            hit_rate = hits / len(ref_string) * 100 if ref_string else 0
+            with lock:
+                results[name] = {
+                    "algorithm":   name,
+                    "total_faults": result.total_faults,
+                    "fault_rate":  round(result.fault_rate, 2),
+                    "hit_rate":    round(hit_rate, 2),
+                    "num_frames":  result.num_frames,
+                    "ref_length":  len(ref_string),
+                    "elapsed_ms":  round(elapsed, 2),
+                }
+        except Exception as e:
+            with lock:
+                results[name] = {"error": str(e)}
+        finally:
+            sem.release()
+
+    threads = [threading.Thread(target=run_one, args=(name,)) for name in selected]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    return jsonify(results)
+
 # ═══════════════════════════════════════════════════════════════════════
 # API: Memory
 # ═══════════════════════════════════════════════════════════════════════

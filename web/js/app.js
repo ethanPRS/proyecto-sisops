@@ -110,6 +110,10 @@ function initNavigation() {
       const targetScreen = document.getElementById(`screen-${target}`);
       if (targetScreen) {
         targetScreen.classList.add("active");
+        // Init hooks por pantalla
+        if (target === 'comparison' && typeof initComparison === 'function') {
+          initComparison();
+        }
       }
     });
   });
