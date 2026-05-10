@@ -255,6 +255,36 @@ function buildResultUI(apiResults) {
   // Análisis comparativo (generado dinámicamente al final)
   const analysisHTML = `<div id="comp-analysis-section" style="margin-bottom:12px"></div>`;
 
+
+  // ── 3 gráficas de barras debajo de la tabla ─────────────────────────────
+  const bcDefs = isSched
+    ? [
+        { id:'cbc-wt',  title:'Avg Waiting Time',    unit:'ms',  higher:false },
+        { id:'cbc-tat', title:'Avg Turnaround Time',  unit:'ms',  higher:false },
+        { id:'cbc-cpu', title:'CPU Utilization',      unit:'%',   higher:true  },
+      ]
+    : [
+        { id:'cbc-pf',  title:'Page Faults',          unit:'',    higher:false },
+        { id:'cbc-hr',  title:'Hit Rate',              unit:'%',   higher:true  },
+        { id:'cbc-fr',  title:'Fault Rate',            unit:'%',   higher:false },
+      ];
+
+  const barChartsHTML = `
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">
+        <i class="ph ph-chart-bar"></i> Comparación visual
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        ${bcDefs.map(bc=>`
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-align:center">${bc.title}</div>
+            <div style="position:relative;height:220px">
+              <canvas id="${bc.id}" style="width:100%;height:220px"></canvas>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
   // ── Tabla mejorada con fórmulas, live-fill, fila de avg y ganador ─────────
   const formulaBar = isSched
     ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:6px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent);line-height:1.8">
@@ -373,10 +403,11 @@ function buildResultUI(apiResults) {
       }).join('')}
     </div>`;
 
-  container.innerHTML = procPanel + ganttHTML + tableHTML + analysisHTML + explHTML;
+  container.innerHTML = procPanel + ganttHTML + tableHTML + barChartsHTML + analysisHTML + explHTML;
 
   buildProcessSubtables(entries, isSched);
   initCompCanvas(entries);
+  startBarChartAnimation(entries, isSched);
 }
 
 /* ═══ Canvas Gantt (estilo Mario) ════════════════════════════════════ */
@@ -736,49 +767,34 @@ const _barState = {}; // { [canvasId]: { current: [], target: [] } }
 
 function startBarChartAnimation(entries, isSched){
   cancelAnimationFrame(CompPlayer.barAnimId);
-  const bcIDs = isSched
-    ? ['comp-bc-wt','comp-bc-tat','comp-bc-rt','comp-bc-cpu','comp-bc-ctx','comp-bc-sim']
-    : ['comp-bc-pf','comp-bc-fr','comp-bc-hr','comp-bc-sim'];
 
-  const labels = entries.map(([n])=>n);
+  const bcDefs = isSched
+    ? [
+        { id:'cbc-wt',  fn: (d,f)=>d.avg_waiting*f,        higher:false },
+        { id:'cbc-tat', fn: (d,f)=>d.avg_turnaround*f,     higher:false },
+        { id:'cbc-cpu', fn: (d,f)=>d.cpu_utilization*f,    higher:true  },
+      ]
+    : [
+        { id:'cbc-pf',  fn: (d,f)=>(d.total_faults||0)*f,  higher:false },
+        { id:'cbc-hr',  fn: (d,f)=>(d.hit_rate||0)*f,       higher:true  },
+        { id:'cbc-fr',  fn: (d,f)=>(d.fault_rate||0)*f,     higher:false },
+      ];
 
-  function getTargets(frac){
-    if(isSched) return {
-      'comp-bc-wt':  entries.map(([,d])=>d.avg_waiting   *frac),
-      'comp-bc-tat': entries.map(([,d])=>d.avg_turnaround*frac),
-      'comp-bc-rt':  entries.map(([,d])=>d.avg_response  *frac),
-      'comp-bc-cpu': entries.map(([,d])=>d.cpu_utilization*frac),
-      'comp-bc-ctx': entries.map(([,d])=>(d.context_switches||0)*frac),
-      'comp-bc-sim': entries.map(([,d])=>(d.elapsed_ms||0)*frac),
-    };
-    return {
-      'comp-bc-pf':  entries.map(([,d])=>(d.total_faults||0)*frac),
-      'comp-bc-fr':  entries.map(([,d])=>(d.fault_rate||0)*frac),
-      'comp-bc-hr':  entries.map(([,d])=>(d.hit_rate||0)*frac),
-      'comp-bc-sim': entries.map(([,d])=>(d.elapsed_ms||0)*frac),
-    };
-  }
-
-  function winnerFn(isCPUorHR){ return (v,arr)=> isCPUorHR ? v===Math.max(...arr) : v===Math.min(...arr); }
-  const winnerMap = isSched
-    ? {'comp-bc-wt':false,'comp-bc-tat':false,'comp-bc-rt':false,'comp-bc-cpu':true,'comp-bc-ctx':false,'comp-bc-sim':false}
-    : {'comp-bc-pf':false,'comp-bc-fr':false,'comp-bc-hr':true,'comp-bc-sim':false};
+  const names = entries.map(([n])=>n);
 
   function loopDraw(){
     const frac = CompPlayer.totalTime>0 ? Math.min(CompPlayer.currentTick/CompPlayer.totalTime,1) : 0;
-    const targets = getTargets(frac);
-    bcIDs.forEach(id=>{
-      const vals = targets[id]||[];
-      if(vals.length) drawBarChartLive(id, labels, vals, winnerMap[id]);
+    bcDefs.forEach(bc=>{
+      const vals = entries.map(([,d])=>bc.fn(d,frac));
+      drawBarChartMario(bc.id, names, vals, bc.higher, frac);
     });
     if(CompPlayer.playing || frac<1){
       CompPlayer.barAnimId = requestAnimationFrame(loopDraw);
     } else {
       // Final: valores reales
-      const finalTargets = getTargets(1);
-      bcIDs.forEach(id=>{
-        const vals=finalTargets[id]||[];
-        if(vals.length) drawBarChartLive(id,labels,vals,winnerMap[id]);
+      bcDefs.forEach(bc=>{
+        const vals = entries.map(([,d])=>bc.fn(d,1));
+        drawBarChartMario(bc.id, names, vals, bc.higher, 1);
       });
       generateAnalysis(entries, isSched);
     }
@@ -786,78 +802,125 @@ function startBarChartAnimation(entries, isSched){
   loopDraw();
 }
 
-function drawBarChartLive(canvasId, labels, values, higherIsBetter){
+function drawBarChartMario(canvasId, labels, values, higherIsBetter, frac){
   const canvas=document.getElementById(canvasId); if(!canvas)return;
   const ctx=canvas.getContext('2d');
   const dpr=window.devicePixelRatio||1;
   const cont=canvas.parentElement;
-  const W=cont.clientWidth||280, H=cont.clientHeight||150;
+  const W=cont.clientWidth||260;
+  const H=220;
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.height=H+'px';
   ctx.scale(dpr,dpr);
 
-  const L=44,R=10,T=18,B=38;
+  // Márgenes: arriba espacio para número + Mario, abajo para nombre
+  const L=8, R=8, T=52, B=44;
   const cw=W-L-R, ch=H-T-B;
-  const maxV=Math.max(...values,0.01);
-  const nMax=Math.ceil(maxV*1.18)||1;
-  const barCount=values.length;
+  const maxV=Math.max(...values,0.001);
+  const nMax=maxV*1.18||1;
+  const n=values.length;
   const gap=10;
-  const bw=Math.min((cw-gap*(barCount+1))/barCount,64);
-  const startX=L+(cw-(barCount*bw+gap*(barCount-1)))/2;
+  const bw=Math.min((cw-gap*(n+1))/n, 68);
+  const totalW=n*bw+gap*(n+1);
+  const sx=L+(cw-totalW)/2+gap;
 
+  // Fondo
+  ctx.fillStyle='rgba(0,0,0,0)';
   ctx.clearRect(0,0,W,H);
 
-  // Grid
-  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
-  for(let i=0;i<=4;i++){
-    const y=T+(ch/4)*i;
-    ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(W-R,y); ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='8px monospace'; ctx.textAlign='right';
-    ctx.fillText((nMax*(1-i/4)).toFixed(1),L-4,y+3);
-  }
-  ctx.setLineDash([]);
+  // Piso estilo Mario
+  ctx.fillStyle='#3D1A00';
+  ctx.fillRect(L, T+ch, cw, 6);
+  ctx.fillStyle='#5B2D00';
+  ctx.fillRect(L, T+ch+1, cw, 3);
 
-  const isWinner = (v) => higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
+  // Línea base
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(L,T+ch); ctx.lineTo(W-R,T+ch); ctx.stroke();
+
+  const isWinner = (v)=> higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
 
   values.forEach((v,i)=>{
-    const x=startX+i*(bw+gap);
-    const bh=Math.max((v/nMax)*ch,1);
-    const y=T+ch-bh;
-    const c=marioBlockColor(i);
-    const win=isWinner(v);
+    const x   = sx + i*(bw+gap);
+    const bh  = Math.max((v/nMax)*ch, 2);
+    const y   = T+ch-bh;
+    const c   = marioBlockColor(i);
+    const win = isWinner(v);
 
     // Sombra
-    ctx.fillStyle='rgba(0,0,0,0.2)'; roundRect(ctx,x+2,y+3,bw,bh,4); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.25)';
+    roundRect(ctx,x+2,y+3,bw,bh,5); ctx.fill();
 
-    // Barra gradiente Mario
+    // Barra gradiente Mario 3D
     const g=ctx.createLinearGradient(x,y,x,y+bh);
-    g.addColorStop(0,c.top); g.addColorStop(0.5,c.mid); g.addColorStop(1,c.dark);
-    ctx.fillStyle=g; roundRect(ctx,x,y,bw,bh,4); ctx.fill();
+    g.addColorStop(0,c.top); g.addColorStop(0.45,c.mid); g.addColorStop(1,c.dark);
+    ctx.fillStyle=g; roundRect(ctx,x,y,bw,bh,5); ctx.fill();
 
-    // Brillo
-    ctx.fillStyle='rgba(255,255,255,.18)'; roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*.3,10),3); ctx.fill();
+    // Brillo superior
+    ctx.fillStyle='rgba(255,255,255,0.22)';
+    roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.3,12),3); ctx.fill();
 
-    // Contorno ganador
+    // Borde inferior oscuro
+    ctx.fillStyle=c.dark+'cc';
+    roundRect(ctx,x+1,y+bh-4,bw-2,4,[0,0,5,5]); ctx.fill();
+
+    // Contorno ganador (neón)
     if(win){
-      ctx.save(); ctx.shadowColor='#6EEB83'; ctx.shadowBlur=12;
-      ctx.strokeStyle='#6EEB83'; ctx.lineWidth=2;
-      roundRect(ctx,x-1,y-1,bw+2,bh+2,5); ctx.stroke();
+      ctx.save();
+      ctx.shadowColor=c.top; ctx.shadowBlur=14;
+      ctx.strokeStyle=c.top; ctx.lineWidth=2;
+      roundRect(ctx,x-1,y-1,bw+2,bh+2,6); ctx.stroke();
       ctx.restore();
-      ctx.fillStyle='#6EEB83'; ctx.font='bold 9px monospace'; ctx.textAlign='center';
-      ctx.fillText('★',x+bw/2,y-5);
     }
 
-    // Valor
-    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.font=`bold 8px monospace`; ctx.textAlign='center';
-    ctx.fillText(v.toFixed(1),x+bw/2,y-(win?14:4));
+    // ── Número ARRIBA de la barra ───────────────────────────────────────
+    const numStr = v.toFixed(1);
+    const numY   = y - 6;
+    if(win){
+      // Negrita + fondo pill para el ganador
+      ctx.fillStyle=c.top+'33';
+      const nw=ctx.measureText(numStr).width+10;
+      roundRect(ctx,x+bw/2-nw/2-1,numY-14,nw+2,17,4); ctx.fill();
+      ctx.fillStyle=c.top;
+      ctx.font=`bold 11px "JetBrains Mono",monospace`;
+    } else {
+      ctx.fillStyle='rgba(255,255,255,0.75)';
+      ctx.font=`10px "JetBrains Mono",monospace`;
+    }
+    ctx.textAlign='center';
+    ctx.fillText(numStr, x+bw/2, numY);
 
-    // Label
-    ctx.fillStyle=win?'#6EEB83':'rgba(255,255,255,0.45)';
-    ctx.font=`${win?'bold ':''} 8px sans-serif`; ctx.textAlign='center';
-    const lbl=labels[i].length>7?labels[i].slice(0,6)+'…':labels[i];
-    ctx.fillText(lbl,x+bw/2,T+ch+14);
+    // ── Nombre del algoritmo ABAJO ──────────────────────────────────────
+    ctx.fillStyle = win ? c.top : 'rgba(255,255,255,0.5)';
+    ctx.font = win ? `bold 9px "Inter",sans-serif` : `9px "Inter",sans-serif`;
+    ctx.textAlign='center';
+    const lbl=labels[i].length>8?labels[i].slice(0,7)+'…':labels[i];
+    ctx.fillText(lbl, x+bw/2, T+ch+22);
+    if(win){
+      ctx.fillStyle=c.top+'aa';
+      ctx.font='bold 10px sans-serif';
+      ctx.fillText('★', x+bw/2, T+ch+34);
+    }
+
+    // ── Mario sprite encima de la barra ganadora ─────────────────────────
+    if(win && typeof MARIO_SPRITE_FRAMES!=='undefined'){
+      const mScale=2;
+      const mW=16*mScale, mH=16*mScale;
+      const mx=x+bw/2-mW/2;
+      const my=y-mH-10;
+      // Frame animado según frac
+      const runKeys=typeof MARIO_RUN_KEYS!=='undefined'?MARIO_RUN_KEYS:['stand','run1','run2','run1'];
+      const frameKey=frac>=0.99?'stand':runKeys[Math.floor(Date.now()/150)%4];
+      const grid=MARIO_SPRITE_FRAMES[frameKey]||MARIO_SPRITE_FRAMES.stand;
+      for(let r=0;r<16;r++)for(let cc=0;cc<16;cc++){
+        const col=grid[r][cc]; if(col===null)continue;
+        ctx.fillStyle=col;
+        ctx.fillRect(Math.round(mx+cc*mScale),Math.round(my+r*mScale),mScale,mScale);
+      }
+    }
   });
 }
+
 
 /* ═══ Análisis comparativo automático ════════════════════════════════ */
 function generateAnalysis(entries, isSched){
