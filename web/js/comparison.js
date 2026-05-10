@@ -807,169 +807,157 @@ function startBarChartAnimation(entries, isSched){
  *   YAXIS=44 → margen izquierdo para etiquetas del eje Y
  */
 function drawBarChart(canvasId, labels, values, higherIsBetter, nMax){
-  const canvas=document.getElementById(canvasId); if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  const dpr=window.devicePixelRatio||1;
-  const cont=canvas.parentElement;
-  const W=cont.clientWidth||280;
-
-  // Zonas fijas
-  const YAXIS=44;  // ancho del eje Y izquierdo
-  const R=10;      // margen derecho
-  const T=44;      // espacio superior (número encima de barra)
-  const LBL=68;    // zona inferior para nombres + ★ MEJOR
-  const H=T+196+LBL; // altura total = 308
-
-  canvas.width=W*dpr; canvas.height=H*dpr;
-  canvas.style.height=H+'px';
-  ctx.scale(dpr,dpr);
-
-  const ch=H-T-LBL;          // altura efectiva de barras = 196
-  const plotW=W-YAXIS-R;     // ancho disponible para barras
-  const safMax=Math.max(nMax,0.001);
-
-  ctx.clearRect(0,0,W,H);
-
-  /* ── Fondo oscuro ── */
-  ctx.fillStyle='rgba(10,8,28,0.0)'; // transparente, hereda el card
-  ctx.fillRect(0,0,W,H);
-
-  /* ── Eje Y: 5 líneas + etiquetas ── */
-  const yTicks = 5;
-  for(let ti=0; ti<=yTicks; ti++){
-    const pct = ti/yTicks;
-    const gy  = T + ch*(1-pct);
-    const yVal = safMax*pct;
-
-    // Línea de cuadrícula
-    ctx.strokeStyle = ti===0
-      ? 'rgba(255,255,255,0.25)'   // línea base más visible
-      : 'rgba(255,255,255,0.07)';
-    ctx.lineWidth=ti===0?1.5:1;
-    ctx.setLineDash(ti===0?[]:[3,4]);
-    ctx.beginPath(); ctx.moveTo(YAXIS,gy); ctx.lineTo(W-R,gy); ctx.stroke();
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  // Dimensiones fijas que coinciden con el CSS (height:312px)
+  const W = canvas.clientWidth || 280;
+  const H = 312;
+  
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  
+  const YAXIS = 44;   // espacio para las etiquetas del eje Y
+  const R = 10;       // margen derecho
+  const TOP = 44;     // espacio para el número encima de la barra
+  const BOTTOM = 68;  // espacio para el nombre y la estrella "MEJOR"
+  const chartH = H - TOP - BOTTOM;
+  const plotW = W - YAXIS - R;
+  const safMax = Math.max(nMax, 0.001);
+  
+  ctx.clearRect(0, 0, W, H);
+  
+  // Fondo oscuro
+  ctx.fillStyle = '#0a081c';
+  ctx.fillRect(0, 0, W, H);
+  
+  // ----- Eje Y con líneas y números -----
+  ctx.save();
+  for(let i = 0; i <= 5; i++) {
+    const pct = i / 5;
+    const y = TOP + chartH * (1 - pct);
+    const val = safMax * pct;
+    
+    ctx.strokeStyle = i === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = i === 0 ? 1.5 : 1;
+    ctx.setLineDash(i === 0 ? [] : [4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(YAXIS, y);
+    ctx.lineTo(W - R, y);
+    ctx.stroke();
     ctx.setLineDash([]);
-
-    // Etiqueta numérica del eje Y
-    const label = yVal>=100 ? yVal.toFixed(0)
-                : yVal>=10  ? yVal.toFixed(1)
-                :             yVal.toFixed(2);
-    ctx.save();
-    ctx.font='10px "JetBrains Mono",monospace';
-    ctx.fillStyle='rgba(255,255,255,0.45)';
-    ctx.textAlign='right';
-    ctx.textBaseline='middle';
-    ctx.fillText(label, YAXIS-5, gy);
-    ctx.restore();
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const lbl = val >= 10 ? val.toFixed(1) : val.toFixed(2);
+    ctx.fillText(lbl, YAXIS - 5, y);
   }
-
-  /* ── Línea vertical del eje Y ── */
-  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(YAXIS,T); ctx.lineTo(YAXIS,T+ch); ctx.stroke();
-
-  /* ── Barras ── */
-  const n=values.length;
-  const gap=Math.max(8, plotW*0.06);
-  const bw=Math.max(24, (plotW - gap*(n+1)) / n);
-  const totalBarsW = n*bw + gap*(n+1);
-  // Centrar barras dentro del área de plot
-  const sx = YAXIS + (plotW-totalBarsW)/2 + gap;
-
-  const isWinner=(v)=> higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
-
-  values.forEach((v,i)=>{
-    const x  = sx + i*(bw+gap);
-    const bh = Math.max((v/safMax)*ch, v>0?3:0);
-    const y  = T+ch-bh;
-    const c  = marioBlockColor(i);
-    const win= isWinner(v);
-    const cx = x + bw/2;
-
-    /* Sombra */
-    ctx.fillStyle='rgba(0,0,0,0.22)';
-    roundRect(ctx,x+2,y+3,bw,bh,5); ctx.fill();
-
-    /* Gradiente 3D */
-    const g=ctx.createLinearGradient(x,y,x,y+bh);
-    g.addColorStop(0,c.top); g.addColorStop(0.5,c.mid); g.addColorStop(1,c.dark);
-    ctx.fillStyle=g; roundRect(ctx,x,y,bw,bh,5); ctx.fill();
-
-    /* Brillo superior */
-    if(bh>10){
-      ctx.fillStyle='rgba(255,255,255,0.22)';
-      roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.28,12),3); ctx.fill();
+  // Línea vertical del eje
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(YAXIS, TOP);
+  ctx.lineTo(YAXIS, TOP + chartH);
+  ctx.stroke();
+  ctx.restore();
+  
+  // ----- Barras -----
+  const n = labels.length;
+  const gap = Math.max(10, plotW * 0.08);
+  const bw = Math.max(28, (plotW - gap * (n + 1)) / n);
+  const totalBarsW = n * bw + gap * (n + 1);
+  const startX = YAXIS + (plotW - totalBarsW) / 2 + gap;
+  
+  const isWinner = (v) =>
+    higherIsBetter ? v === Math.max(...values) : v === Math.min(...values);
+  
+  values.forEach((v, i) => {
+    const x = startX + i * (bw + gap);
+    const barH = Math.max((v / safMax) * chartH, v > 0 ? 4 : 0);
+    const y = TOP + chartH - barH;
+    const c = marioBlockColor(i);
+    const win = isWinner(v);
+    
+    // Sombra
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    roundRect(ctx, x + 2, y + 3, bw, barH, 6);
+    ctx.fill();
+    
+    // Gradiente de color 3D
+    const grad = ctx.createLinearGradient(x, y, x, y + barH);
+    grad.addColorStop(0, c.top);
+    grad.addColorStop(0.5, c.mid);
+    grad.addColorStop(1, c.dark);
+    ctx.fillStyle = grad;
+    roundRect(ctx, x, y, bw, barH, 6);
+    ctx.fill();
+    
+    // Brillo superior
+    if (barH > 10) {
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      roundRect(ctx, x + 3, y + 3, bw - 6, Math.min(barH * 0.25, 10), 3);
+      ctx.fill();
     }
-
-    /* Contorno ganador con glow */
-    if(win){
+    
+    // Borde dorado para el ganador
+    if (win) {
       ctx.save();
-      ctx.strokeStyle=c.top; ctx.lineWidth=2.5;
-      ctx.shadowColor=c.top; ctx.shadowBlur=14;
-      roundRect(ctx,x-1,y-1,bw+2,bh+2,6); ctx.stroke();
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur = 10;
+      roundRect(ctx, x - 1.5, y - 1.5, bw + 3, barH + 3, 7);
+      ctx.stroke();
       ctx.restore();
     }
-
-    /* ── Número grande encima de la barra ── */
-    const numStr = v.toFixed(1);
+    
+    // Número grande encima de la barra
     ctx.save();
-    ctx.textAlign='center';
-    ctx.textBaseline='bottom';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
     const numY = y - 6;
-
-    if(win){
-      // Pill de fondo para el ganador
-      ctx.font='bold 15px "JetBrains Mono",monospace';
-      const tw=ctx.measureText(numStr).width;
-      ctx.fillStyle=c.mid+'77';
-      roundRect(ctx, cx-tw/2-7, numY-22, tw+14, 24, 5); ctx.fill();
-      ctx.fillStyle=c.top;
+    if (win) {
+      ctx.font = 'bold 15px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#FFD700';
     } else {
-      ctx.font='bold 13px "JetBrains Mono",monospace';
-      ctx.fillStyle='rgba(255,255,255,0.92)';
+      ctx.font = 'bold 13px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#ffffff';
     }
-    ctx.fillText(numStr, cx, numY);
+    ctx.fillText(v.toFixed(1), x + bw / 2, numY);
     ctx.restore();
-
-    /* ── Nombre del algoritmo debajo — hasta 3 líneas ── */
+    
+    // Nombre del algoritmo (hasta 2 líneas, siempre visible)
     ctx.save();
-    ctx.textAlign='center';
-    ctx.textBaseline='top';
-
-    // Dividir el nombre en palabras y construir líneas que quepan en bw+gap*1.5
-    const maxPxPerLine = bw + gap * 1.4;
-    ctx.font='11px "Inter",sans-serif';
-    const words = labels[i].split(/[\s\/\-\(]+/); // dividir por espacio, /, -, (
-    const lines=[];
-    let cur='';
-    for(const w of words){
-      const test = cur ? cur+' '+w : w;
-      if(ctx.measureText(test).width <= maxPxPerLine){ cur=test; }
-      else { if(cur) lines.push(cur); cur=w; }
-    }
-    if(cur) lines.push(cur);
-    // Máximo 2 líneas de nombre
-    const nameLines = lines.slice(0,2);
-
-    const baseY = T+ch+10;
-    const lineH = 14;
-
-    nameLines.forEach((ln,li)=>{
-      if(win){
-        ctx.font=`bold 11px "Inter",sans-serif`;
-        ctx.fillStyle=c.top;
-      } else {
-        ctx.font=`11px "Inter",sans-serif`;
-        ctx.fillStyle='rgba(255,255,255,0.75)';
-      }
-      ctx.fillText(ln, cx, baseY + li*lineH);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const maxLineWidth = bw + gap * 0.6;
+    const words = labels[i].split(/\s+/);
+    const lines = [];
+    let cur = '';
+    words.forEach(w => {
+      const test = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(test).width <= maxLineWidth) cur = test;
+      else { lines.push(cur); cur = w; }
     });
-
-    /* ★ MEJOR badge */
-    if(win){
-      const starY = baseY + nameLines.length*lineH + 2;
-      ctx.font='bold 10px sans-serif';
-      ctx.fillStyle=c.top;
-      ctx.fillText('★ MEJOR', cx, starY);
+    if (cur) lines.push(cur);
+    const nameLines = lines.slice(0, 2);
+    
+    const baseY = TOP + chartH + 12;
+    nameLines.forEach((ln, li) => {
+      ctx.font = win ? 'bold 11px "Inter", sans-serif' : '11px "Inter", sans-serif';
+      ctx.fillStyle = win ? c.top : 'rgba(255,255,255,0.75)';
+      ctx.fillText(ln, x + bw / 2, baseY + li * 14);
+    });
+    
+    if (win) {
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = '#FFD700';
+      ctx.fillText('★ MEJOR', x + bw / 2, baseY + nameLines.length * 14 + 2);
     }
     ctx.restore();
   });
