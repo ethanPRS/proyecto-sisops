@@ -9,7 +9,7 @@ const RegexState = {
   playing: false,
   timer: null,
   speedMultiplier: 1.0,
-  baseDelayMs: 300
+  baseDelayMs: 150
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -40,9 +40,13 @@ async function extractRegex() {
     return;
   }
 
-  const activeFilter = document.querySelector('.filter-chip.active');
-  const filterCat = activeFilter ? activeFilter.dataset.cat : 'all';
-  const categories = filterCat === 'all' ? null : [filterCat];
+  // Obtener filtros activos
+  const activeChips = Array.from(document.querySelectorAll('.filter-chip.active')).map(c => c.dataset.cat);
+  const hasAll = activeChips.includes('all');
+  const otherCategories = activeChips.filter(c => c !== 'all');
+  
+  // Si ALL está activo o no hay filtros específicos, usar null para obtener todo
+  const categories = (hasAll || otherCategories.length === 0) ? null : otherCategories;
 
   const btn = document.getElementById('btn-extract');
   btn.disabled = true;
@@ -107,6 +111,52 @@ function setDownloadButtonVisible(visible) {
   const downloadBtn = document.getElementById('btn-download-csv');
   if (!downloadBtn) return;
   downloadBtn.style.display = visible ? 'inline-flex' : 'none';
+}
+
+function updateFilterChips() {
+  const allChip = document.querySelector('[data-cat="all"]');
+  const otherChips = document.querySelectorAll('[data-cat]:not([data-cat="all"])');
+  const activeOthers = Array.from(otherChips).filter(c => c.classList.contains('active'));
+  const allOthersActive = activeOthers.length === otherChips.length;
+  
+  // Si todos los demás están activos, activa ALL automáticamente
+  if (allOthersActive && activeOthers.length > 0) {
+    allChip.classList.add('active');
+  }
+  // Si alguno no está activo, desactiva ALL
+  else if (!allOthersActive && allChip.classList.contains('active')) {
+    allChip.classList.remove('active');
+  }
+}
+
+function handleFilterChipClick(e) {
+  e.preventDefault();
+  const clickedChip = e.target.closest('.filter-chip');
+  if (!clickedChip) return;
+  
+  const category = clickedChip.dataset.cat;
+  const allChip = document.querySelector('[data-cat="all"]');
+  const otherChips = document.querySelectorAll('[data-cat]:not([data-cat="all"])');
+  
+  if (category === 'all') {
+    // Si ALL no está activo, activa todos
+    // Si ALL está activo, desactiva todos
+    const someInactive = Array.from(otherChips).some(c => !c.classList.contains('active'));
+    
+    if (someInactive) {
+      // Al menos uno no está activo, activar todos
+      allChip.classList.add('active');
+      otherChips.forEach(chip => chip.classList.add('active'));
+    } else {
+      // Todos están activos, desactivar todos
+      allChip.classList.remove('active');
+      otherChips.forEach(chip => chip.classList.remove('active'));
+    }
+  } else {
+    // Toggle la categoría específica
+    clickedChip.classList.toggle('active');
+    updateFilterChips();
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -326,17 +376,9 @@ Roberto Martínez trabaja en 100 Main St, Suite 200.
 Su información: roberto@tech.io, 15/06/1985.`;
   }
 
-  // Filter chips
+  // Filter chips - toggle state, don't auto-execute
   document.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.getElementById('regex-backdrop').style.display = 'none';
-      document.getElementById('regex-input').style.display = 'block';
-      const text = document.getElementById('regex-input').value.trim();
-      if (text) {
-        regexPause();
-        extractRegex();
-      }
-    });
+    chip.addEventListener('click', handleFilterChipClick);
   });
 
   // Switch back to edit mode
