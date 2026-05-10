@@ -27,7 +27,7 @@ async function readFiles(files) {
 async function extractRegex() {
   let text = document.getElementById('regex-input').value.trim();
   const fileInput = document.getElementById('file-input');
-  const files = fileInput.files;
+  const files = fileInput ? fileInput.files : [];
 
   if (files.length > 0) {
     // Leer contenido de archivos
@@ -106,7 +106,7 @@ function downloadRegexCsv() {
 function setDownloadButtonVisible(visible) {
   const downloadBtn = document.getElementById('btn-download-csv');
   if (!downloadBtn) return;
-  downloadBtn.style.display = visible ? 'block' : 'none';
+  downloadBtn.style.display = visible ? 'inline-flex' : 'none';
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
