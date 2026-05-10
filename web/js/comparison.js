@@ -375,6 +375,7 @@ function buildResultUI(apiResults) {
 
   container.innerHTML = procPanel + ganttHTML + tableHTML + analysisHTML + explHTML;
 
+  buildProcessSubtables(entries, isSched);
   initCompCanvas(entries);
 }
 
@@ -664,7 +665,7 @@ function lockCell(id, val){
   el.textContent=val;
   el.dataset.finalVal=val;
   el.dataset.locked='1';
-  // color normal al terminar (no verde)
+  el.style.color='var(--text-primary)';
 }
 
 function updateLiveCellsSched(idx,d,tick,totalTime){
@@ -676,16 +677,38 @@ function updateLiveCellsSched(idx,d,tick,totalTime){
   const rt =fin?d.avg_response.toFixed(2)  :(d.avg_response  *f).toFixed(2);
   const cpu=fin?d.cpu_utilization.toFixed(1)+'%':(d.cpu_utilization*f).toFixed(1)+'%';
   if(fin){
-    lockCell(`cv-wt-${idx}`, wt); lockCell(`cv-tat-${idx}`, tat);
-    lockCell(`cv-rt-${idx}`, rt); lockCell(`cv-cpu-${idx}`, cpu);
     lockCell(`ct-wt-${idx}`, wt); lockCell(`ct-tat-${idx}`, tat);
     lockCell(`ct-rt-${idx}`, rt); lockCell(`ct-cpu-${idx}`, cpu);
   } else {
-    flashCell(`cv-wt-${idx}`, wt); flashCell(`cv-tat-${idx}`, tat);
-    flashCell(`cv-rt-${idx}`, rt); flashCell(`cv-cpu-${idx}`, cpu);
     flashCell(`ct-wt-${idx}`, wt); flashCell(`ct-tat-${idx}`, tat);
     flashCell(`ct-rt-${idx}`, rt); flashCell(`ct-cpu-${idx}`, cpu);
+    // Negrita en vivo: el que lleva menor WT hasta ahora
+    highlightLiveWinner(idx, parseFloat(wt));
   }
+
+  // Actualizar subtablas en tiempo real
+  if(CompPlayer.results)
+    updateSubtablesLive(CompPlayer.results, tick, totalTime);
+}
+
+// Resalta en tiempo real el algoritmo con menor WT hasta ahora
+const _liveWT = {};
+function highlightLiveWinner(idx, wt){
+  _liveWT[idx] = wt;
+  const vals = Object.values(_liveWT);
+  if(vals.length < 2) return;
+  const minVal = Math.min(...vals);
+  Object.entries(_liveWT).forEach(([i, v])=>{
+    const el = document.getElementById(`ct-wt-${i}`);
+    if(!el) return;
+    if(v === minVal){
+      el.style.fontWeight = '800';
+      el.style.textDecoration = 'underline';
+    } else {
+      el.style.fontWeight = '400';
+      el.style.textDecoration = 'none';
+    }
+  });
 }
 
 function updateLiveCellsPage(idx,d,step,total){
@@ -968,52 +991,32 @@ function generateAnalysis(entries, isSched){
 
 /* ═══ Subtablas por proceso (cálculo individual) ═════════════════════ */
 function buildProcessSubtables(entries, isSched){
+  /* Construye SOLO el esqueleto con celdas vacías identificadas por ID.
+     Los valores se rellenan en tiempo real desde updateLiveCellsSched/Page. */
   const container = document.getElementById('comp-process-subtables');
   if(!container) return;
 
-  if(!isSched){
-    // Para paginación no hacemos subtablas por proceso
-    container.innerHTML='';
-    return;
-  }
+  if(!isSched){ container.innerHTML=''; return; }
 
-  const html = entries.map(([name, d], ei) => {
-    const color = PID_COLORS[ei % PID_COLORS.length];
+  const tablesHtml = entries.map(([name, d], ei) => {
+    const color   = PID_COLORS[ei % PID_COLORS.length];
     const metrics = d.metrics || [];
     if(!metrics.length) return '';
 
-    // Calcular totales para el average
-    const avgTAT = (metrics.reduce((s,m)=>s+(m.turnaround_time||0),0)/metrics.length).toFixed(2);
-    const avgWT  = (metrics.reduce((s,m)=>s+(m.waiting_time||0),0) /metrics.length).toFixed(2);
-    const avgRT  = (metrics.reduce((s,m)=>s+(m.response_time||0),0)/metrics.length).toFixed(2);
-
-    const rows = metrics.map(m => {
-      const ct  = m.completion_time;
-      const at  = m.arrival_time;
-      const bt  = m.burst_time;
-      const tat = m.turnaround_time; // CT - AT
-      const wt  = m.waiting_time;    // TAT - BT
-      const rt  = m.response_time;   // 1ª CPU - AT
-      return `<tr>
-        <td style="font-weight:600;text-align:center">
-          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${PID_COLORS[m.pid%PID_COLORS.length]};margin-right:4px;vertical-align:middle"></span>
+    const rows = metrics.map((m, mi) => {
+      const pidColor = PID_COLORS[m.pid % PID_COLORS.length];
+      // IDs únicos: st = subtable, ei = algo index, mi = metric/process index
+      return `<tr id="str-${ei}-${mi}">
+        <td style="font-weight:700;text-align:center;color:#222">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${pidColor};margin-right:4px;vertical-align:middle"></span>
           P${m.pid}
         </td>
-        <td style="text-align:center;color:var(--text-muted)">${at}</td>
-        <td style="text-align:center;color:var(--text-muted)">${bt}</td>
-        <td style="text-align:center">${ct ?? '—'}</td>
-        <td style="text-align:center">
-          <span style="color:var(--text-muted);font-size:9px">${ct}−${at} = </span>
-          <strong>${tat ?? '—'}</strong>
-        </td>
-        <td style="text-align:center">
-          <span style="color:var(--text-muted);font-size:9px">${tat}−${bt} = </span>
-          <strong>${wt ?? '—'}</strong>
-        </td>
-        <td style="text-align:center">
-          <span style="color:var(--text-muted);font-size:9px">1ªCPU−${at} = </span>
-          <strong>${rt ?? '—'}</strong>
-        </td>
+        <td style="text-align:center;color:#555;font-size:11px">${m.arrival_time}</td>
+        <td style="text-align:center;color:#555;font-size:11px">${m.burst_time}</td>
+        <td id="stct-${ei}-${mi}" style="text-align:center;color:#222">—</td>
+        <td id="sttat-${ei}-${mi}" style="text-align:center;color:#222">—</td>
+        <td id="stwt-${ei}-${mi}"  style="text-align:center;color:#222">—</td>
+        <td id="strt-${ei}-${mi}"  style="text-align:center;color:#222">—</td>
       </tr>`;
     }).join('');
 
@@ -1023,25 +1026,31 @@ function buildProcessSubtables(entries, isSched){
         ${name}
       </div>
       <div class="table-wrapper">
-        <table style="font-size:11px">
+        <table style="font-size:11px;background:#fff;color:#111">
           <thead>
-            <tr style="background:${color}18">
-              <th style="text-align:center">PID</th>
-              <th style="text-align:center">AT</th>
-              <th style="text-align:center">BT</th>
-              <th style="text-align:center">CT</th>
-              <th style="text-align:center">TAT<br><span style="font-size:8px;font-weight:400;color:var(--text-muted)">(CT−AT)</span></th>
-              <th style="text-align:center">WT<br><span style="font-size:8px;font-weight:400;color:var(--text-muted)">(TAT−BT)</span></th>
-              <th style="text-align:center">RT<br><span style="font-size:8px;font-weight:400;color:var(--text-muted)">(1ªCPU−AT)</span></th>
+            <tr style="background:${color}22;color:#333">
+              <th style="text-align:center;color:#333">PID</th>
+              <th style="text-align:center;color:#333">AT</th>
+              <th style="text-align:center;color:#333">BT</th>
+              <th style="text-align:center;color:#333">CT</th>
+              <th style="text-align:center;color:#333">TAT<br>
+                <span style="font-size:8px;font-weight:400;color:#666">(CT−AT)</span>
+              </th>
+              <th style="text-align:center;color:#333">WT<br>
+                <span style="font-size:8px;font-weight:400;color:#666">(TAT−BT)</span>
+              </th>
+              <th style="text-align:center;color:#333">RT<br>
+                <span style="font-size:8px;font-weight:400;color:#666">(1ªCPU−AT)</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             ${rows}
-            <tr style="background:rgba(255,255,255,0.04);font-style:italic">
-              <td colspan="4" style="text-align:right;font-size:10px;color:var(--text-muted);padding-right:8px">Promedio:</td>
-              <td style="text-align:center;font-weight:700">${avgTAT}</td>
-              <td style="text-align:center;font-weight:700">${avgWT}</td>
-              <td style="text-align:center;font-weight:700">${avgRT}</td>
+            <tr style="background:#f5f5f5;font-style:italic">
+              <td colspan="4" style="text-align:right;font-size:10px;color:#666;padding-right:8px">Promedio:</td>
+              <td id="stavgtat-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
+              <td id="stavgwt-${ei}"  style="text-align:center;font-weight:700;color:#111">—</td>
+              <td id="stavgrt-${ei}"  style="text-align:center;font-weight:700;color:#111">—</td>
             </tr>
           </tbody>
         </table>
@@ -1050,12 +1059,64 @@ function buildProcessSubtables(entries, isSched){
   }).join('');
 
   container.innerHTML = `
-    <div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">
+    <div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-top:12px;border-top:1px solid var(--border)">
       <i class="ph ph-function"></i> Cálculo por proceso
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">
-      ${html}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+      ${tablesHtml}
     </div>`;
+}
+
+/* Actualiza las subtablas en tiempo real según el tick actual */
+function updateSubtablesLive(entries, tick, totalTime){
+  if(!entries) return;
+  entries.forEach(([name, d], ei) => {
+    const metrics = d.metrics || [];
+    const frac    = Math.min(tick / totalTime, 1);
+    const fin     = frac >= 0.99;
+
+    // Acumular TAT/WT/RT corridos para el promedio live
+    let sumTAT=0, sumWT=0, sumRT=0, cnt=0;
+
+    metrics.forEach((m, mi) => {
+      // Solo mostrar cuando el proceso "completaría" en este tick proporcional
+      const ctFrac = totalTime > 0 ? (m.completion_time / totalTime) : 1;
+      if (frac < ctFrac * 0.98 && !fin) return; // proceso aún no terminó en este tick
+
+      const ct  = m.completion_time;
+      const at  = m.arrival_time;
+      const bt  = m.burst_time;
+      const tat = m.turnaround_time;
+      const wt  = m.waiting_time;
+      const rt  = m.response_time;
+
+      const setCell = (id, val) => {
+        const el = document.getElementById(id);
+        if(el && el.textContent !== String(val)) el.textContent = val;
+      };
+
+      setCell(`stct-${ei}-${mi}`,  ct ?? '—');
+      setCell(`sttat-${ei}-${mi}`, fin
+        ? `${ct}−${at} = ${tat}`
+        : tat ?? '—');
+      setCell(`stwt-${ei}-${mi}`,  fin
+        ? `${tat}−${bt} = ${wt}`
+        : wt ?? '—');
+      setCell(`strt-${ei}-${mi}`,  fin
+        ? `1ªCPU−${at} = ${rt}`
+        : rt ?? '—');
+
+      sumTAT += tat||0; sumWT += wt||0; sumRT += rt||0; cnt++;
+    });
+
+    if(cnt > 0){
+      const avgEl = (id) => { const el=document.getElementById(id); return el; };
+      const setAvg = (id, v) => { const el=avgEl(id); if(el) el.textContent=v; };
+      setAvg(`stavgtat-${ei}`, (sumTAT/cnt).toFixed(2));
+      setAvg(`stavgwt-${ei}`,  (sumWT /cnt).toFixed(2));
+      setAvg(`stavgrt-${ei}`,  (sumRT /cnt).toFixed(2));
+    }
+  });
 }
 
 /* ═══ Rellenar fila de promedio y ganador al terminar ════════════════ */
@@ -1134,7 +1195,6 @@ function fillTableFinal(entries, isSched){
       <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
       con solo ${minPF} page faults y Hit Rate de ${entries[winIdx][1].hit_rate.toFixed(1)}%.`;
     winnerRow.style.display='';
-    buildProcessSubtables(entries, false);
   }
 }
 
