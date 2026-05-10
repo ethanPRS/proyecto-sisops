@@ -15,10 +15,28 @@ const RegexState = {
 /* ═══════════════════════════════════════════════════════════════════════
    Extract Regex
    ═══════════════════════════════════════════════════════════════════════ */
+async function readFiles(files) {
+  const texts = [];
+  for (const file of files) {
+    const text = await file.text();
+    texts.push(text);
+  }
+  return texts.join('\n\n'); // Concatenar con separadores
+}
+
 async function extractRegex() {
-  const text = document.getElementById('regex-input').value.trim();
+  let text = document.getElementById('regex-input').value.trim();
+  const fileInput = document.getElementById('file-input');
+  const files = fileInput.files;
+
+  if (files.length > 0) {
+    // Leer contenido de archivos
+    const fileText = await readFiles(files);
+    text = fileText + (text ? '\n\n' + text : ''); // Concatenar con texto del textarea si hay
+  }
+
   if (!text) {
-    showToast('Ingresa texto para analizar', 'warning');
+    showToast('Ingresa texto o selecciona archivos para analizar', 'warning');
     return;
   }
 
