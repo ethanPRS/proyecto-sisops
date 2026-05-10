@@ -22,28 +22,28 @@
 
   const MODE_INFO = {
     concurrency: {
-      label: 'Concurrencia',
-      title: 'CPU Stage — Concurrencia',
+      label: 'Concurrency',
+      title: 'BBQ Stage — Mario alone',
       color: '#F97316',
-      tip: 'Mario alternando tareas rápidamente. Suelta las pinzas, machaca el aguacate, y corre a ver los empalmes.',
+      tip: 'Mario alone at the grill: flips the agujas, hops to the molcajete to mash avocado, runs to the comal for tortillas. Only two hands — switches super fast between tasks.',
     },
     parallelism: {
-      label: 'Paralelismo',
-      title: 'CPU Stage — Paralelismo',
+      label: 'Parallelism',
+      title: 'BBQ Stage — Luigi joins in',
       color: '#2563EB',
-      tip: 'Mario voltea la carne mientras Luigi destapa bebidas. Trabajo 100% simultáneo y sin interrupciones.',
+      tip: 'Luigi shows up to help. While Mario flips a sausage, Luigi pops cold drinks and slices limes. Two pairs of hands working at the exact same second.',
     },
     multiprocessing: {
-      label: 'Multiprocesamiento',
-      title: 'CPU Stage — Multiprocesamiento',
+      label: 'Multiprocessing',
+      title: 'Multiprocessing — Two houses, two grills',
       color: '#8B5CF6',
-      tip: 'Mario y Bowser en patios separados. Espacios aislados, si uno hace crash el otro no se entera.',
+      tip: 'Too many people came: two grills in two different yards. Each with its own cooler and tortillas. If Bowser burns his meat, Mario\'s BBQ keeps going. To talk to each other: send a Toad across the street.',
     },
     multithreading: {
       label: 'Multithreading',
-      title: 'CPU Stage — Multithreading',
+      title: 'Multithreading — Everybody at one grill',
       color: '#10B981',
-      tip: 'Comparten mesa y hielera. Rapidísimo, pero si Peach y Bowser agarran las mismas pinzas a la vez → race condition.',
+      tip: 'Toad, Yoshi, Peach (and Bowser who crashed the party) helping at the same grill. They share the cutting board, the seasoning, and the red cooler. If two grab the only tongs at the same time → race condition!',
     },
   };
 
@@ -187,8 +187,201 @@
     return '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
   }
 
+  // Easing helpers for smooth tweens
+  function lerp(a, b, t)     { return a + (b - a) * t; }
+  function easeOutCubic(t)   { return 1 - Math.pow(1 - t, 3); }
+  function easeInCubic(t)    { return t * t * t; }
+  function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
   /* ── Sprite library ──────────────────────────────────────────────── */
-  // Chef Mario — 16w × 18h. Big poofy hat, mustache, white apron with red knot.
+
+  // Carne / steak on grill — 12w × 6h. Three food variants by PID.
+  const SPRITE_MEAT_AGUJAS = parseSprite(`
+    .hhhhhhhhhh.
+    rrcMrcMrcMrr
+    rMrcMrcMrcMr
+    rrcMrcMrcMrr
+    .hhhhhhhhhh.
+    ............
+  `);
+
+  const SPRITE_MEAT_SALCHICHA = parseSprite(`
+    ............
+    .pppppppppp.
+    ppPPpppppppP
+    ppppppPPpppP
+    .pppppppppp.
+    ............
+  `);
+
+  const SPRITE_MEAT_EMPALME = parseSprite(`
+    ...wwwwwww..
+    .wwccccccww.
+    wccccGccccGc
+    wccGcccccccc
+    .wwccccccww.
+    ...wwwwwww..
+  `);
+
+  const MEAT_PALETTE = {
+    r: '#92400E',         // raw meat brown-red
+    M: '#7C2D12',         // dark sear marks
+    c: '#451A03',         // char/grill marks
+    h: '#1C1917',         // skewer stick
+    p: '#FECACA',         // sausage pink
+    P: '#F87171',         // sausage darker
+    w: '#F3F4F6',         // tortilla light
+    G: '#6B7280',         // small char dot
+  };
+
+  // Asador (BBQ grill) — 30w × 12h. Long horizontal grill with grates.
+  const SPRITE_ASADOR = parseSprite(`
+    KKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+    KbbbbbbbbbbbbbbbbbbbbbbbbbbbbK
+    KGgGgGgGgGgGgGgGgGgGgGgGgGgGGK
+    KGgGgGgGgGgGgGgGgGgGgGgGgGgGGK
+    KGgGgGgGgGgGgGgGgGgGgGgGgGgGGK
+    KbbbbbbbbbbbbbbbbbbbbbbbbbbbbK
+    KKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+    KK..........................KK
+    KK..........................KK
+    KK..........................KK
+    KK..........................KK
+    KK..........................KK
+  `);
+
+  function asadorPalette(active) {
+    return {
+      K: '#0F172A',
+      b: active ? '#1F2937' : '#111827',
+      G: active ? '#9CA3AF' : '#6B7280',
+      g: active ? '#1F2937' : '#0F172A',
+    };
+  }
+
+  // Molcajete with guacamole — 10w × 8h.
+  const SPRITE_MOLCAJETE = parseSprite(`
+    ..........
+    .KKKKKKKK.
+    KGGGgGGGGK
+    KGgGGGggGK
+    KGGGGgggGK
+    .KGGggggK.
+    .KKKKKKKK.
+    .KK....KK.
+  `);
+
+  const MOLCAJETE_PALETTE = {
+    K: '#1C1917',         // dark stone
+    G: '#22C55E',         // guacamole green
+    g: '#16A34A',         // darker green clusters
+  };
+
+  // Hielera (red ice cooler) — 14w × 12h.
+  const SPRITE_HIELERA = parseSprite(`
+    KKKKKKKKKKKKKK
+    KhhhhhhhhhhhhK
+    KhhhhhhhhhhhhK
+    KKKKKKKKKKKKKK
+    KrrrrrrrrrrrrK
+    KrwwwwwIwwwwrK
+    KrwwIwCwwEwwrK
+    KrwwwwwwwwwwrK
+    KrrrrrrrrrrrrK
+    KKKKKKKKKKKKKK
+    .K..........K.
+    .K..........K.
+  `);
+
+  const HIELERA_PALETTE = {
+    K: '#0F172A',
+    h: '#FECACA',         // light red lid
+    r: '#EF4444',         // red body
+    w: '#FFFFFF',         // white "ICE" panel
+    I: '#0F172A',         // letters
+    C: '#0F172A',
+    E: '#0F172A',
+  };
+
+  // BBQ tongs — 8w × 12h. Vertical pair of metal arms.
+  const SPRITE_TONGS = parseSprite(`
+    KK....KK
+    KKK..KKK
+    .KK..KK.
+    .KK..KK.
+    .KK..KK.
+    ..K..K..
+    ..K..K..
+    ..KKKK..
+    ...KK...
+    ...KK...
+    ...KK...
+    ..KKKK..
+  `);
+
+  const TONGS_PALETTE = {
+    K: '#1F2937',
+  };
+
+  // House (casa) — 22w × 18h. Simple Mexican-style with red tile roof.
+  const SPRITE_HOUSE = parseSprite(`
+    ..........TT..........
+    .........TTTT.........
+    ........TTTTTT........
+    .......TTTTTTTT.......
+    ......TTTTTTTTTT......
+    .....TTTTTTTTTTTT.....
+    ....TTTTTTTTTTTTTT....
+    ...TTTTTTTTTTTTTTTT...
+    ..wwwwwwwwwwwwwwwwww..
+    ..wWWWwwwwwwwwwWWWww..
+    ..wWyWwwwddddwwWyWww..
+    ..wWyWwwwdoodwwWyWww..
+    ..wWWWwwwdoodwwWWWww..
+    ..wwwwwwwddddwwwwwww..
+    ..wwwwwwwddddwwwwwww..
+    KKKKKKKKKKKKKKKKKKKKKK
+    .KK................KK.
+    .KK................KK.
+  `);
+
+  function housePalette(active) {
+    return {
+      T: active ? '#DC2626' : '#7F1D1D',     // roof red
+      w: '#F3F4F6',                           // wall white
+      W: '#0F172A',                           // window frame
+      y: active ? '#FCD34D' : '#374151',     // window light (lit if active)
+      d: '#5C2C0D',                           // door wood
+      o: '#F59E0B',                           // door knob
+      K: '#1F2937',                           // ground line
+    };
+  }
+
+  // Toad messenger — 8w × 10h. White body, red mushroom head.
+  const SPRITE_TOAD = parseSprite(`
+    .rrrrrr.
+    rrwwwwrr
+    rwwrrwwr
+    rrwwwwrr
+    .rrrrrr.
+    ..wwww..
+    .wsEEsw.
+    .wssssw.
+    ..wwww..
+    ..h..h..
+  `);
+
+  const TOAD_PALETTE = {
+    r: '#EF4444',         // mushroom red cap
+    w: '#FFFFFF',         // white spots / body
+    s: '#FCD8B5',         // skin
+    E: '#0F172A',         // eyes
+    h: '#3E1F0A',         // shoes
+  };
+
+  // Chef Mario — 16w × 24h. Friendly chibi style: poofy hat, clear eyes,
+  // brown handlebar mustache, red scarf, white coat with buttons,
+  // blue overalls, red shoes.
   const SPRITE_CHEF_STAND = parseSprite(`
     ....wwwwwwww....
     ..wwwwwwwwwwww..
@@ -196,21 +389,27 @@
     .wwwwwwwwwwwwww.
     .wwwwwwwwwwwwww.
     ..wwwwwwwwwwww..
+    ...wwwwwwwwww...
+    aaaaaaaaaaaaaaaa
+    .bssssssssssssb.
+    .bssssssssssssb.
+    .bsssEssssEsssb.
+    .bssssssssssssb.
+    ..sbbbbbbbbbbs..
+    ...ssssssssss...
+    ...rrrrrrrrrr...
+    ..wrwwwwwwwwrw..
+    .wwwwwwwwwwwwww.
     wwwwwwwwwwwwwwww
+    wwbwwwwwwwwwwbww
     wwwwwwwwwwwwwwww
-    ..bsssspppsssbb.
-    .bsssp..p.psssb.
-    .bsssp.Ep.psssb.
-    .bsspppppppssssb
-    ..ssspppppppss..
-    ..ssbbbbbbbbss..
-    ...sssssssssss..
-    ..awwwwrrwwwwa..
-    .aawwwwwwwwwwaa.
-    .h.aawwwwwwaa.h.
+    .wwwwwwwwwwwwww.
+    ...pppppppppp...
+    ...pppp..pppp...
+    ..rrrr....rrrr..
   `);
 
-  // Chef Mario — stirring frame (arm raised over pot)
+  // Chef stir frame — slight arm raise (subtle body shift)
   const SPRITE_CHEF_STIR = parseSprite(`
     ....wwwwwwww....
     ..wwwwwwwwwwww..
@@ -218,18 +417,24 @@
     .wwwwwwwwwwwwww.
     .wwwwwwwwwwwwww.
     ..wwwwwwwwwwww..
+    ...wwwwwwwwww...
+    aaaaaaaaaaaaaaaa
+    .bssssssssssssb.
+    .bssssssssssssb.
+    .bsssEssssEsssb.
+    .bssssssssssssb.
+    ..sbbbbbbbbbbs..
+    ...ssssssssss...
+    ...rrrrrrrrrr...
+    .wwrwwwwwwwwrww.
     wwwwwwwwwwwwwwww
     wwwwwwwwwwwwwwww
-    ..bsssspppsssbb.
-    .bsssp..p.psssbs
-    .bsssp.Ep.psssbs
-    .bsspppppppsssss
-    ..ssspppppppss..
-    ..ssbbbbbbbbss..
-    ...sssssssssss..
-    ..awwwwrrwwwwa..
-    .aawwwwwwwwwwaa.
-    .h.aawwwwwwaa.h.
+    wwbwwwwwwwwwwbww
+    wwwwwwwwwwwwwwww
+    .wwwwwwwwwwwwww.
+    ...pppppppppp...
+    ...pppp..pppp...
+    ..rrrr....rrrr..
   `);
 
   // Mario Kart — 24w × 22h. Inspired by classic SNES MK pixel art.
@@ -305,14 +510,13 @@
 
   function chefPalette(accentColor) {
     return {
-      w: '#FFFFFF',         // hat / apron
-      a: '#E5E7EB',         // apron shadow
-      b: '#5C2C0D',         // hair / mustache / brown
-      s: '#FCD8B5',         // skin
-      p: '#5C2C0D',         // hair clusters
-      r: accentColor || '#E63946',  // apron knot color (varies per chef)
-      E: '#0F172A',         // eyes
-      h: '#3E1F0A',         // shoes (dark brown)
+      w: '#FFFFFF',                  // hat / coat (white)
+      a: '#374151',                  // hat band (dark gray)
+      b: '#5C2C0D',                  // mustache / hair edge (brown)
+      s: '#FCD8B5',                  // skin
+      r: accentColor || '#E63946',   // scarf / shoes (accent — red default)
+      E: '#0F172A',                  // eyes
+      p: '#1E3A8A',                  // pants (dark blue overalls)
     };
   }
 
@@ -821,19 +1025,49 @@
     const sched = State.schedule;
     if (!sched) return;
 
-    // Background — outdoor BBQ patio sunset
-    const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    grad.addColorStop(0, '#92400E');   // warm sunset orange
-    grad.addColorStop(0.5, '#78350F');
-    grad.addColorStop(1, '#451A03');
-    ctx.fillStyle = grad;
+    // ── Sunset Escobedo backyard ──────────────────────────────────────
+    const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+    sky.addColorStop(0, '#7C2D12');
+    sky.addColorStop(0.35, '#DC2626');
+    sky.addColorStop(0.5, '#F97316');
+    sky.addColorStop(0.55, '#FCD34D');
+    sky.addColorStop(0.56, '#7C3F00');
+    sky.addColorStop(1, '#1C1917');
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Stars / evening sky dots
-    ctx.fillStyle = 'rgba(255,255,200,0.3)';
-    for (let yy = 0; yy < 80; yy += 18) {
-      for (let xx = 20; xx < CANVAS_W; xx += 60) {
-        ctx.fillRect(xx + (yy % 30), yy + 4, 2, 2);
+    // Distant neighborhood silhouette
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    [[20, 130, 70, 30], [110, 120, 50, 40], [180, 135, 60, 25],
+     [610, 128, 60, 32], [690, 122, 70, 38]].forEach(([x, y, w, h]) => {
+      // Simple house: triangle roof + body
+      ctx.fillRect(x, y, w, h);
+      for (let i = 0; i < w / 2; i++) ctx.fillRect(x + i, y - i, w - i * 2, 1);
+    });
+
+    // Papel picado bunting along the top
+    const buntingColors = ['#EF4444', '#22C55E', '#FCD34D', '#3B82F6', '#EC4899'];
+    for (let i = 0; i < 14; i++) {
+      const bx = 30 + i * 55;
+      const cIdx = i % buntingColors.length;
+      ctx.fillStyle = buntingColors[cIdx];
+      // small flag shape
+      ctx.fillRect(bx, 2, 36, 18);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(bx + 2, 18, 32, 2);
+    }
+    // String of the bunting
+    ctx.fillStyle = '#1C1917';
+    for (let xx = 0; xx < CANVAS_W; xx += 4) ctx.fillRect(xx, 1, 2, 1);
+
+    // Ground (patio tiles)
+    const floorY = 270;
+    ctx.fillStyle = '#451A03';
+    ctx.fillRect(0, floorY, CANVAS_W, CANVAS_H - floorY);
+    ctx.fillStyle = '#7C2D12';
+    for (let yy = floorY; yy < CANVAS_H; yy += 16) {
+      for (let xx = (yy / 16) % 2 === 0 ? 0 : 32; xx < CANVAS_W; xx += 64) {
+        ctx.fillRect(xx, yy, 60, 14);
       }
     }
 
@@ -841,23 +1075,39 @@
     const tIdx = Math.min(Math.floor(tick), sched.timeline.length - 1);
     const activePid = sched.timeline[tIdx];
 
-    // Etiquetas para los platillos del asador
-    const PLATILLOS = ['Agujas', 'Empalmes', 'Guacamole', 'Salchicha', 'Carne', 'Mollejas'];
+    const PLATILLOS = ['Agujas', 'Salchicha', 'Empalme', 'Carne', 'Costillas', 'Arrachera'];
+    const FOOD_SPRITES = [SPRITE_MEAT_AGUJAS, SPRITE_MEAT_SALCHICHA, SPRITE_MEAT_EMPALME];
 
-    // Layout pots (= platillos en el asador)
     const procs = State.processes;
     const visible = procs.slice(0, MAX_PROCS_VISIBLE);
-    const padX = 60;
+    const padX = 70;
     const slotW = (CANVAS_W - padX * 2) / Math.max(1, visible.length);
-    const stoveY = 220;
+    const grillY = 220;
 
-    // Floor / counter
+    // ── Long asador ──────────────────────────────────────────────────
+    const asadorX = padX - 20;
+    const asadorEnd = CANVAS_W - padX + 20;
+    const asadorW = asadorEnd - asadorX;
+
+    // Asador legs
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(asadorX + 8, grillY + 24, 8, 50);
+    ctx.fillRect(asadorEnd - 16, grillY + 24, 8, 50);
+
+    // Asador frame (top + bottom)
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(asadorX, grillY - 2, asadorW, 6);
+    ctx.fillRect(asadorX, grillY + 24, asadorW, 4);
+    // Asador body
     ctx.fillStyle = '#1F2937';
-    ctx.fillRect(0, stoveY + 50, CANVAS_W, CANVAS_H - stoveY - 50);
-    ctx.fillStyle = '#374151';
-    ctx.fillRect(0, stoveY + 48, CANVAS_W, 2);
+    ctx.fillRect(asadorX + 2, grillY + 4, asadorW - 4, 20);
+    // Grill grates (vertical bars)
+    ctx.fillStyle = '#9CA3AF';
+    for (let xx = asadorX + 6; xx < asadorEnd - 6; xx += 5) {
+      ctx.fillRect(xx, grillY + 5, 2, 18);
+    }
 
-    // Compute remaining burst per pid up to current tick
+    // ── Compute remaining burst per pid ──────────────────────────────
     const remaining = {};
     visible.forEach(p => { remaining[p.pid] = p.burst_time; });
     for (let i = 0; i < tIdx; i++) {
@@ -865,100 +1115,126 @@
       if (pp >= 0 && remaining[pp] > 0) remaining[pp]--;
     }
 
-    // Detect context switch → spawn poof + sound
+    // Context switch → poof + sound
     if (activePid !== State.lastActivePid && activePid >= 0 && State.lastActivePid >= 0) {
       const oldIdx = visible.findIndex(p => p.pid === State.lastActivePid);
       if (oldIdx >= 0) {
         const px = padX + slotW * (oldIdx + 0.5);
-        State.poofs.push({ x: px, y: stoveY - 20, t: 0, life: 0.6 });
+        State.poofs.push({ x: px, y: grillY - 18, t: 0, life: 0.6 });
       }
       Sound.contextSwitch();
     }
     if (activePid !== State.lastActivePid && activePid >= 0) {
-      // sparkles on new active stove
       const newIdx = visible.findIndex(p => p.pid === activePid);
       if (newIdx >= 0) {
         const px = padX + slotW * (newIdx + 0.5);
         for (let i = 0; i < 4; i++) {
-          State.sparkles.push({ x: px + (Math.random() - 0.5) * 30, y: stoveY - 10 + (Math.random() - 0.5) * 10, t: 0, life: 0.5 });
+          State.sparkles.push({ x: px + (Math.random() - 0.5) * 30, y: grillY - 8 + (Math.random() - 0.5) * 10, t: 0, life: 0.5 });
         }
       }
     }
     State.lastActivePid = activePid;
 
-    // Draw stoves and pots
+    // ── Draw food on asador ──────────────────────────────────────────
     visible.forEach((p, i) => {
       const cx = padX + slotW * (i + 0.5);
-      const stoveX = cx - 7 * 4;
       const isActive = (activePid === p.pid);
-      drawStove(ctx, stoveX, stoveY + 30, 4, isActive);
-      const fillPct = remaining[p.pid] / p.burst_time;
-      const potX = cx - 6 * 4;
-      drawPot(ctx, potX, stoveY - 8, 4, pidColor(p.pid), fillPct, isActive);
 
-      // Platillo label
+      // Flames under active grill section
+      if (isActive) {
+        const t = performance.now() / 100;
+        for (let f = 0; f < 5; f++) {
+          const fx = cx - 24 + f * 12;
+          const flameH = 6 + Math.sin(t + f) * 4;
+          ctx.fillStyle = '#F97316';
+          ctx.fillRect(fx, grillY + 4, 8, flameH);
+          ctx.fillStyle = '#FBBF24';
+          ctx.fillRect(fx + 2, grillY + 4, 4, flameH * 0.6);
+        }
+        // Glow under
+        ctx.save();
+        ctx.shadowColor = '#F97316';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = 'rgba(249,115,22,0.4)';
+        ctx.fillRect(cx - 26, grillY + 6, 52, 16);
+        ctx.restore();
+      }
+
+      // Meat / food sprite on top of grates
+      const foodType = i % 3;
+      const sprite = FOOD_SPRITES[foodType];
+      const meatScale = 4;
+      const meatW = sprite[0].length * meatScale;
+      // Meat tinted by remaining: cooked = darker, raw = redder
+      const cookedPct = 1 - (remaining[p.pid] / p.burst_time);
+      const meatPalette = { ...MEAT_PALETTE };
+      if (cookedPct > 0.6) meatPalette.r = '#7C2D12';
+      else if (cookedPct > 0.3) meatPalette.r = '#92400E';
+      drawPixelSprite(ctx, cx - meatW / 2, grillY - 18, meatScale, sprite, meatPalette);
+
+      // Platillo label below
       const platillo = PLATILLOS[(p.pid - 1) % PLATILLOS.length];
-      drawHUDText(ctx, platillo, cx - 28, stoveY + 80, pidColor(p.pid), 9);
-      drawHUDText(ctx, `${remaining[p.pid]}/${p.burst_time}t`, cx - 20, stoveY + 96, '#CBD5E1', 10);
+      drawHUDText(ctx, platillo, cx - 22, grillY + 50, pidColor(p.pid), 10);
+      drawHUDText(ctx, `${remaining[p.pid]}/${p.burst_time}t`, cx - 18, grillY + 64, '#FED7AA', 10);
 
-      // "Burning" indicator if not visited too long (= remaining > 0 and not active for >= burst_time ticks before)
-      // Simple heuristic: if their last activity was long ago, draw red exclamation
+      // "se quema!" warning if not visited too long
       let lastSeen = -1;
-      for (let i = tIdx - 1; i >= 0; i--) {
-        if (sched.timeline[i] === p.pid) { lastSeen = i; break; }
+      for (let k = tIdx - 1; k >= 0; k--) {
+        if (sched.timeline[k] === p.pid) { lastSeen = k; break; }
       }
       if (remaining[p.pid] > 0 && (tIdx - lastSeen) > 4) {
-        // draw "!" warning
-        ctx.fillStyle = '#EF4444';
-        ctx.fillRect(cx + 18, stoveY - 28, 4, 12);
-        ctx.fillRect(cx + 18, stoveY - 12, 4, 4);
+        const blink = Math.floor(performance.now() / 200) % 2 === 0;
+        if (blink) {
+          ctx.fillStyle = '#EF4444';
+          ctx.font = 'bold 10px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('BURNING!', cx, grillY - 30);
+          ctx.textAlign = 'left';
+        }
       }
     });
 
-    // Chef Mario position (target = center above active pot)
+    // ── Side props: molcajete (left) + hielera (right) ──────────────
+    drawPixelSprite(ctx, 18, floorY - 32, 4, SPRITE_MOLCAJETE, MOLCAJETE_PALETTE);
+    drawHUDText(ctx, 'Molcajete', 14, floorY + 12, '#A7F3D0', 9);
+    drawPixelSprite(ctx, CANVAS_W - 78, floorY - 50, 4, SPRITE_HIELERA, HIELERA_PALETTE);
+    drawHUDText(ctx, 'Hielera', CANVAS_W - 70, floorY + 12, '#FECACA', 9);
+
+    // ── Chef Mario tweens to active platillo ────────────────────────
     let targetX = -100;
     if (activePid >= 0) {
       const idx = visible.findIndex(p => p.pid === activePid);
-      if (idx >= 0) targetX = padX + slotW * (idx + 0.5) - 16;
+      if (idx >= 0) targetX = padX + slotW * (idx + 0.5) - 24;
     }
     State.chefTargetX = targetX;
-    // smooth tween
-    if (State.chefX === 0 && targetX > 0) State.chefX = targetX; // initial snap
+    if (State.chefX === 0 && targetX > 0) State.chefX = targetX;
     State.chefX += (State.chefTargetX - State.chefX) * Math.min(1, dt * 14);
     State.chefBob += dt * 8;
 
-    // Draw chef Mario above active stove (detailed sprite, 16x18 @ scale 3)
     if (activePid >= 0 && targetX > 0) {
       const bobY = Math.sin(State.chefBob) * 2;
-      const stirFrame = Math.floor(State.chefBob) % 2;   // alternate stir frames
-      drawChef(ctx, State.chefX - 24, stoveY - 78 + bobY, 3, stirFrame);
-      // tiny "stir" line dropping from arm into pot
-      if (Math.abs(State.chefTargetX - State.chefX) < 4 && stirFrame === 1) {
-        ctx.fillStyle = '#92400E';   // wooden spoon
-        ctx.fillRect(State.chefX + 26, stoveY - 28 + bobY, 3, 14);
+      const stirFrame = Math.floor(State.chefBob) % 2;
+      drawChef(ctx, State.chefX, grillY - 78 + bobY, 3, stirFrame, '#E63946');
+      // Wooden tongs (long brown rod) when stationary
+      if (Math.abs(State.chefTargetX - State.chefX) < 4) {
+        ctx.fillStyle = '#1F2937';
+        ctx.fillRect(State.chefX + 50, grillY - 30 + bobY, 4, 16);
+        ctx.fillRect(State.chefX + 50, grillY - 30 + bobY, 4, 4);
+        ctx.fillRect(State.chefX + 56, grillY - 30 + bobY, 4, 4);
       }
     }
 
-    // Update and draw poofs
+    // Poofs + sparkles
     State.poofs = State.poofs.filter(p => p.t < p.life);
-    State.poofs.forEach(p => {
-      p.t += dt;
-      const pct = 1 - (p.t / p.life);
-      drawPuff(ctx, p.x, p.y, 2, pct);
-    });
-
-    // Update and draw sparkles
+    State.poofs.forEach(p => { p.t += dt; drawPuff(ctx, p.x, p.y, 2, 1 - (p.t / p.life)); });
     State.sparkles = State.sparkles.filter(s => s.t < s.life);
-    State.sparkles.forEach(s => {
-      s.t += dt;
-      const pct = 1 - (s.t / s.life);
-      drawSparkle(ctx, s.x, s.y, 2, pct);
-    });
+    State.sparkles.forEach(s => { s.t += dt; drawSparkle(ctx, s.x, s.y, 2, 1 - (s.t / s.life)); });
 
-    // HUD — Carnita Asada
-    drawHUDText(ctx, `Tick: ${tIdx} / ${sched.totalTime}`, 14, 22, '#FBBF24', 13);
-    drawHUDText(ctx, `Mario solo · ${visible.length} platillos en el asador`, 14, 40, '#FED7AA', 11);
-    drawHUDText(ctx, '🥩 Da vuelta a la carne, suelta, machaca aguacate, corre a ver los empalmes...', 14, CANVAS_H - 14, '#FED7AA', 11);
+    // HUD
+    drawHUDText(ctx, `Tick: ${tIdx} / ${sched.totalTime}`, 14, 36, '#FBBF24', 13);
+    drawHUDText(ctx, `Mario alone · ${visible.length} dishes on the grill`, 14, 54, '#FED7AA', 11);
+    drawHUDText(ctx, '🔥 Two hands only: flip the meat, drop, hop to molcajete, run back to tortillas...',
+                14, CANVAS_H - 14, '#FED7AA', 11);
   }
 
   /* ── Parallelism: N chefs in N parallel kitchen stations ───────── */
@@ -967,36 +1243,48 @@
     const sched = State.schedule;
     if (!sched) return;
 
-    // Background — kitchen wall (orange brick) + counter
+    // Sunset patio (same as Concurrency for visual consistency)
     const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
     sky.addColorStop(0, '#7C2D12');
-    sky.addColorStop(1, '#451A03');
+    sky.addColorStop(0.35, '#DC2626');
+    sky.addColorStop(0.5, '#F97316');
+    sky.addColorStop(0.55, '#FCD34D');
+    sky.addColorStop(0.56, '#7C3F00');
+    sky.addColorStop(1, '#1C1917');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Brick pattern
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    for (let yy = 0; yy < 200; yy += 22) {
-      for (let xx = (yy / 22) % 2 === 0 ? 0 : 22; xx < CANVAS_W; xx += 44) {
-        ctx.fillRect(xx, yy, 42, 20);
+    // Bunting
+    const buntingColors = ['#EF4444', '#22C55E', '#FCD34D', '#3B82F6', '#EC4899'];
+    for (let i = 0; i < 14; i++) {
+      const bx = 30 + i * 55;
+      ctx.fillStyle = buntingColors[i % buntingColors.length];
+      ctx.fillRect(bx, 2, 36, 18);
+    }
+    ctx.fillStyle = '#1C1917';
+    for (let xx = 0; xx < CANVAS_W; xx += 4) ctx.fillRect(xx, 1, 2, 1);
+
+    // Patio floor
+    const floorY = 270;
+    ctx.fillStyle = '#451A03';
+    ctx.fillRect(0, floorY, CANVAS_W, CANVAS_H - floorY);
+    ctx.fillStyle = '#7C2D12';
+    for (let yy = floorY; yy < CANVAS_H; yy += 16) {
+      for (let xx = (yy / 16) % 2 === 0 ? 0 : 32; xx < CANVAS_W; xx += 64) {
+        ctx.fillRect(xx, yy, 60, 14);
       }
     }
 
-    // Wide kitchen counter at the bottom
-    const counterY = 240;
-    ctx.fillStyle = '#1F2937';
-    ctx.fillRect(0, counterY + 60, CANVAS_W, CANVAS_H - counterY - 60);
-    ctx.fillStyle = '#374151';
-    ctx.fillRect(0, counterY + 58, CANVAS_W, 2);
-
     const lanes = sched.lanes;
     const numLanes = lanes.length;
-    const padX = 40;
+    const padX = 30;
     const slotW = (CANVAS_W - padX * 2) / numLanes;
     const tick = State.currentTick;
+    const grillY = 220;
 
-    // Chef accent colors — each chef wears a different colored apron knot
-    const CHEF_ACCENTS = ['#E63946', '#22C55E', '#F472B6', '#3B82F6', '#FBBF24', '#A855F7'];
+    const CHEF_ACCENTS = ['#E63946', '#22C55E', '#F472B6', '#3B82F6'];
+    const CHARS = ['Mario', 'Luigi', 'Peach', 'Toad'];
+    const FOOD_SPRITES = [SPRITE_MEAT_AGUJAS, SPRITE_MEAT_SALCHICHA, SPRITE_MEAT_EMPALME];
 
     lanes.forEach((laneSched, l) => {
       const cx = padX + slotW * (l + 0.5);
@@ -1017,89 +1305,89 @@
       const progress = laneTotal > 0 ? workDone / laneTotal : 0;
       const finished = laneTotal > 0 && workDone >= laneTotal;
 
-      // Cheer ONCE on finish
-      let kart = State.karts[l];
-      if (!kart) { kart = { lane: l, finished: false, finishedAt: -1 }; State.karts[l] = kart; }
-      if (finished && !kart.finished) {
-        kart.finished = true;
-        kart.finishedAt = tick;
-        Sound.cheer();
+      // Cheer once on finish
+      let lf = State.karts[l];
+      if (!lf) { lf = { lane: l, finished: false, finishedAt: -1 }; State.karts[l] = lf; }
+      if (finished && !lf.finished) { lf.finished = true; lf.finishedAt = tick; Sound.cheer(); }
+
+      // ── Per-station asador ─────────────────────────────────────────
+      const grillW = Math.min(160, slotW - 24);
+
+      // Legs
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(cx - grillW / 2 + 4, grillY + 24, 6, 50);
+      ctx.fillRect(cx + grillW / 2 - 10, grillY + 24, 6, 50);
+      // Frame
+      ctx.fillRect(cx - grillW / 2, grillY - 2, grillW, 6);
+      ctx.fillRect(cx - grillW / 2, grillY + 24, grillW, 4);
+      ctx.fillStyle = '#1F2937';
+      ctx.fillRect(cx - grillW / 2 + 2, grillY + 4, grillW - 4, 20);
+      // Grates
+      ctx.fillStyle = '#9CA3AF';
+      for (let xx = cx - grillW / 2 + 6; xx < cx + grillW / 2 - 6; xx += 5) {
+        ctx.fillRect(xx, grillY + 5, 2, 18);
       }
 
-      // Core station — concrete top with stove
-      const stationY = counterY;
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(cx - 70, stationY + 50, 140, 14);
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(cx - 70, stationY + 64, 140, 4);
+      // Flames if active
+      if (activeEntry) {
+        const t = performance.now() / 100;
+        for (let f = 0; f < 4; f++) {
+          const fx = cx - 30 + f * 16;
+          const flameH = 5 + Math.sin(t + f + l) * 4;
+          ctx.fillStyle = '#F97316';
+          ctx.fillRect(fx, grillY + 4, 8, flameH);
+          ctx.fillStyle = '#FBBF24';
+          ctx.fillRect(fx + 2, grillY + 4, 4, flameH * 0.6);
+        }
+      }
 
-      // Stove + pot
-      const stoveX = cx - 28;
-      const stoveY = stationY + 16;
-      drawStove(ctx, stoveX, stoveY + 30, 4, !!activeEntry);
-      // Pot color: current PID being cooked, or gray if idle/done
-      let potColor = '#94A3B8';
-      if (activeEntry) potColor = pidColor(activeEntry.pid);
-      else if (finished && laneSched.length) potColor = pidColor(laneSched[laneSched.length - 1].pid);
-      // Pot fill: total work remaining in this lane / total
-      const fillPct = laneTotal > 0 ? (laneTotal - workDone) / laneTotal : 0;
-      const potX = cx - 24;
-      drawPot(ctx, potX, stoveY - 8, 4, potColor, fillPct, !!activeEntry);
+      // Meat on grill (color tints by remaining)
+      const meatType = (activeEntry ? activeEntry.pid : (laneSched[0] ? laneSched[0].pid : 0)) % 3;
+      const sprite = FOOD_SPRITES[meatType];
+      const meatScale = 4;
+      const meatW = sprite[0].length * meatScale;
+      const meatPalette = { ...MEAT_PALETTE };
+      if (progress > 0.6) meatPalette.r = '#7C2D12';
+      else if (progress > 0.3) meatPalette.r = '#92400E';
+      drawPixelSprite(ctx, cx - meatW / 2, grillY - 18, meatScale, sprite, meatPalette);
 
-      // Chef Mario behind the pot — always visible (parallel = N chefs at once)
-      // Stir frame offset by lane index so they don't all move in lockstep
+      // ── Chef behind asador (always visible — N chefs at once) ──────
       const phase = State.chefBob + l * 0.7;
       const bobY = Math.sin(phase * 8) * 2;
-      const stirFrame = Math.floor(phase * 4) % 2;
-      // Idle chefs move less (frame 0 only)
-      const frame = activeEntry ? stirFrame : 0;
-      drawChef(ctx, cx - 24, stoveY - 78 + bobY, 3, frame, accent);
+      const stirFrame = activeEntry ? (Math.floor(phase * 4) % 2) : 0;
+      drawChef(ctx, cx - 24, grillY - 88 + bobY, 3, stirFrame, accent);
 
-      // Wooden spoon when stirring active pot
+      // Tongs in hand when stirring
       if (activeEntry && stirFrame === 1) {
-        ctx.fillStyle = '#92400E';
-        ctx.fillRect(cx + 26, stoveY - 28 + bobY, 3, 14);
+        ctx.fillStyle = '#1F2937';
+        ctx.fillRect(cx + 26, grillY - 30 + bobY, 4, 16);
       }
 
-      // Lane label — personaje asignado
-      const CHARS = ['Mario', 'Luigi', 'Toad', 'Yoshi', 'Peach', 'Wario'];
-      drawHUDText(ctx, CHARS[l % CHARS.length], cx - 28, 100, accent, 9);
+      // Character label + active PID
+      drawHUDText(ctx, CHARS[l % CHARS.length], cx - 18, 96, accent, 11);
+      if (activeEntry) drawHUDText(ctx, `P${activeEntry.pid}`, cx - 10, 112, pidColor(activeEntry.pid), 11);
+      else if (finished) drawHUDText(ctx, '✓ Done', cx - 18, 112, '#FBBF24', 10);
+      else drawHUDText(ctx, 'idle', cx - 12, 112, '#CBD5E1', 10);
 
-      // Lane progress bar
-      const barX = cx - 60;
-      const barY = 110;
-      const barW = 120;
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      ctx.fillRect(barX, barY, barW, 6);
+      // Progress bar
+      const barX = cx - 50, barY = 124, barW = 100;
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(barX, barY, barW, 5);
       ctx.fillStyle = accent;
-      ctx.fillRect(barX, barY, barW * progress, 6);
-
-      // Active PID label
-      if (activeEntry) {
-        drawHUDText(ctx, `P${activeEntry.pid}`, cx - 8, 130, pidColor(activeEntry.pid), 12);
-      } else if (finished) {
-        drawHUDText(ctx, '✓ DONE', cx - 18, 130, '#FBBF24', 11);
-      } else {
-        drawHUDText(ctx, 'idle', cx - 12, 130, '#CBD5E1', 11);
-      }
-
-      // Coin bursts when this lane completes a unit of work
-      const ticked = Math.floor(tick);
-      if (activeEntry && ticked > 0 && ((ticked + l) % 2) === 0) {
-        // periodic coin pop near the pot
-        const coinFrame = Math.floor(performance.now() / 100);
-        drawCoin(ctx, cx + 18 + Math.sin(performance.now() / 200 + l) * 4,
-                 stoveY - 36 - (Math.abs(Math.sin(phase * 8))) * 8, 2, coinFrame);
-      }
+      ctx.fillRect(barX, barY, barW * progress, 5);
     });
 
-    // HUD: progress + speedup
+    // ── Side props (raza props on the patio) ────────────────────────
+    drawPixelSprite(ctx, CANVAS_W - 70, floorY - 50, 4, SPRITE_HIELERA, HIELERA_PALETTE);
+
+    // HUD
     const totalSeq = State.processes.reduce((a, p) => a + p.burst_time, 0);
     const speedup = sched.totalTime > 0 ? (totalSeq / sched.totalTime) : 1;
-    drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 22, '#FBBF24', 13);
-    drawHUDText(ctx, `${numLanes} fontaneros en la parrilla · ${State.processes.length} procesos`, 14, 40, '#FED7AA', 11);
-    drawHUDText(ctx, `⚡ Speedup ×${speedup.toFixed(2)} vs Mario solo (${totalSeq}t)`, 14, 60, '#FEF3C7', 11);
-    drawHUDText(ctx, '🌮 Mario voltea la carne mientras Luigi destapa las bebidas — al mismo tiempo', 14, CANVAS_H - 14, '#FED7AA', 11);
+    drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 36, '#FBBF24', 13);
+    drawHUDText(ctx, `${numLanes} chefs working at once · ${State.processes.length} processes`, 14, 54, '#FED7AA', 11);
+    drawHUDText(ctx, `⚡ Speedup ×${speedup.toFixed(2)} vs Mario alone (${totalSeq}t)`, 14, 72, '#FEF3C7', 11);
+    drawHUDText(ctx, '🌮 Luigi joined: 2+ pairs of hands working at the exact same second',
+                14, CANVAS_H - 14, '#FED7AA', 11);
   }
 
   /* ── Multiprocessing: N walled-off kitchens ────────────────────── */
@@ -1108,197 +1396,226 @@
     const sched = State.schedule;
     if (!sched || !sched.castles) return;
 
-    // Background — dark night purple to emphasize separation
+    // ── Sunset patio sky ─────────────────────────────────────────────
     const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    sky.addColorStop(0, '#312E81');
-    sky.addColorStop(1, '#1E1B4B');
+    sky.addColorStop(0, '#7C2D12');
+    sky.addColorStop(0.35, '#DC2626');
+    sky.addColorStop(0.5, '#F97316');
+    sky.addColorStop(0.55, '#FCD34D');
+    sky.addColorStop(0.56, '#7C3F00');
+    sky.addColorStop(1, '#1C1917');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     const tick = State.currentTick;
-    const kitchens = sched.castles;   // reusing data shape: {pid, burst, forks}
-    const N = kitchens.length;
-    const padX = 24;
+    const houses = sched.castles;   // schedule data shape: {pid, burst, forks}
+    const N = houses.length;
+    const padX = 30;
     const slotW = (CANVAS_W - padX * 2) / Math.max(1, N);
-    const kitchenY = 60;
-    const kitchenH = 230;
 
+    // Street running across the middle (the shared road between casas)
+    const streetY = 234;
+    const streetH = 22;
+    ctx.fillStyle = '#1F2937';
+    ctx.fillRect(0, streetY, CANVAS_W, streetH);
+    // Street dashes
+    ctx.fillStyle = '#FCD34D';
+    for (let xx = 12; xx < CANVAS_W; xx += 36) {
+      ctx.fillRect(xx, streetY + streetH / 2 - 2, 22, 3);
+    }
+
+    // Sidewalks (top + bottom of street)
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(0, streetY - 4, CANVAS_W, 4);
+    ctx.fillRect(0, streetY + streetH, CANVAS_W, 4);
+
+    // Grass / yard ground (above street)
+    ctx.fillStyle = '#365314';
+    ctx.fillRect(0, 180, CANVAS_W, streetY - 184);
+    ctx.fillStyle = '#3F6212';
+    for (let xx = 0; xx < CANVAS_W; xx += 8) {
+      ctx.fillRect(xx + (xx % 16 === 0 ? 0 : 4), 180 + Math.floor((xx % 24) / 8), 2, 2);
+    }
+
+    const CHEF_NAMES = ['Mario', 'Luigi', 'Peach', 'Toad'];
     const CHEF_ACCENTS = ['#E63946', '#22C55E', '#F472B6', '#3B82F6'];
 
-    // Title above all kitchens
-    drawHUDText(ctx, '🏠 Cada proceso = su propio patio. Si Bowser quema su carne, Mario sigue cenando.', 14, 22, '#C4B5FD', 11);
+    // Track Toad messengers (forks crossing the street)
+    if (!State.toads) State.toads = [];
 
-    kitchens.forEach((k, i) => {
-      const left = padX + slotW * i + 8;
-      const right = padX + slotW * (i + 1) - 8;
-      const kw = right - left;
+    houses.forEach((h, i) => {
+      const left = padX + slotW * i + 4;
+      const right = padX + slotW * (i + 1) - 4;
+      const cx = (left + right) / 2;
+      const yardW = right - left;
+      const isActive = tick < h.burst;
+      const cpuTime = Math.min(h.burst, Math.max(0, tick));
       const accent = CHEF_ACCENTS[i % CHEF_ACCENTS.length];
-      const isActive = tick < k.burst;
-      const cpuTime = Math.min(k.burst, Math.max(0, tick));
-      const pidCol = pidColor(k.pid);
 
-      // ── Walls (the visual key for "isolation") ────────────────────
-      const wallTh = 8;   // wall thickness
-      // Wall outer/inner colors
-      const wallOuter = '#0F172A';
-      const wallStone = isActive ? '#475569' : '#334155';
-      const wallStoneLight = isActive ? '#64748B' : '#475569';
+      // ── House (above the yard, decorative) ──────────────────────────
+      const houseScale = Math.max(2, Math.min(4, Math.floor(yardW / 28)));
+      const houseW = 22 * houseScale;
+      const houseH = 18 * houseScale;
+      const houseX = Math.round(cx - houseW / 2);
+      const houseY = 30;
+      drawPixelSprite(ctx, houseX, houseY, houseScale, SPRITE_HOUSE, housePalette(isActive));
 
-      // Top wall (with stone bricks pattern)
-      ctx.fillStyle = wallOuter;
-      ctx.fillRect(left - 2, kitchenY, kw + 4, wallTh + 4);
-      ctx.fillStyle = wallStone;
-      ctx.fillRect(left, kitchenY + 2, kw, wallTh);
-      ctx.fillStyle = wallStoneLight;
-      // brick pattern in top wall
-      for (let bx = left + 2; bx < right - 4; bx += 16) {
-        ctx.fillRect(bx, kitchenY + 4, 12, 4);
-      }
+      // Owner label above house
+      drawHUDText(ctx, `${CHEF_NAMES[i % CHEF_NAMES.length]} (P${h.pid})`,
+                  cx - 36, houseY - 8, accent, 11);
 
-      // Left wall
-      ctx.fillStyle = wallOuter;
-      ctx.fillRect(left - 2, kitchenY, wallTh + 2, kitchenH);
-      ctx.fillStyle = wallStone;
-      ctx.fillRect(left, kitchenY, wallTh, kitchenH);
-      ctx.fillStyle = wallStoneLight;
-      for (let by = kitchenY + 4; by < kitchenY + kitchenH - 4; by += 14) {
-        ctx.fillRect(left + 2, by, 4, 8);
-      }
+      // ── Yard fence (between house and street) ───────────────────────
+      const yardY = houseY + houseH + 4;
+      const yardH = streetY - 4 - yardY;
 
-      // Right wall
-      ctx.fillStyle = wallOuter;
-      ctx.fillRect(right - wallTh, kitchenY, wallTh + 2, kitchenH);
-      ctx.fillStyle = wallStone;
-      ctx.fillRect(right - wallTh, kitchenY, wallTh, kitchenH);
-      ctx.fillStyle = wallStoneLight;
-      for (let by = kitchenY + 4; by < kitchenY + kitchenH - 4; by += 14) {
-        ctx.fillRect(right - wallTh + 2, by, 4, 8);
-      }
-
-      // Bottom wall (floor base)
-      ctx.fillStyle = wallOuter;
-      ctx.fillRect(left - 2, kitchenY + kitchenH - 6, kw + 4, 8);
-
-      // ── Interior ─────────────────────────────────────────────────
-      const innerX = left + wallTh;
-      const innerY = kitchenY + wallTh + 4;
-      const innerW = kw - wallTh * 2;
-      const innerH = kitchenH - wallTh - 8;
-
-      // Wall paper / interior color (warm tone if active)
-      const wallpaper = isActive ? '#7C2D12' : '#1F2937';
-      ctx.fillStyle = wallpaper;
-      ctx.fillRect(innerX, innerY, innerW, innerH);
-
-      // Wood floor stripes
+      // Picket fence sides (left + right separators)
       ctx.fillStyle = '#92400E';
-      ctx.fillRect(innerX, innerY + innerH - 24, innerW, 24);
+      ctx.fillRect(left, yardY, 4, yardH);
+      ctx.fillRect(right - 4, yardY, 4, yardH);
+      // Top fence rail
       ctx.fillStyle = '#7C2D12';
-      for (let fx = innerX; fx < innerX + innerW; fx += 14) {
-        ctx.fillRect(fx, innerY + innerH - 24, 1, 24);
+      ctx.fillRect(left, yardY, yardW, 3);
+      // Vertical pickets
+      ctx.fillStyle = '#92400E';
+      for (let xx = left + 8; xx < right - 4; xx += 12) {
+        ctx.fillRect(xx, yardY + 3, 4, yardH - 3);
       }
 
-      // PID badge inside top of kitchen
-      ctx.save();
-      ctx.fillStyle = pidCol;
-      ctx.fillRect(innerX + innerW / 2 - 22, innerY + 4, 44, 14);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 10px "JetBrains Mono", monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(`P${k.pid}`, innerX + innerW / 2, innerY + 14);
-      ctx.textAlign = 'left';
-      ctx.restore();
+      // ── Yard interior ───────────────────────────────────────────────
+      const innerX = left + 6;
+      const innerY = yardY + 6;
+      const innerW = yardW - 12;
+      const innerH = yardH - 8;
 
-      // Stove + pot
-      const stationCx = innerX + innerW / 2;
-      const stoveScale = 3;
-      const stoveX = stationCx - 7 * stoveScale;
-      const stoveY = innerY + innerH - 60;
-      drawStove(ctx, stoveX, stoveY + 24, stoveScale, isActive);
-      const fillPct = k.burst > 0 ? (k.burst - cpuTime) / k.burst : 0;
-      const potX = stationCx - 6 * stoveScale;
-      drawPot(ctx, potX, stoveY - 6, stoveScale, pidCol, fillPct, isActive);
+      // Yard ground
+      ctx.fillStyle = '#3F6212';
+      ctx.fillRect(innerX, innerY, innerW, innerH);
+      // Grass tuft pattern
+      ctx.fillStyle = '#365314';
+      for (let xx = innerX + 4; xx < innerX + innerW - 2; xx += 16) {
+        for (let yy = innerY + 4; yy < innerY + innerH - 4; yy += 14) {
+          ctx.fillRect(xx, yy, 4, 2);
+        }
+      }
 
-      // Chef Mario inside the kitchen (always visible — process has its own CPU)
+      // ── Asador inside the yard ──────────────────────────────────────
+      const grillCx = innerX + innerW * 0.55;
+      const grillY = innerY + innerH - 36;
+      const grillW = Math.min(80, innerW * 0.5);
+
+      // Legs
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(grillCx - grillW / 2 + 4, grillY + 14, 4, 18);
+      ctx.fillRect(grillCx + grillW / 2 - 8, grillY + 14, 4, 18);
+      // Frame
+      ctx.fillRect(grillCx - grillW / 2, grillY - 2, grillW, 4);
+      ctx.fillRect(grillCx - grillW / 2, grillY + 14, grillW, 3);
+      ctx.fillStyle = '#1F2937';
+      ctx.fillRect(grillCx - grillW / 2 + 2, grillY + 2, grillW - 4, 12);
+      // Grates
+      ctx.fillStyle = '#9CA3AF';
+      for (let xx = grillCx - grillW / 2 + 4; xx < grillCx + grillW / 2 - 4; xx += 4) {
+        ctx.fillRect(xx, grillY + 3, 1, 11);
+      }
+      // Flames (if active)
+      if (isActive) {
+        const t = performance.now() / 100;
+        for (let f = 0; f < 4; f++) {
+          const fx = grillCx - grillW / 2 + 8 + f * (grillW / 5);
+          const flameH = 4 + Math.sin(t + f + i) * 3;
+          ctx.fillStyle = '#F97316';
+          ctx.fillRect(fx, grillY + 2, 4, flameH);
+          ctx.fillStyle = '#FBBF24';
+          ctx.fillRect(fx + 1, grillY + 2, 2, flameH * 0.6);
+        }
+      }
+      // Carne sprite on the grill
+      const FOOD_SPRITES = [SPRITE_MEAT_AGUJAS, SPRITE_MEAT_SALCHICHA, SPRITE_MEAT_EMPALME];
+      const sprite = FOOD_SPRITES[i % 3];
+      const meatScale = 2;
+      const meatW = sprite[0].length * meatScale;
+      const meatPalette = { ...MEAT_PALETTE };
+      const cookedPct = h.burst > 0 ? (cpuTime / h.burst) : 0;
+      if (cookedPct > 0.6) meatPalette.r = '#7C2D12';
+      else if (cookedPct > 0.3) meatPalette.r = '#92400E';
+      drawPixelSprite(ctx, grillCx - meatW / 2, grillY - 8, meatScale, sprite, meatPalette);
+
+      // ── Chef inside the yard (each yard has its own Mario) ─────────
       const phase = State.chefBob + i * 0.5;
       const bobY = Math.sin(phase * 8) * 2;
       const stirFrame = isActive ? (Math.floor(phase * 4) % 2) : 0;
-      drawChef(ctx, stationCx - 24, stoveY - 70 + bobY, 3, stirFrame, accent);
+      const chefScale = Math.max(2, Math.min(3, Math.floor(innerW / 60)));
+      // Chef sprite is now 24 rows tall, position chef so feet are near grill top
+      drawChef(ctx, grillCx - 8 * chefScale - 30, grillY - 24 * chefScale + bobY + 4,
+               chefScale, stirFrame, accent);
 
-      if (isActive && stirFrame === 1) {
-        ctx.fillStyle = '#92400E';
-        ctx.fillRect(stationCx + 26, stoveY - 22 + bobY, 3, 12);
-      }
+      // ── Hielera (own, private) on the left side of yard ────────────
+      const hieleraScale = Math.max(2, Math.min(3, Math.floor(innerW / 80)));
+      drawPixelSprite(ctx, innerX + 6, innerY + innerH - 12 * hieleraScale - 6,
+                      hieleraScale, SPRITE_HIELERA, HIELERA_PALETTE);
 
-      // Memory chest (recipe book) — own private memory, on a small shelf
-      const chestX = innerX + 6;
-      const chestY = innerY + 26;
-      // Shelf
-      ctx.fillStyle = '#92400E';
-      ctx.fillRect(chestX - 2, chestY + 22, 60, 3);
-      drawPixelSprite(ctx, chestX, chestY, 3, SPRITE_CHEST, CHEST_PALETTE);
-      // Coin counter on chest
-      drawHUDText(ctx, `🪙 ${cpuTime}/${k.burst}`, chestX, chestY - 4, '#FCD34D', 10);
-      ctx.fillStyle = '#A78BFA';
-      ctx.font = '7px "JetBrains Mono", monospace';
-      ctx.fillText('PRIVATE', chestX + 6, chestY + 36);
-
-      // ── Fork events: pipe drills through the WALL (between kitchens)
-      k.forks.forEach((f, fi) => {
-        if (tick < f.spawnAt) return;
-        const popProgress = Math.min(1, (tick - f.spawnAt) / 1.5);
-        // Pipe is horizontal, embedded in the right wall, pointing to next kitchen
-        const pipeStartX = right - wallTh - 2;
-        const pipeY = innerY + innerH - 80 + fi * 14;
-        const pipeLength = 30;
-
-        // Crack effect on the wall: small dust particles
-        if (popProgress < 0.6) {
-          ctx.fillStyle = '#94A3B8';
-          for (let pp = 0; pp < 4; pp++) {
-            ctx.fillRect(pipeStartX + Math.random() * 8 - 4,
-                         pipeY + Math.random() * 16, 2, 2);
-          }
-        }
-
-        // Horizontal pipe (use vertical sprite rotated conceptually — draw rect)
-        ctx.fillStyle = '#0F172A';
-        ctx.fillRect(pipeStartX, pipeY - 2, pipeLength + 4, 16);
-        ctx.fillStyle = '#22C55E';
-        ctx.fillRect(pipeStartX + 1, pipeY, pipeLength + 2, 12);
-        ctx.fillStyle = '#16A34A';
-        ctx.fillRect(pipeStartX + 1, pipeY, pipeLength + 2, 3);
-        ctx.fillStyle = '#15803D';
-        ctx.fillRect(pipeStartX + 1, pipeY + 9, pipeLength + 2, 3);
-        // Pipe mouth (slight expansion at end)
-        ctx.fillStyle = '#0F172A';
-        ctx.fillRect(pipeStartX + pipeLength, pipeY - 4, 4, 20);
-        ctx.fillStyle = '#22C55E';
-        ctx.fillRect(pipeStartX + pipeLength + 1, pipeY - 2, 2, 16);
-
-        // 1-Up mushroom emerging from pipe end
-        if (popProgress > 0.4) {
-          const emerge = Math.min(1, (popProgress - 0.4) / 0.6);
-          const mushroomX = pipeStartX + pipeLength + 8 + emerge * 14;
-          const mushroomY = pipeY - 14;
-          drawPixelSprite(ctx, mushroomX, mushroomY, 2, SPRITE_MUSHROOM, MUSHROOM_PALETTE);
-        }
-      });
-
-      // Floor label — patio aislado
+      // ── Coin counter (own private memory) ──────────────────────────
       ctx.save();
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(innerX + 4, innerY + 4, 70, 16);
+      ctx.fillStyle = '#FCD34D';
+      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.fillText(`🪙 ${cpuTime}/${h.burst}`, innerX + 8, innerY + 16);
+      ctx.restore();
+
+      // ── Isolation badge (under the yard) ───────────────────────────
+      ctx.save();
+      ctx.fillStyle = isActive ? 'rgba(167,139,250,0.9)' : 'rgba(100,116,139,0.7)';
+      ctx.fillRect(left + 4, yardY + yardH - 14, yardW - 8, 12);
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 8px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('🔒 PATIO AISLADO', innerX + innerW / 2, innerY + innerH - 4);
+      ctx.fillText('🔒 PRIVATE YARD', cx, yardY + yardH - 4);
       ctx.textAlign = 'left';
       ctx.restore();
+
+      // ── Forks → Toad messenger crosses the street to next house ───
+      h.forks.forEach((f) => {
+        if (tick < f.spawnAt) return;
+        // Spawn a Toad if not yet tracked
+        const key = `${h.pid}-${f.fid}`;
+        let toad = State.toads.find(t => t.key === key);
+        if (!toad) {
+          toad = {
+            key,
+            srcX: cx,
+            dstX: i + 1 < N ? padX + slotW * (i + 1) + slotW / 2 : cx + 200,
+            spawnedAt: f.spawnAt,
+            duration: 2.5,    // 2.5 ticks to cross
+          };
+          State.toads.push(toad);
+        }
+        const elapsed = tick - toad.spawnedAt;
+        if (elapsed < 0) return;
+        const progress = Math.min(1, elapsed / toad.duration);
+        const tx = toad.srcX + (toad.dstX - toad.srcX) * progress;
+        const ty = streetY + streetH / 2 - 18 + Math.abs(Math.sin(elapsed * 6)) * 4;
+        drawPixelSprite(ctx, Math.round(tx - 12), Math.round(ty), 3,
+                        SPRITE_TOAD, TOAD_PALETTE);
+        // Speech bubble: "¡salsa!"
+        if (progress < 0.9) {
+          ctx.save();
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(tx - 4, ty - 12, 36, 10);
+          ctx.fillStyle = '#0F172A';
+          ctx.font = '7px "JetBrains Mono", monospace';
+          ctx.fillText('salsa!', tx - 1, ty - 4);
+          ctx.restore();
+        }
+      });
     });
 
-    // HUD — Multiprocessing
-    drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 40, '#A78BFA', 11);
-    drawHUDText(ctx, '🏠 Patios separados · para pedir salsa hay que mandar un Toad a cruzar la calle',
-                14, CANVAS_H - 14, '#C4B5FD', 11);
+    // ── Top HUD ────────────────────────────────────────────────────
+    drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 22, '#FBBF24', 13);
+    drawHUDText(ctx, `${N} houses · ${N} isolated grills · each with its own cooler and meat`,
+                14, CANVAS_H - 28, '#FED7AA', 10);
+    drawHUDText(ctx, '🏠 If Bowser burns his meat, Mario keeps eating. To talk: send a Toad.',
+                14, CANVAS_H - 12, '#FED7AA', 10);
   }
 
   /* ── Multithreading: ONE kitchen, N chefs, ONE shared recipe book ─ */
@@ -1307,209 +1624,311 @@
     const sched = State.schedule;
     if (!sched || !sched.threads) return;
 
-    // Background — single warm kitchen (no walls, single shared space)
+    // ── Sunset patio (one shared space, no walls!) ───────────────────
     const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
     sky.addColorStop(0, '#7C2D12');
-    sky.addColorStop(0.55, '#9A3412');
-    sky.addColorStop(0.56, '#451A03');
+    sky.addColorStop(0.35, '#DC2626');
+    sky.addColorStop(0.5, '#F97316');
+    sky.addColorStop(0.55, '#FCD34D');
+    sky.addColorStop(0.56, '#7C3F00');
     sky.addColorStop(1, '#1C1917');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    // Brick wall pattern (background, single big kitchen)
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    for (let yy = 0; yy < 200; yy += 22) {
-      for (let xx = (yy / 22) % 2 === 0 ? 0 : 22; xx < CANVAS_W; xx += 44) {
-        ctx.fillRect(xx, yy, 42, 20);
-      }
+    // Papel picado bunting
+    const bunting = ['#EF4444', '#22C55E', '#FCD34D', '#3B82F6', '#EC4899'];
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = bunting[i % bunting.length];
+      ctx.fillRect(30 + i * 55, 2, 36, 18);
     }
+    ctx.fillStyle = '#1C1917';
+    for (let xx = 0; xx < CANVAS_W; xx += 4) ctx.fillRect(xx, 1, 2, 1);
 
-    // Long shared kitchen counter
-    const counterY = 240;
-    ctx.fillStyle = '#92400E';
-    ctx.fillRect(0, counterY, CANVAS_W, 20);
+    // Patio floor
+    const floorY = 290;
+    ctx.fillStyle = '#451A03';
+    ctx.fillRect(0, floorY, CANVAS_W, CANVAS_H - floorY);
     ctx.fillStyle = '#7C2D12';
-    ctx.fillRect(0, counterY + 20, CANVAS_W, 6);
-    ctx.fillStyle = '#451A03';
-    ctx.fillRect(0, counterY + 26, CANVAS_W, CANVAS_H - counterY - 26);
-    // Counter wood grain stripes
-    ctx.fillStyle = '#451A03';
-    for (let cx = 0; cx < CANVAS_W; cx += 28) {
-      ctx.fillRect(cx, counterY + 4, 1, 14);
+    for (let yy = floorY; yy < CANVAS_H; yy += 16) {
+      for (let xx = (yy / 16) % 2 === 0 ? 0 : 32; xx < CANVAS_W; xx += 64) {
+        ctx.fillRect(xx, yy, 60, 14);
+      }
     }
 
     const tick = State.currentTick;
     const tIdx = Math.min(Math.floor(tick), sched.timeline.length - 1);
+    const tickFrac = tick - Math.floor(tick);
     const threads = sched.threads;
+    const N = threads.length;
 
-    // Race condition detection: thread changed from prev tick to current tick.
-    // Active during the first 35% of the tick to feel like a brief flash.
-    let raceActive = false;
-    if (tIdx >= 1 && tIdx < sched.timeline.length) {
-      const cur = sched.timeline[tIdx];
-      const prev = sched.timeline[tIdx - 1];
-      if (cur && prev && (cur.pid !== prev.pid || cur.tid !== prev.tid)) {
-        const tickFrac = tick - tIdx;
-        raceActive = tickFrac < 0.35;
+    // Animation phases (much smoother now):
+    //   0.00 - 0.25 : WALK_IN     active chef walks to asador (prev returns home)
+    //   0.25 - 0.85 : COOK        active chef stands at asador, holds tongs
+    //   0.85 - 1.00 : WALK_OUT    active chef walks back home
+    const PHASE_WALK_IN_END = 0.25;
+    const PHASE_COOK_END = 0.85;
+
+    // Active + previous indices
+    const activeIdx = (tIdx >= 0 && sched.timeline[tIdx]) ? sched.timeline[tIdx].idx : -1;
+    const prevIdx = (tIdx >= 1 && sched.timeline[tIdx - 1]) ? sched.timeline[tIdx - 1].idx : -1;
+
+    // Race when active changed AND we're in walk_in window
+    const raceActive = (tickFrac < PHASE_WALK_IN_END) &&
+                       (prevIdx >= 0) &&
+                       (prevIdx !== activeIdx);
+
+    // ── Layout constants ─────────────────────────────────────────────
+    const grillY = 170;
+    const grillX = CANVAS_W / 2 - 200;
+    const grillW = 400;
+    const padX = 50;
+    const slotW = (CANVAS_W - padX * 2) / Math.max(1, N);
+    const chefScale = N <= 4 ? 3 : 2;
+    const chefW = 16 * chefScale;
+    const chefH = 24 * chefScale;            // updated for new 24-row sprite
+    const homeY = floorY - chefH + 4;
+    const asadorStandY = grillY + 38;        // chef stands in front of grill (a bit lower)
+    const CHEF_ACCENTS = ['#E63946', '#22C55E', '#F472B6', '#3B82F6', '#FBBF24', '#A855F7', '#06B6D4', '#EAB308'];
+
+    // Compute chef position (smooth lateral walk)
+    function chefPos(idx) {
+      const homeX = padX + slotW * (idx + 0.5);
+      // Stand position: in front of asador, alternating left/right of grill if 2 are at it
+      const standX = CANVAS_W / 2;
+      // For the "previous chef returning home" case, give them a slight side offset
+      // so they don't perfectly overlap with the new chef during race
+      const isActive = (idx === activeIdx);
+      const isReturning = (idx === prevIdx) && (prevIdx !== activeIdx) &&
+                         (tickFrac < PHASE_WALK_IN_END);
+
+      if (isActive) {
+        let p;   // 0 = home, 1 = at asador
+        if (tickFrac < PHASE_WALK_IN_END) {
+          p = easeInOutCubic(tickFrac / PHASE_WALK_IN_END);
+        } else if (tickFrac < PHASE_COOK_END) {
+          p = 1;
+        } else {
+          p = 1 - easeInOutCubic((tickFrac - PHASE_COOK_END) / (1 - PHASE_COOK_END));
+        }
+        // Active chef goes to the LEFT side of the grill if there's a race
+        // (so previous chef can be on the right going home)
+        const offsetX = raceActive ? -22 : 0;
+        return {
+          x: lerp(homeX, standX + offsetX, p),
+          y: lerp(homeY, asadorStandY, p),
+          progress: p,
+          isActive: true,
+          atAsador: p > 0.95,
+          walking: p > 0.05 && p < 0.95,
+        };
       }
+      if (isReturning) {
+        // Goes from asador back to home, slight RIGHT offset
+        const p = 1 - easeInOutCubic(tickFrac / PHASE_WALK_IN_END);
+        return {
+          x: lerp(homeX, standX + 22, p),
+          y: lerp(homeY, asadorStandY, p),
+          progress: p,
+          isActive: false,
+          isReturning: true,
+          atAsador: p > 0.7,
+          walking: true,
+        };
+      }
+      return { x: homeX, y: homeY, progress: 0, isActive: false, atAsador: false, walking: false };
     }
 
-    // Screen shake on race
+    // Subtle screen shake on race (gentler than before)
     let shakeX = 0, shakeY = 0;
     if (raceActive) {
-      shakeX = (Math.random() - 0.5) * 4;
-      shakeY = (Math.random() - 0.5) * 4;
+      const intensity = 1 - (tickFrac / PHASE_WALK_IN_END);   // strongest at start
+      shakeX = (Math.random() - 0.5) * 3 * intensity;
+      shakeY = (Math.random() - 0.5) * 3 * intensity;
     }
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    // ── The SHARED RECIPE BOOK at the center, on a pedestal ──────────
-    const bookW = 160;
-    const bookH = 110;
-    const bookX = CANVAS_W / 2 - bookW / 2;
-    const bookY = 80;
-
-    // Pedestal under the book
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(bookX - 10, bookY + bookH, bookW + 20, 8);
-    ctx.fillStyle = '#64748B';
-    ctx.fillRect(bookX - 10, bookY + bookH + 8, bookW + 20, 4);
-
-    // Drop shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(bookX + 4, bookY + 4, bookW, bookH);
-
-    // Book cover (red leather with gold trim) — flash red on race
-    const coverColor = raceActive ? '#EF4444' : '#7F1D1D';
+    // ── Shared asador in the middle ──────────────────────────────────
+    // Legs
     ctx.fillStyle = '#0F172A';
-    ctx.fillRect(bookX - 2, bookY - 2, bookW + 4, bookH + 4);
-    ctx.fillStyle = coverColor;
-    ctx.fillRect(bookX, bookY, bookW, bookH);
-    // Gold trim border
-    ctx.strokeStyle = '#FCD34D';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(bookX + 4, bookY + 4, bookW - 8, bookH - 8);
-    ctx.lineWidth = 1;
+    ctx.fillRect(grillX + 16, grillY + 30, 10, 50);
+    ctx.fillRect(grillX + grillW - 26, grillY + 30, 10, 50);
+    // Frame
+    ctx.fillRect(grillX, grillY - 4, grillW, 8);
+    ctx.fillRect(grillX, grillY + 30, grillW, 6);
+    // Body
+    ctx.fillStyle = '#1F2937';
+    ctx.fillRect(grillX + 4, grillY + 4, grillW - 8, 26);
+    // Grates
+    ctx.fillStyle = '#9CA3AF';
+    for (let xx = grillX + 8; xx < grillX + grillW - 8; xx += 6) {
+      ctx.fillRect(xx, grillY + 6, 2, 22);
+    }
+    // Flames
+    const flT = performance.now() / 100;
+    for (let f = 0; f < 13; f++) {
+      const fx = grillX + 16 + f * 30;
+      const flameH = 6 + Math.sin(flT + f) * 4;
+      ctx.fillStyle = '#F97316';
+      ctx.fillRect(fx, grillY + 8, 8, flameH);
+      ctx.fillStyle = '#FBBF24';
+      ctx.fillRect(fx + 2, grillY + 8, 4, flameH * 0.6);
+    }
+    // Meats spread on asador (decorative — one per thread)
+    const FOOD_SPRITES = [SPRITE_MEAT_AGUJAS, SPRITE_MEAT_SALCHICHA, SPRITE_MEAT_EMPALME];
+    threads.forEach((_t, idx) => {
+      const sprite = FOOD_SPRITES[idx % 3];
+      const meatScale = 3;
+      const meatW = sprite[0].length * meatScale;
+      const meatX = grillX + 30 + (idx + 0.5) * ((grillW - 60) / N) - meatW / 2;
+      drawPixelSprite(ctx, meatX, grillY - 12, meatScale, sprite, MEAT_PALETTE);
+    });
 
-    // Book spine on the left
-    ctx.fillStyle = '#0F172A';
-    ctx.fillRect(bookX, bookY, 8, bookH);
+    // ── Side props (Cooler + Molcajete) ──────────────────────────────
+    drawPixelSprite(ctx, 24, floorY - 50, 4, SPRITE_HIELERA, HIELERA_PALETTE);
+    drawHUDText(ctx, 'Cooler', 30, floorY + 12, '#FECACA', 9);
+    drawHUDText(ctx, 'SHARED', 30, floorY + 24, '#FCA5A5', 8);
+    drawPixelSprite(ctx, CANVAS_W - 64, floorY - 32, 4, SPRITE_MOLCAJETE, MOLCAJETE_PALETTE);
+    drawHUDText(ctx, 'Molcajete', CANVAS_W - 72, floorY + 12, '#A7F3D0', 9);
+    drawHUDText(ctx, 'SHARED', CANVAS_W - 70, floorY + 24, '#86EFAC', 8);
 
-    // Shared resource label — Hielera Roja (shared cooler)
+    // Coin counter (shared, above asador)
     ctx.save();
-    ctx.fillStyle = '#FCD34D';
-    ctx.font = 'bold 12px "Press Start 2P", "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('🧊 HIELERA', CANVAS_W / 2, bookY + 32);
-    ctx.font = '8px "Press Start 2P", "JetBrains Mono", monospace';
-    ctx.fillStyle = '#FEF3C7';
-    ctx.fillText('COMPARTIDA', CANVAS_W / 2, bookY + 50);
-    ctx.font = '7px "JetBrains Mono", monospace';
-    ctx.fillStyle = '#A7F3D0';
-    ctx.fillText('sal, pinzas, limon', CANVAS_W / 2, bookY + 68);
-    // Shared tick counter
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 16px "JetBrains Mono", monospace';
-    ctx.fillText(`🥤 ${tIdx}`, CANVAS_W / 2, bookY + 92);
+    ctx.font = 'bold 14px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🪙 Cooked: ${tIdx}`, CANVAS_W / 2, grillY - 22);
     ctx.textAlign = 'left';
     ctx.restore();
 
-    // Spine glow if race
+    // ── All chefs (compute positions first so we know who's at asador)
+    const positions = threads.map((_, idx) => chefPos(idx));
+
+    // Draw home-row chefs first (back), then walking/active chefs (front)
+    threads.forEach((t, idx) => {
+      const pos = positions[idx];
+      if (pos.walking || pos.atAsador) return;   // draw later (front layer)
+      const phase = State.chefBob + idx * 0.7;
+      const bobY = Math.sin(phase * 4) * 1;
+      drawChef(ctx, Math.round(pos.x - chefW / 2), Math.round(pos.y + bobY),
+               chefScale, 0, CHEF_ACCENTS[idx % CHEF_ACCENTS.length]);
+      const label = (t.tid > 0) ? `P${t.pid}.T${t.tid}` : `P${t.pid}`;
+      drawHUDText(ctx, label, Math.round(pos.x - 22), floorY + 14, pidColor(t.pid), 10);
+    });
+
+    // Front layer: walking + active chefs
+    threads.forEach((t, idx) => {
+      const pos = positions[idx];
+      if (!pos.walking && !pos.atAsador) return;
+      const phase = State.chefBob + idx * 0.7;
+      const bobY = pos.walking ? Math.sin(phase * 12) * 2 : Math.sin(phase * 6) * 1.5;
+      const stirFrame = pos.atAsador
+        ? (Math.floor(tickFrac * 4) % 2)        // stir while cooking
+        : (Math.floor(performance.now() / 90) % 2);  // walk cycle
+      const accent = CHEF_ACCENTS[idx % CHEF_ACCENTS.length];
+
+      // Glow under active chef at asador
+      if (pos.atAsador) {
+        ctx.save();
+        ctx.strokeStyle = pidColor(t.pid);
+        ctx.lineWidth = 3;
+        ctx.shadowColor = pidColor(t.pid);
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y + chefH + 2, chefW / 2 + 6, 6, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      drawChef(ctx, Math.round(pos.x - chefW / 2), Math.round(pos.y + bobY),
+               chefScale, stirFrame, accent);
+
+      const label = (t.tid > 0) ? `P${t.pid}.T${t.tid}` : `P${t.pid}`;
+      drawHUDText(ctx, label, Math.round(pos.x - 22), floorY + 14, pidColor(t.pid), 10);
+    });
+
+    // ── The TONGS (the only pair!) ───────────────────────────────────
+    const tongsScale = 4;
+    let tongsCx, tongsCy, tongsHeld = false, tongsHolderColor = null;
+    const activePos = activeIdx >= 0 ? positions[activeIdx] : null;
+    const prevPos = (prevIdx >= 0 && prevIdx !== activeIdx) ? positions[prevIdx] : null;
+
+    if (raceActive && prevPos) {
+      // Both reaching → tongs vibrate between them
+      const midX = (activePos ? activePos.x : CANVAS_W / 2 - 22)
+                   + (prevPos.x - (activePos ? activePos.x : CANVAS_W / 2 - 22)) * 0.5;
+      const intensity = 1 - (tickFrac / PHASE_WALK_IN_END);
+      tongsCx = midX + (Math.random() - 0.5) * 8 * intensity;
+      tongsCy = grillY - 8 + (Math.random() - 0.5) * 6 * intensity;
+    } else if (activePos && (activePos.atAsador || activePos.walking)) {
+      // Active chef carries the tongs (in their right hand)
+      tongsCx = activePos.x + chefW * 0.55;
+      tongsCy = activePos.y + chefH * 0.35;
+      tongsHeld = true;
+      tongsHolderColor = pidColor(threads[activeIdx].pid);
+    } else {
+      // No one holds — hover at asador center
+      tongsCx = CANVAS_W / 2;
+      tongsCy = grillY - 50 + Math.sin(performance.now() / 300) * 3;
+    }
+
+    // Red glow during race
     if (raceActive) {
       ctx.save();
       ctx.shadowColor = '#EF4444';
-      ctx.shadowBlur = 30;
+      ctx.shadowBlur = 24;
       ctx.fillStyle = 'rgba(239,68,68,0.5)';
-      ctx.fillRect(bookX, bookY, bookW, bookH);
+      ctx.fillRect(tongsCx - 22, tongsCy - 22, 44, 56);
+      ctx.restore();
+    } else if (tongsHeld && tongsHolderColor) {
+      // Subtle glow in holder's color
+      ctx.save();
+      ctx.shadowColor = tongsHolderColor;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = tongsHolderColor + '33';
+      ctx.fillRect(tongsCx - 16, tongsCy - 16, 32, 44);
       ctx.restore();
     }
 
-    // ── Chef Marios standing in a row at the counter ─────────────────
-    const CHEF_ACCENTS = ['#E63946', '#22C55E', '#F472B6', '#3B82F6', '#FBBF24', '#A855F7', '#06B6D4', '#EAB308'];
-    const N = threads.length;
-    const chefScale = N <= 4 ? 3 : 2;
-    const chefW = 16 * chefScale;
-    const chefH = 18 * chefScale;
-    const padX = 60;
-    const usableW = CANVAS_W - padX * 2;
-    const slotW = usableW / Math.max(1, N);
+    drawPixelSprite(ctx, Math.round(tongsCx - 4 * tongsScale), Math.round(tongsCy),
+                    tongsScale, SPRITE_TONGS, TONGS_PALETTE);
 
-    const activeIdx = (tIdx >= 0 && sched.timeline[tIdx]) ? sched.timeline[tIdx].idx : -1;
-
-    threads.forEach((t, idx) => {
-      const cx = padX + slotW * (idx + 0.5);
-      const isActive = (idx === activeIdx);
-
-      // Active chef leaps up toward the book; others stand at counter.
-      const tickFrac = tick - Math.floor(tick);
-      const leap = isActive ? Math.sin(tickFrac * Math.PI) : 0;
-      const leapY = leap * 50;
-
-      const phase = State.chefBob + idx * 0.7;
-      const bobY = isActive ? 0 : Math.sin(phase * 6) * 1.5;
-      const stirFrame = isActive ? (Math.floor(tickFrac * 4) % 2) : (Math.floor(phase * 2) % 2);
-
-      const accent = CHEF_ACCENTS[idx % CHEF_ACCENTS.length];
-      const baseY = counterY - chefH + 6;
-      const chefY = baseY - leapY + bobY;
-      const chefX = Math.round(cx - chefW / 2);
-
-      drawChef(ctx, chefX, chefY, chefScale, stirFrame, accent);
-
-      // Active chef's "reach" — arrow line toward the book
-      if (isActive) {
-        ctx.save();
-        ctx.strokeStyle = pidColor(t.pid);
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(cx, chefY + 8);
-        ctx.lineTo(CANVAS_W / 2, bookY + bookH / 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-
-      // Glow ring under active chef
-      if (isActive) {
-        ctx.save();
-        ctx.strokeStyle = pidColor(t.pid);
-        ctx.lineWidth = 2;
-        ctx.shadowColor = pidColor(t.pid);
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.ellipse(cx, baseY + chefH + 4, chefW / 2 + 6, 6, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // PID/TID label
-      const label = (t.tid > 0) ? `P${t.pid}.T${t.tid}` : `P${t.pid}`;
-      drawHUDText(ctx, label, Math.round(cx - 24), counterY + 18, pidColor(t.pid), 10);
-    });
+    // Tongs label (less obtrusive now)
+    if (!tongsHeld && !raceActive) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+      ctx.fillRect(CANVAS_W / 2 - 70, tongsCy - 14, 140, 14);
+      ctx.fillStyle = '#FCD34D';
+      ctx.font = 'bold 9px "Press Start 2P", "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('THE ONLY TONGS', CANVAS_W / 2, tongsCy - 4);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
 
     // ── Race condition banner ───────────────────────────────────────
     if (raceActive) {
+      const intensity = 1 - (tickFrac / PHASE_WALK_IN_END);
       ctx.save();
-      ctx.fillStyle = 'rgba(239,68,68,0.9)';
-      ctx.fillRect(CANVAS_W / 2 - 200, 40, 400, 30);
+      ctx.fillStyle = `rgba(239,68,68,${0.85 + 0.15 * intensity})`;
+      ctx.fillRect(CANVAS_W / 2 - 220, 26, 440, 40);
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 16px "Press Start 2P", "JetBrains Mono", monospace';
+      ctx.font = 'bold 14px "Press Start 2P", "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('⚡ RACE CONDITION', CANVAS_W / 2, 60);
-      ctx.font = '9px "JetBrains Mono", monospace';
-      ctx.fillStyle = '#FECACA';
-      ctx.fillText('¡Peach y Bowser agarraron las mismas pinzas a la vez!', CANVAS_W / 2, 78);
+      ctx.fillText('⚡ RACE CONDITION', CANVAS_W / 2, 48);
+      ctx.font = '8px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#FEE2E2';
+      ctx.fillText('Two chefs grabbed the tongs at the same time!', CANVAS_W / 2, 62);
       ctx.textAlign = 'left';
       ctx.restore();
     }
 
     ctx.restore();   // shake
 
-    // HUD — Multithreading carnita asada
-    drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 22, '#34D399', 13);
-    drawHUDText(ctx, `${threads.length} personajes · 1 asador · 1 hielera roja compartida`, 14, 40, '#A7F3D0', 11);
-    drawHUDText(ctx, '🧊 Toad, Yoshi y Peach comparten sal, limon y pinzas. Si dos las agarran a la vez → ¡pleito!',
+    // HUD
+    drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 36, '#34D399', 13);
+    drawHUDText(ctx, `${threads.length} chefs · 1 grill · tongs/cooler/molcajete SHARED`, 14, 54, '#A7F3D0', 11);
+    drawHUDText(ctx, '🤝 Everybody shares everything. If two grab the tongs at once → race!',
                 14, CANVAS_H - 14, '#A7F3D0', 11);
   }
 

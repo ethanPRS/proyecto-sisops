@@ -749,7 +749,24 @@
             </button>
             <span class="step-counter" id="gantt-step-counter"
               style="margin: 0 12px; min-width: 60px; text-align: center">0 / 0</span>
-            <div class="playback-speed" style="margin-left: 8px">
+            <div style="display: flex; align-items: center; margin-left: 8px;">
+              <span style="font-size: 0.8rem; margin-right: 12px; color: var(--text-muted);">Animations</span>
+              <div class="toggle-container">
+                <input class="toggle-input" type="checkbox" id="gantt-animations-toggle" checked>
+                <div class="toggle-handle-wrapper">
+                  <div class="toggle-handle">
+                    <div class="toggle-handle-knob"></div>
+                    <div class="toggle-handle-bar-wrapper">
+                      <div class="toggle-handle-bar"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="toggle-base">
+                  <div class="toggle-base-inside"></div>
+                </div>
+              </div>
+            </div>
+            <div class="playback-speed" style="margin-left: 12px">
               <label for="gantt-speed" style="margin: 0; font-size: 0.8rem">Speed</label>
               <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
               <span id="gantt-speed-label" class="text-mono" style="
@@ -1197,30 +1214,30 @@
         <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
           <header class="screen-header text-center"
             style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
-            <h2 id="heading-exec-modes">CPU Execution Modes</h2>
-            <p>Retro animations showing how processes are distributed across cores in each mode.</p>
+            <h2 id="heading-exec-modes">Mushroom Kingdom BBQ! 🔥</h2>
+            <p>How Mario and the crew share the grill — retro animations of the four execution modes.</p>
 
             <!-- Mode Tabs -->
             <div class="em-tabs mt-md" id="em-tabs">
               <button class="em-tab active" data-mode="concurrency">
                 <i class="ph ph-fire"></i>
                 <span>Concurrency</span>
-                <small>Mario alone · Alternating</small>
+                <small>Mario alone · jumping between tasks</small>
               </button>
               <button class="em-tab" data-mode="parallelism">
                 <i class="ph ph-users"></i>
                 <span>Parallelism</span>
-                <small>Mario &amp; Luigi simultaneous</small>
+                <small>Mario + Luigi at the same time</small>
               </button>
               <button class="em-tab" data-mode="multithreading">
                 <i class="ph ph-users-three"></i>
                 <span>Multithreading</span>
-                <small>Same table &amp; cooler</small>
+                <small>Whole crew · one table &amp; one cooler</small>
               </button>
               <button class="em-tab" data-mode="multiprocessing">
                 <i class="ph ph-house-line"></i>
                 <span>Multiprocessing</span>
-                <small>Separate yards</small>
+                <small>2 yards · 2 separate grills</small>
               </button>
             </div>
           </header>
@@ -1230,7 +1247,7 @@
             <div class="em-mushroom-icon">🍄</div>
             <div class="em-mushroom-bubble" id="em-mushroom-bubble">
               <strong id="em-tip-title">Concurrency</strong>
-              <p id="em-tip-text">Mario rapidly alternating tasks. Drops the tongs, mashes the avocado, runs back to check the meat.</p>
+              <p id="em-tip-text">Mario alone at the grill. Flips the meat, hops to the molcajete to mash avocado, runs back to the comal — looks simultaneous, but he only has two hands.</p>
             </div>
           </div>
 

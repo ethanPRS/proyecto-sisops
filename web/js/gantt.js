@@ -509,6 +509,8 @@ function _showNextIntro() {
 }
 
 function _queueIntro(key, type, label, description) {
+  const toggle = document.getElementById('gantt-animations-toggle');
+  if (toggle && !toggle.checked) return false;
   if (GanttIntro.introduced.has(key)) return false;
   GanttIntro.introduced.add(key);
   GanttIntro.queue.push({ key, type, label, description });
