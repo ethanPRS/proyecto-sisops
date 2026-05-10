@@ -418,7 +418,39 @@ function initCompCanvas(entries) {
 
   const scale = (cw - COMP_LEFT - 28) / totalTime;
 
-  function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
+  function drawIdleBlock(ctx, x, y, w, h) {
+  if (w <= 1) return;
+  // Fondo gris oscuro
+  ctx.fillStyle = 'rgba(60,60,80,0.55)';
+  roundRect(ctx, x, y, w, h, 4); ctx.fill();
+  // Borde punteado
+  ctx.save();
+  ctx.strokeStyle = 'rgba(150,150,180,0.35)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  roundRect(ctx, x+0.5, y+0.5, w-1, h-1, 4); ctx.stroke();
+  ctx.setLineDash([]);
+  // Hatch diagonal (estilo "no disponible")
+  ctx.strokeStyle = 'rgba(120,120,150,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const step = 8;
+  for (let d2 = -h; d2 < w + h; d2 += step) {
+    ctx.moveTo(x + d2, y);
+    ctx.lineTo(x + d2 + h, y + h);
+  }
+  ctx.stroke();
+  ctx.restore();
+  // Etiqueta IDLE si hay espacio
+  if (w > 28) {
+    ctx.fillStyle = 'rgba(160,160,190,0.65)';
+    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('IDLE', x + w / 2, y + h / 2 + 3);
+  }
+}
+
+function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
     if (w<=0) return;
     const c = marioBlockColor(pidIdx);
     // Sombra
@@ -491,11 +523,11 @@ function initCompCanvas(entries) {
           const x=COMP_LEFT+entry.start*scale;
           if (entry.end<=tick) {
             const bw=(entry.end-entry.start)*scale;
-            if(entry.pid<0){ctx.fillStyle='rgba(255,255,255,.03)';roundRect(ctx,x,rowY,bw,COMP_BAR_H,4);ctx.fill();}
+            if(entry.pid<0){ drawIdleBlock(ctx,x,rowY,bw,COMP_BAR_H); }
             else drawMarioBlock(ctx,x,rowY,bw,COMP_BAR_H,entry.pid);
           } else if (entry.start<tick) {
             const bw=(tick-entry.start)*scale;
-            if(entry.pid<0){ctx.fillStyle='rgba(255,255,255,.02)';roundRect(ctx,x,rowY,bw,COMP_BAR_H,4);ctx.fill();}
+            if(entry.pid<0){ ctx.globalAlpha=0.5; drawIdleBlock(ctx,x,rowY,bw,COMP_BAR_H); ctx.globalAlpha=1; }
             else{ctx.globalAlpha=0.55;drawMarioBlock(ctx,x,rowY,bw,COMP_BAR_H,entry.pid);ctx.globalAlpha=1;}
           }
         });
