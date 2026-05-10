@@ -60,7 +60,7 @@
 
         <div class="csv-example-block">
           <div class="csv-example-label">Example</div>
-<pre class="csv-example-code"><code>PID,Arrival,Burst,Priority,Pages,Threads,Forks
+          <pre class="csv-example-code"><code>PID,Arrival,Burst,Priority,Pages,Threads,Forks
 1,0,5,2,3,2;3,
 2,1,3,1,2,,1
 3,2,8,3,4,3,2;3
@@ -120,7 +120,9 @@
           min-width: max-content;
         }
 
-        .nav-spacer { flex: 1; }
+        .nav-spacer {
+          flex: 1;
+        }
 
         /* ─── Pill nav container ───────────────────────────────────── */
         .main-pill-nav {
@@ -156,11 +158,16 @@
           transition: all 0.2s ease;
           white-space: nowrap;
         }
-        .main-pill-nav .nav-btn::before { display: none; }
+
+        .main-pill-nav .nav-btn::before {
+          display: none;
+        }
+
         .main-pill-nav .nav-btn:hover {
           color: #ffffff;
           background: rgba(255, 255, 255, 0.05);
         }
+
         .main-pill-nav .nav-btn.active {
           background: linear-gradient(135deg, #8b5cf6, #d946ef) !important;
           color: #ffffff !important;
@@ -175,8 +182,8 @@
           gap: 6px;
           padding: 10px 16px;
           border-radius: 30px;
-          background: rgba(255,255,255,0.07);
-          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.12);
           color: #d1d5db;
           font-weight: 600;
           font-size: 0.85rem;
@@ -184,7 +191,12 @@
           white-space: nowrap;
           transition: all 0.2s ease;
         }
-        #nav-more-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        #nav-more-btn:hover {
+          background: rgba(255, 255, 255, 0.12);
+          color: #fff;
+        }
+
         #nav-more-btn.has-active {
           background: linear-gradient(135deg, #8b5cf6, #d946ef);
           color: #fff;
@@ -201,19 +213,29 @@
           right: 0;
           min-width: 200px;
           background: #1a1535;
-          border: 1px solid rgba(255,255,255,0.12);
+          border: 1px solid rgba(255, 255, 255, 0.12);
           border-radius: 16px;
           padding: 6px;
           gap: 2px;
-          box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
           z-index: 200;
           animation: dropdownIn 0.18s ease;
         }
-        #nav-more-dropdown.open { display: flex; }
+
+        #nav-more-dropdown.open {
+          display: flex;
+        }
 
         @keyframes dropdownIn {
-          from { opacity: 0; transform: translateY(-6px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
+          from {
+            opacity: 0;
+            transform: translateY(-6px) scale(0.97);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
 
         #nav-more-dropdown .nav-btn {
@@ -222,6 +244,7 @@
           font-size: 0.85rem;
           justify-content: flex-start;
         }
+
         #nav-more-dropdown .nav-btn.active {
           background: linear-gradient(135deg, #8b5cf6, #d946ef) !important;
         }
@@ -229,29 +252,65 @@
         /* ─── Responsive breakpoints ───────────────────────────────── */
         /* Hide overflow items at each breakpoint */
         @media (max-width: 1100px) {
-          .nav-hide-1100 { display: none !important; }
-          #nav-more-btn  { display: flex; }
+          .nav-hide-1100 {
+            display: none !important;
+          }
+
+          #nav-more-btn {
+            display: flex;
+          }
         }
+
         @media (max-width: 860px) {
-          .nav-hide-860  { display: none !important; }
+          .nav-hide-860 {
+            display: none !important;
+          }
         }
+
         @media (max-width: 700px) {
-          .nav-hide-700  { display: none !important; }
-          .top-nav-wrapper { padding: 12px 16px 6px; gap: 10px; }
+          .nav-hide-700 {
+            display: none !important;
+          }
+
+          .top-nav-wrapper {
+            padding: 12px 16px 6px;
+            gap: 10px;
+          }
         }
+
         @media (max-width: 540px) {
-          .nav-hide-540  { display: none !important; }
-          .brand-logo h1 { display: none; }
+          .nav-hide-540 {
+            display: none !important;
+          }
+
+          .brand-logo h1 {
+            display: none;
+          }
         }
+
         @media (max-width: 400px) {
-          .nav-hide-400  { display: none !important; }
+          .nav-hide-400 {
+            display: none !important;
+          }
         }
 
         @media (max-width: 1100px) {
-          .top-nav-wrapper { flex-wrap: wrap; justify-content: center; }
-          .brand-logo { flex: 0 0 auto; }
-          .nav-spacer { display: none; }
-          .main-pill-nav { flex: 0 0 auto; }
+          .top-nav-wrapper {
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          .brand-logo {
+            flex: 0 0 auto;
+          }
+
+          .nav-spacer {
+            display: none;
+          }
+
+          .main-pill-nav {
+            flex: 0 0 auto;
+          }
         }
       </style>
       <header class="top-nav-wrapper">
@@ -261,7 +320,8 @@
             <img src="img/Sisops%20Galaxy.png" alt="Sisops Galaxy Logo"
               style="width: 24px; height: 24px; object-fit: contain; border-radius: 4px;" />
           </div>
-          <h1 style="font-size: 1.2rem; font-weight: 700; background: var(--gradient-accent-h); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+          <h1
+            style="font-size: 1.2rem; font-weight: 700; background: var(--gradient-accent-h); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
             Sisops Galaxy</h1>
         </div>
 
@@ -304,6 +364,7 @@
       </header>
 
       <div class="content-area">
+        <!-- ─── Cambio ───────────────────────────────── -->
         <!-- ─── Screen 1: Processes ───────────────────────────────── -->
         <section class="screen active" id="screen-processes" aria-labelledby="heading-processes">
           <header class="screen-header">
@@ -369,7 +430,8 @@
               </div>
 
               <div class="form-group">
-                <label class="toggle-switch-label" for="toggle-forks" style="margin-bottom:var(--space-sm)">Forks</label>
+                <label class="toggle-switch-label" for="toggle-forks"
+                  style="margin-bottom:var(--space-sm)">Forks</label>
                 <div class="thread-toggle-row">
                   <label class="toggle-switch toggle-switch-fork" for="toggle-forks">
                     <input class="toggle-input" id="toggle-forks" name="toggle-forks" type="checkbox" />
@@ -419,7 +481,8 @@
                 <button class="btn btn-secondary" id="btn-load-sample">
                   <i class="ph ph-folder-open"></i> Sample
                 </button>
-                <button class="btn btn-secondary" id="btn-import-csv" title="Importar procesos desde un CSV (PID, Arrival, Burst, Priority, Pages, Threads, Forks)">
+                <button class="btn btn-secondary" id="btn-import-csv"
+                  title="Importar procesos desde un CSV (PID, Arrival, Burst, Priority, Pages, Threads, Forks)">
                   <i class="ph ph-file-csv"></i> CSV
                 </button>
                 <input type="file" id="input-csv-file" accept=".csv,text/csv" hidden />
@@ -724,8 +787,7 @@
 
           <!-- Controles paso-a-paso del Gantt (Sticky) -->
           <div class="playback-controls sticky-playback" id="gantt-playback">
-            <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reset (R)"
-              style="border-radius: 50%">
+            <button class="btn btn-secondary btn-sm" id="gantt-btn-reset" title="Reset (R)" style="border-radius: 50%">
               <i class="ph ph-skip-back"></i>
             </button>
             <button class="btn btn-secondary btn-sm" id="gantt-btn-prev" title="Step Back (←)"
@@ -749,7 +811,24 @@
             </button>
             <span class="step-counter" id="gantt-step-counter"
               style="margin: 0 12px; min-width: 60px; text-align: center">0 / 0</span>
-            <div class="playback-speed" style="margin-left: 8px">
+            <div style="display: flex; align-items: center; margin-left: 8px;">
+              <span style="font-size: 0.8rem; margin-right: 12px; color: var(--text-muted);">Animations</span>
+              <div class="toggle-container">
+                <input class="toggle-input" type="checkbox" id="gantt-animations-toggle" checked>
+                <div class="toggle-handle-wrapper">
+                  <div class="toggle-handle">
+                    <div class="toggle-handle-knob"></div>
+                    <div class="toggle-handle-bar-wrapper">
+                      <div class="toggle-handle-bar"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="toggle-base">
+                  <div class="toggle-base-inside"></div>
+                </div>
+              </div>
+            </div>
+            <div class="playback-speed" style="margin-left: 12px">
               <label for="gantt-speed" style="margin: 0; font-size: 0.8rem">Speed</label>
               <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
               <span id="gantt-speed-label" class="text-mono" style="
@@ -926,17 +1005,21 @@
               <div class="form-group">
                 <label><i class="ph ph-strategy"></i> Replacement Strategy</label>
                 <div class="pr-algo-pills" id="pr-algo-pills" role="radiogroup" aria-label="Algorithm">
-                  <label class="pr-pill active"><input type="radio" name="pr-algo-radio" value="FIFO" checked hidden />FIFO</label>
+                  <label class="pr-pill active"><input type="radio" name="pr-algo-radio" value="FIFO" checked
+                      hidden />FIFO</label>
                   <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="LRU" hidden />LRU</label>
-                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Optimal" hidden />Optimal</label>
+                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Optimal"
+                      hidden />Optimal</label>
                   <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Clock" hidden />Clock</label>
-                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Second Chance" hidden />2nd Chance</label>
+                  <label class="pr-pill"><input type="radio" name="pr-algo-radio" value="Second Chance" hidden />2nd
+                    Chance</label>
                 </div>
               </div>
 
               <!-- Bowser Game Button -->
               <div class="flex gap-md mt-md">
-                <a href="page_replace_game.html" target="_blank" class="btn-holographic" style="text-decoration:none;flex-direction:row;font-weight:600;width:100%;font-family:var(--font-body);font-size:0.85rem;">
+                <a href="page_replace_game.html" target="_blank" class="btn-holographic"
+                  style="text-decoration:none;flex-direction:row;font-weight:600;width:100%;font-family:var(--font-body);font-size:0.85rem;">
                   <i class="ph ph-game-controller" style="font-size:1.2rem"></i>
                   Bowser's Conquest
                 </a>
@@ -955,8 +1038,7 @@
                 <label for="pr-refstring"><i class="ph ph-list-numbers"></i> Page Request Sequence</label>
                 <div class="pr-refstring-row">
                   <input type="text" class="form-input" id="pr-refstring"
-                    value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1"
-                    placeholder="e.g. 1,4,2,5,1,2,3" />
+                    value="7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1" placeholder="e.g. 1,4,2,5,1,2,3" />
                   <button class="btn btn-secondary btn-sm" id="pr-btn-random" title="Generate random sequence">
                     <i class="ph ph-shuffle"></i>
                   </button>
@@ -1036,22 +1118,26 @@
 
               <!-- Media Controls -->
               <div class="playback-controls" id="pr-playback">
-                <button class="btn btn-secondary btn-sm" id="pr-btn-reset" title="Clear Table (Reset)" style="border-radius:50%">
+                <button class="btn btn-secondary btn-sm" id="pr-btn-reset" title="Clear Table (Reset)"
+                  style="border-radius:50%">
                   <i class="ph ph-eraser"></i>
                 </button>
                 <button class="btn btn-secondary btn-sm" id="pr-btn-prev" title="Step Back" style="border-radius:50%">
                   <i class="ph ph-rewind"></i>
                 </button>
-                <button class="btn btn-primary" id="pr-btn-play" style="border-radius:24px;padding:8px 28px;font-size:1.1rem;font-weight:700">
+                <button class="btn btn-primary" id="pr-btn-play"
+                  style="border-radius:24px;padding:8px 28px;font-size:1.1rem;font-weight:700">
                   <i class="ph ph-play"></i> Play
                 </button>
-                <button class="btn btn-secondary btn-sm" id="pr-btn-next" title="Step Forward" style="border-radius:50%">
+                <button class="btn btn-secondary btn-sm" id="pr-btn-next" title="Step Forward"
+                  style="border-radius:50%">
                   <i class="ph ph-fast-forward"></i>
                 </button>
                 <div class="playback-speed" style="margin-left:8px">
                   <label for="pr-speed" style="margin:0;font-size:0.8rem">Speed</label>
                   <input type="range" id="pr-speed" min="0.25" max="3" step="0.25" value="1" style="width:80px" />
-                  <span id="pr-speed-label" class="text-mono" style="font-size:0.85rem;font-weight:600;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:6px;color:#fff;border:1px solid rgba(255,255,255,0.2)">1.0x</span>
+                  <span id="pr-speed-label" class="text-mono"
+                    style="font-size:0.85rem;font-weight:600;background:rgba(255,255,255,0.15);padding:3px 8px;border-radius:6px;color:#fff;border:1px solid rgba(255,255,255,0.2)">1.0x</span>
                 </div>
               </div>
             </div>
@@ -1073,12 +1159,15 @@
               <div class="card pr-log-card">
                 <div class="card-title flex-between">
                   <div><span class="card-icon"><i class="ph ph-scroll"></i></span> Event Log</div>
-                  <button class="btn-icon" id="pr-log-clear" title="Clear log" style="font-size:0.75rem;padding:4px 8px">
+                  <button class="btn-icon" id="pr-log-clear" title="Clear log"
+                    style="font-size:0.75rem;padding:4px 8px">
                     <i class="ph ph-trash"></i>
                   </button>
                 </div>
                 <div class="pr-event-log" id="pr-event-log">
-                  <div class="pr-log-empty"><i class="ph ph-books"></i><p>Run a simulation to see the log.</p></div>
+                  <div class="pr-log-empty"><i class="ph ph-books"></i>
+                    <p>Run a simulation to see the log.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1093,10 +1182,12 @@
 
 
         <!-- ─── Screen 5: Comparison (v2) ──────────────────────────── -->
+        <!-- ─── Screen 5: Comparison ──────────────────────────────── -->
         <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
           <header class="screen-header">
             <h2 id="heading-comparison">Algorithm Comparison</h2>
-            <p>Cada algoritmo corre en su propio thread real del SO. Selecciona la categoría, los algoritmos y el número de cores.</p>
+            <p>Cada algoritmo corre en su propio thread real del SO. Selecciona la categoría, los algoritmos y el número
+              de cores.</p>
           </header>
 
           <!-- Tabs categoría -->
@@ -1112,7 +1203,9 @@
             <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
               <i class="ph ph-cpu"></i>
               <label for="comp-cores">Cores:</label>
-              <select id="comp-cores" style="padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)" onchange="setCompCores(this.value)">
+              <select id="comp-cores"
+                style="padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)"
+                onchange="setCompCores(this.value)">
                 <option value="1">1 core</option>
                 <option value="2">2 cores</option>
                 <option value="4" selected>4 cores</option>
@@ -1124,22 +1217,25 @@
 
           <!-- Hint + contador -->
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span id="comp-algo-hint" style="font-size:12px;color:var(--text-secondary)">Selecciona 2–4 algoritmos de scheduling</span>
+            <span id="comp-algo-hint" style="font-size:12px;color:var(--text-secondary)">Selecciona 2–4 algoritmos de
+              scheduling</span>
             <span id="comp-sel-count" style="font-size:11px;color:var(--text-muted)">0 / 4 seleccionados</span>
           </div>
 
           <!-- Grid de tarjetas de algoritmos -->
-          <div id="comp-algo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px"></div>
+          <div id="comp-algo-grid"
+            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px">
+          </div>
 
-          <!-- Controles adicionales -->
+          <!-- Quantum: solo visible cuando RR o MLFQ están seleccionados -->
           <div id="comp-quantum-row" style="display:none;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
             <label style="font-size:12px;color:var(--text-secondary)">Quantum (RR/MLFQ):</label>
             <input id="comp-quantum" type="number" value="2" min="1" max="20"
               style="width:64px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
             <span style="font-size:10px;color:var(--text-muted)">Solo aplica para Round Robin y MLFQ</span>
           </div>
-          <div id="comp-sched-opts" style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-          </div>
+
+          <!-- Paginación options -->
           <div id="comp-page-opts" style="display:none;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
             <label style="font-size:12px;color:var(--text-secondary)">Cadena de referencia:</label>
             <input id="comp-ref-string" type="text" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1"
@@ -1149,10 +1245,13 @@
               style="width:56px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
           </div>
 
+          <!-- Placeholder para comp-sched-opts (requerido por JS) -->
+          <div id="comp-sched-opts" style="display:none"></div>
+
           <!-- Botón + log de threads -->
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
             <button class="btn btn-primary" id="btn-run-comparison" disabled onclick="runComparison()">
-              <i class="ph ph-play"></i> Comparar
+              <i class="ph ph-play"></i> ▶ Comparar
             </button>
             <span id="comp-thread-log" style="font-size:11px;color:var(--text-muted)"></span>
           </div>
@@ -1171,15 +1270,21 @@
               transition: border-color .15s, background .15s, box-shadow .15s;
               user-select: none;
             }
-            .comp-algo-card:hover { border-color: var(--accent); }
+
+            .comp-algo-card:hover {
+              border-color: var(--accent);
+            }
+
             .comp-summary-grid {
               display: grid;
               grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
               gap: 10px;
               margin-bottom: 4px;
             }
-            #comp-tab-sched.active, #comp-tab-page.active {
-              background: rgba(110,235,131,0.15);
+
+            #comp-tab-sched.active,
+            #comp-tab-page.active {
+              background: rgba(110, 235, 131, 0.15);
               color: var(--accent);
               border-color: var(--accent);
             }
@@ -1189,30 +1294,30 @@
         <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
           <header class="screen-header text-center"
             style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
-            <h2 id="heading-exec-modes">CPU Execution Modes</h2>
-            <p>Retro animations showing how processes are distributed across cores in each mode.</p>
+            <h2 id="heading-exec-modes">Mushroom Kingdom BBQ! 🔥</h2>
+            <p>How Mario and the crew share the grill — retro animations of the four execution modes.</p>
 
             <!-- Mode Tabs -->
             <div class="em-tabs mt-md" id="em-tabs">
               <button class="em-tab active" data-mode="concurrency">
                 <i class="ph ph-fire"></i>
                 <span>Concurrency</span>
-                <small>Mario alone · Alternating</small>
+                <small>Mario alone · jumping between tasks</small>
               </button>
               <button class="em-tab" data-mode="parallelism">
                 <i class="ph ph-users"></i>
                 <span>Parallelism</span>
-                <small>Mario &amp; Luigi simultaneous</small>
+                <small>Mario + Luigi at the same time</small>
               </button>
               <button class="em-tab" data-mode="multithreading">
                 <i class="ph ph-users-three"></i>
                 <span>Multithreading</span>
-                <small>Same table &amp; cooler</small>
+                <small>Whole crew · one table &amp; one cooler</small>
               </button>
               <button class="em-tab" data-mode="multiprocessing">
                 <i class="ph ph-house-line"></i>
                 <span>Multiprocessing</span>
-                <small>Separate yards</small>
+                <small>2 yards · 2 separate grills</small>
               </button>
             </div>
           </header>
@@ -1222,7 +1327,8 @@
             <div class="em-mushroom-icon">🍄</div>
             <div class="em-mushroom-bubble" id="em-mushroom-bubble">
               <strong id="em-tip-title">Concurrency</strong>
-              <p id="em-tip-text">Mario rapidly alternating tasks. Drops the tongs, mashes the avocado, runs back to check the meat.</p>
+              <p id="em-tip-text">Mario alone at the grill. Flips the meat, hops to the molcajete to mash avocado, runs
+                back to the comal — looks simultaneous, but he only has two hands.</p>
             </div>
           </div>
 
@@ -1265,7 +1371,11 @@
                 <input type="range" id="em-speed" min="0.25" max="3" step="0.25" value="1" />
                 <span id="em-speed-label">1.0x</span>
               </div>
-              <button class="btn btn-secondary btn-sm em-sound-btn" id="em-btn-sound" title="Sonido">
+              <button class="btn btn-secondary btn-sm em-mt-only" id="em-btn-safe"
+                title="Toggle safe mode (mutex prevents races)" style="display:none;">
+                <i class="ph ph-lock-open"></i> Safe Mode: OFF
+              </button>
+              <button class="btn btn-secondary btn-sm em-sound-btn" id="em-btn-sound" title="Sound">
                 <i class="ph ph-speaker-high"></i>
               </button>
             </div>
@@ -1313,10 +1423,6 @@
               <div class="card-title">
                 <span class="card-icon"><i class="ph ph-note"></i></span>
                 Input Text
-              </div>
-              <div class="form-group">
-                <label for="file-input" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">O selecciona archivos .txt:</label>
-                <input type="file" id="file-input" multiple accept=".txt" style="width: 100%; margin-bottom: 1rem;">
               </div>
               <div class="form-group" style="position: relative">
                 <textarea class="form-textarea" id="regex-input" rows="12" placeholder="Pega aquí el texto a analizar...
@@ -1478,96 +1584,96 @@ Address: 123 Main St, Monterrey, NL"></textarea>
   <script src="js/gantt.js?v=6"></script>
   <script src="js/memory.js?v=4"></script>
   <script src="js/pageReplace.js?v=5"></script>
-  <script src="js/comparison.js?v=12"></script>
+  <script src="js/comparison.js?v=13"></script>
 
   <script src="js/exec_modes.js?v=4"></script>
   <script src="js/regex.js?v=4"></script>
 
   <!-- ── Responsive "Más" dropdown ───────────────────────────────── -->
   <script>
-  (function () {
-    const moreBtn    = document.getElementById('nav-more-btn');
-    const dropdown   = document.getElementById('nav-more-dropdown');
-    const hiddenClasses = ['nav-hide-400', 'nav-hide-540', 'nav-hide-700',
-                           'nav-hide-860', 'nav-hide-1100'];
+    (function () {
+      const moreBtn = document.getElementById('nav-more-btn');
+      const dropdown = document.getElementById('nav-more-dropdown');
+      const hiddenClasses = ['nav-hide-400', 'nav-hide-540', 'nav-hide-700',
+        'nav-hide-860', 'nav-hide-1100'];
 
-    /* Build / refresh dropdown contents based on which items are hidden */
-    function syncDropdown() {
-      dropdown.innerHTML = '';
-      let anyHidden = false;
+      /* Build / refresh dropdown contents based on which items are hidden */
+      function syncDropdown() {
+        dropdown.innerHTML = '';
+        let anyHidden = false;
 
-      document.querySelectorAll('.main-pill-nav .nav-btn:not(#nav-more-btn)').forEach(btn => {
-        const hidden = hiddenClasses.some(c => {
-          if (!btn.classList.contains(c)) return false;
-          // Check if that class is currently hiding the element
-          return getComputedStyle(btn).display === 'none';
+        document.querySelectorAll('.main-pill-nav .nav-btn:not(#nav-more-btn)').forEach(btn => {
+          const hidden = hiddenClasses.some(c => {
+            if (!btn.classList.contains(c)) return false;
+            // Check if that class is currently hiding the element
+            return getComputedStyle(btn).display === 'none';
+          });
+
+          if (hidden) {
+            anyHidden = true;
+            // Clone and strip hide classes so it's always visible inside dropdown
+            const clone = btn.cloneNode(true);
+            hiddenClasses.forEach(c => clone.classList.remove(c));
+            clone.addEventListener('click', () => {
+              closeDropdown();
+              btn.click(); // trigger original nav logic
+            });
+            dropdown.appendChild(clone);
+          }
         });
 
-        if (hidden) {
-          anyHidden = true;
-          // Clone and strip hide classes so it's always visible inside dropdown
-          const clone = btn.cloneNode(true);
-          hiddenClasses.forEach(c => clone.classList.remove(c));
-          clone.addEventListener('click', () => {
-            closeDropdown();
-            btn.click(); // trigger original nav logic
-          });
-          dropdown.appendChild(clone);
-        }
+        moreBtn.style.display = anyHidden ? 'flex' : 'none';
+        updateMoreBtnState();
+      }
+
+      /* Highlight "Más" button if the active screen is inside the dropdown */
+      function updateMoreBtnState() {
+        const hasActive = !!dropdown.querySelector('.nav-btn.active');
+        moreBtn.classList.toggle('has-active', hasActive);
+      }
+
+      function openDropdown() {
+        syncDropdown();
+        dropdown.classList.add('open');
+        moreBtn.setAttribute('aria-expanded', 'true');
+      }
+
+      function closeDropdown() {
+        dropdown.classList.remove('open');
+        moreBtn.setAttribute('aria-expanded', 'false');
+      }
+
+      function toggleDropdown() {
+        if (dropdown.classList.contains('open')) closeDropdown();
+        else openDropdown();
+      }
+
+      moreBtn.addEventListener('click', e => { e.stopPropagation(); toggleDropdown(); });
+
+      // Close when clicking outside
+      document.addEventListener('click', e => {
+        if (!dropdown.contains(e.target) && e.target !== moreBtn) closeDropdown();
       });
 
-      moreBtn.style.display = anyHidden ? 'flex' : 'none';
-      updateMoreBtnState();
-    }
+      // Close on Escape
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDropdown(); });
 
-    /* Highlight "Más" button if the active screen is inside the dropdown */
-    function updateMoreBtnState() {
-      const hasActive = !!dropdown.querySelector('.nav-btn.active');
-      moreBtn.classList.toggle('has-active', hasActive);
-    }
+      // Re-sync on resize (breakpoints change which items are hidden)
+      window.addEventListener('resize', () => {
+        if (dropdown.classList.contains('open')) syncDropdown();
+        else updateMoreBtnState();
+      });
 
-    function openDropdown() {
-      syncDropdown();
-      dropdown.classList.add('open');
-      moreBtn.setAttribute('aria-expanded', 'true');
-    }
+      // Observe active-class changes on nav buttons so "Más" badge updates live
+      const observer = new MutationObserver(updateMoreBtnState);
+      document.querySelectorAll('.main-pill-nav .nav-btn:not(#nav-more-btn)').forEach(btn => {
+        observer.observe(btn, { attributes: true, attributeFilter: ['class'] });
+      });
 
-    function closeDropdown() {
-      dropdown.classList.remove('open');
-      moreBtn.setAttribute('aria-expanded', 'false');
-    }
-
-    function toggleDropdown() {
-      if (dropdown.classList.contains('open')) closeDropdown();
-      else openDropdown();
-    }
-
-    moreBtn.addEventListener('click', e => { e.stopPropagation(); toggleDropdown(); });
-
-    // Close when clicking outside
-    document.addEventListener('click', e => {
-      if (!dropdown.contains(e.target) && e.target !== moreBtn) closeDropdown();
-    });
-
-    // Close on Escape
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDropdown(); });
-
-    // Re-sync on resize (breakpoints change which items are hidden)
-    window.addEventListener('resize', () => {
-      if (dropdown.classList.contains('open')) syncDropdown();
-      else updateMoreBtnState();
-    });
-
-    // Observe active-class changes on nav buttons so "Más" badge updates live
-    const observer = new MutationObserver(updateMoreBtnState);
-    document.querySelectorAll('.main-pill-nav .nav-btn:not(#nav-more-btn)').forEach(btn => {
-      observer.observe(btn, { attributes: true, attributeFilter: ['class'] });
-    });
-
-    // Initial sync after a tick (lets app.js finish setting up)
-    setTimeout(syncDropdown, 100);
-    window.addEventListener('resize', syncDropdown);
-  })();
+      // Initial sync after a tick (lets app.js finish setting up)
+      setTimeout(syncDropdown, 100);
+      window.addEventListener('resize', syncDropdown);
+    })();
   </script>
 </body>
 

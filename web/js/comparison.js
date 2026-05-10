@@ -69,7 +69,7 @@ function setCompCategory(cat) {
     `Selecciona 2–${max} algoritmos de ${cat==='scheduling'?'scheduling':'paginación'}`;
   document.getElementById('comp-sched-opts').style.display = cat==='scheduling'?'flex':'none';
   document.getElementById('comp-page-opts').style.display  = cat==='paging'    ?'flex':'none';
-  buildAlgoCards(cat); clearCompResults(); updateSelCount(); updateQuantumVisibility();
+  buildAlgoCards(cat); clearCompResults(); updateSelCount(); updateCompQuantumVisibility();
   document.getElementById('btn-run-comparison').disabled = true;
 }
 
@@ -107,7 +107,7 @@ function toggleAlgoCard(card, name, color) {
     card.style.boxShadow   = `0 0 0 2px ${color}55`;
   }
   updateSelCount();
-  if(CompState.category==='scheduling') updateQuantumVisibility();
+  if(CompState.category==='scheduling') updateCompQuantumVisibility();
   document.getElementById('btn-run-comparison').disabled = CompState.selected.length < 2;
 }
 
@@ -117,7 +117,7 @@ function updateSelCount() {
 }
 
 /* ═══ Quantum visibility — solo para Round Robin y MLFQ ══════════════ */
-function updateQuantumVisibility(){
+function updateCompQuantumVisibility(){
   const needsQuantum = CompState.selected.some(n => n==='Round Robin' || n==='MLFQ');
   const el = document.getElementById('comp-quantum-row');
   if(el) el.style.display = needsQuantum ? 'flex' : 'none';
@@ -1277,7 +1277,7 @@ window.runComparison  =runComparison;
 window.initComparison =initComparison;
 window.setCompCategory=setCompCategory;
 window.setCompCores   =setCompCores;
-window.updateQuantumVisibility=updateQuantumVisibility;
+window.updateCompQuantumVisibility=updateCompQuantumVisibility;
 window.toggleCompPlay =toggleCompPlay;
 window.stopCompPlayer =stopCompPlayer;
 window.compSeek       =compSeek;

@@ -3544,6 +3544,17 @@ tbody td:first-child {
   opacity: 0.5;
 }
 
+/* Safe Mode toggle (multithreading only) */
+#em-btn-safe.em-safe-on {
+  background: #10B981;
+  color: #FFFFFF;
+  border-color: #059669;
+}
+
+#em-btn-safe.em-safe-on:hover {
+  background: #059669;
+}
+
 
 /* ── Stats Card ─────────────────────────────────────────────────────── */
 .em-stats-grid {
