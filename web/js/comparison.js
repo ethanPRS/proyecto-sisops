@@ -808,119 +808,106 @@ function drawBarChartMario(canvasId, labels, values, higherIsBetter, frac){
   const dpr=window.devicePixelRatio||1;
   const cont=canvas.parentElement;
   const W=cont.clientWidth||260;
-  const H=220;
+  const H=240;
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.height=H+'px';
   ctx.scale(dpr,dpr);
 
-  // Márgenes: arriba espacio para número + Mario, abajo para nombre
-  const L=8, R=8, T=52, B=44;
+  // Layout:  T=espacio número arriba, B=espacio nombre abajo
+  const L=14, R=14, T=30, B=52;
   const cw=W-L-R, ch=H-T-B;
-  const maxV=Math.max(...values,0.001);
-  const nMax=maxV*1.18||1;
-  const n=values.length;
-  const gap=10;
-  const bw=Math.min((cw-gap*(n+1))/n, 68);
-  const totalW=n*bw+gap*(n+1);
-  const sx=L+(cw-totalW)/2+gap;
 
-  // Fondo
-  ctx.fillStyle='rgba(0,0,0,0)';
   ctx.clearRect(0,0,W,H);
 
-  // Piso estilo Mario
-  ctx.fillStyle='#3D1A00';
-  ctx.fillRect(L, T+ch, cw, 6);
-  ctx.fillStyle='#5B2D00';
-  ctx.fillRect(L, T+ch+1, cw, 3);
+  const maxV=Math.max(...values,0.001);
+  const nMax=maxV*1.2;
+  const n=values.length;
+  const gap=Math.max(8, cw*0.06);
+  const bw=Math.max(20, (cw - gap*(n+1)) / n);
+  const totalW=n*bw + gap*(n+1);
+  const sx=L + (cw-totalW)/2 + gap;
 
   // Línea base
-  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(L,T+ch); ctx.lineTo(W-R,T+ch); ctx.stroke();
 
-  const isWinner = (v)=> higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
+  const isWinner=(v)=> higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
 
   values.forEach((v,i)=>{
     const x   = sx + i*(bw+gap);
-    const bh  = Math.max((v/nMax)*ch, 2);
+    const bh  = Math.max((v/nMax)*ch, 3);
     const y   = T+ch-bh;
     const c   = marioBlockColor(i);
     const win = isWinner(v);
+    const cx  = x + bw/2;  // centro horizontal de la barra
 
+    // ── Barra ─────────────────────────────────────────────────────────
     // Sombra
-    ctx.fillStyle='rgba(0,0,0,0.25)';
+    ctx.fillStyle='rgba(0,0,0,0.2)';
     roundRect(ctx,x+2,y+3,bw,bh,5); ctx.fill();
 
-    // Barra gradiente Mario 3D
+    // Gradiente 3D
     const g=ctx.createLinearGradient(x,y,x,y+bh);
-    g.addColorStop(0,c.top); g.addColorStop(0.45,c.mid); g.addColorStop(1,c.dark);
+    g.addColorStop(0,c.top); g.addColorStop(0.5,c.mid); g.addColorStop(1,c.dark);
     ctx.fillStyle=g; roundRect(ctx,x,y,bw,bh,5); ctx.fill();
 
     // Brillo superior
-    ctx.fillStyle='rgba(255,255,255,0.22)';
-    roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.3,12),3); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.28,10),3); ctx.fill();
 
-    // Borde inferior oscuro
-    ctx.fillStyle=c.dark+'cc';
-    roundRect(ctx,x+1,y+bh-4,bw-2,4,[0,0,5,5]); ctx.fill();
-
-    // Contorno ganador (neón)
+    // Contorno ganador
     if(win){
       ctx.save();
-      ctx.shadowColor=c.top; ctx.shadowBlur=14;
-      ctx.strokeStyle=c.top; ctx.lineWidth=2;
+      ctx.strokeStyle=c.top; ctx.lineWidth=2.5;
+      ctx.shadowColor=c.top; ctx.shadowBlur=10;
       roundRect(ctx,x-1,y-1,bw+2,bh+2,6); ctx.stroke();
       ctx.restore();
     }
 
-    // ── Número ARRIBA de la barra ───────────────────────────────────────
+    // ── Número ARRIBA de la barra — siempre visible ────────────────────
     const numStr = v.toFixed(1);
-    const numY   = y - 6;
+    ctx.save();
     if(win){
-      // Negrita + fondo pill para el ganador
-      ctx.fillStyle=c.top+'33';
-      const nw=ctx.measureText(numStr).width+10;
-      roundRect(ctx,x+bw/2-nw/2-1,numY-14,nw+2,17,4); ctx.fill();
-      ctx.fillStyle=c.top;
-      ctx.font=`bold 11px "JetBrains Mono",monospace`;
+      // Pill de fondo para el ganador
+      ctx.font = 'bold 12px "JetBrains Mono",monospace';
+      const tw = ctx.measureText(numStr).width;
+      ctx.fillStyle = c.mid+'55';
+      roundRect(ctx, cx-tw/2-5, y-26, tw+10, 20, 4); ctx.fill();
+      ctx.fillStyle = c.top;
     } else {
-      ctx.fillStyle='rgba(255,255,255,0.75)';
-      ctx.font=`10px "JetBrains Mono",monospace`;
+      ctx.font = '11px "JetBrains Mono",monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
     }
-    ctx.textAlign='center';
-    ctx.fillText(numStr, x+bw/2, numY);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(numStr, cx, y-16);
+    ctx.restore();
 
-    // ── Nombre del algoritmo ABAJO ──────────────────────────────────────
-    ctx.fillStyle = win ? c.top : 'rgba(255,255,255,0.5)';
-    ctx.font = win ? `bold 9px "Inter",sans-serif` : `9px "Inter",sans-serif`;
-    ctx.textAlign='center';
-    const lbl=labels[i].length>8?labels[i].slice(0,7)+'…':labels[i];
-    ctx.fillText(lbl, x+bw/2, T+ch+22);
+    // ── Nombre ABAJO — siempre visible, sin truncar si cabe ──────────
+    // Línea 1: nombre completo (o truncado si no cabe)
+    const maxChars = Math.floor(bw / 6.5);
+    const lbl = labels[i].length > maxChars ? labels[i].slice(0,maxChars-1)+'…' : labels[i];
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     if(win){
-      ctx.fillStyle=c.top+'aa';
-      ctx.font='bold 10px sans-serif';
-      ctx.fillText('★', x+bw/2, T+ch+34);
+      ctx.font = 'bold 10px "Inter",sans-serif';
+      ctx.fillStyle = c.top;
+    } else {
+      ctx.font = '10px "Inter",sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
     }
+    ctx.fillText(lbl, cx, T+ch+10);
 
-    // ── Mario sprite encima de la barra ganadora ─────────────────────────
-    if(win && typeof MARIO_SPRITE_FRAMES!=='undefined'){
-      const mScale=2;
-      const mW=16*mScale, mH=16*mScale;
-      const mx=x+bw/2-mW/2;
-      const my=y-mH-10;
-      // Frame animado según frac
-      const runKeys=typeof MARIO_RUN_KEYS!=='undefined'?MARIO_RUN_KEYS:['stand','run1','run2','run1'];
-      const frameKey=frac>=0.99?'stand':runKeys[Math.floor(Date.now()/150)%4];
-      const grid=MARIO_SPRITE_FRAMES[frameKey]||MARIO_SPRITE_FRAMES.stand;
-      for(let r=0;r<16;r++)for(let cc=0;cc<16;cc++){
-        const col=grid[r][cc]; if(col===null)continue;
-        ctx.fillStyle=col;
-        ctx.fillRect(Math.round(mx+cc*mScale),Math.round(my+r*mScale),mScale,mScale);
-      }
+    // Línea 2: ★ MEJOR o valor vacío para no-ganadores
+    if(win){
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = c.top;
+      ctx.fillText('★ MEJOR', cx, T+ch+24);
     }
+    ctx.restore();
   });
 }
-
 
 /* ═══ Análisis comparativo automático ════════════════════════════════ */
 function generateAnalysis(entries, isSched){
@@ -929,191 +916,101 @@ function generateAnalysis(entries, isSched){
 
   if(isSched){
     const sorted_wt  = [...entries].sort((a,b)=>a[1].avg_waiting   -b[1].avg_waiting);
-    const sorted_tat = [...entries].sort((a,b)=>a[1].avg_turnaround-b[1].avg_turnaround);
     const sorted_cpu = [...entries].sort((a,b)=>b[1].cpu_utilization-a[1].cpu_utilization);
     const sorted_ctx = [...entries].sort((a,b)=>(a[1].context_switches||0)-(b[1].context_switches||0));
-    const best_wt    = sorted_wt[0],  worst_wt  = sorted_wt[sorted_wt.length-1];
-    const best_tat   = sorted_tat[0], best_cpu  = sorted_cpu[0];
-    const best_ctx   = sorted_ctx[0], worst_ctx = sorted_ctx[sorted_ctx.length-1];
-    const c_bwt  = PID_COLORS[entries.findIndex(([n])=>n===best_wt[0])%PID_COLORS.length];
-    const c_btat = PID_COLORS[entries.findIndex(([n])=>n===best_tat[0])%PID_COLORS.length];
-    const c_bcpu = PID_COLORS[entries.findIndex(([n])=>n===best_cpu[0])%PID_COLORS.length];
+    const best_wt=sorted_wt[0], worst_wt=sorted_wt[sorted_wt.length-1];
+    const best_cpu=sorted_cpu[0], best_ctx=sorted_ctx[0], worst_ctx=sorted_ctx[sorted_ctx.length-1];
+    const c_bwt =PID_COLORS[entries.findIndex(([n])=>n===best_wt[0]) %PID_COLORS.length];
+    const c_bcpu=PID_COLORS[entries.findIndex(([n])=>n===best_cpu[0])%PID_COLORS.length];
+    const wtDiff=best_wt[1].avg_waiting>0?((worst_wt[1].avg_waiting-best_wt[1].avg_waiting)/best_wt[1].avg_waiting*100).toFixed(0):0;
 
-    const wtDiff = ((worst_wt[1].avg_waiting-best_wt[1].avg_waiting)/best_wt[1].avg_waiting*100).toFixed(0);
-    const overall = best_wt[0]===best_tat[0] ? best_wt[0] : best_wt[0];
-
-    section.innerHTML = `<div class="comp-analysis">
+    section.innerHTML=`<div class="comp-analysis">
       <h4>🏆 Análisis comparativo de resultados</h4>
-
       <p><strong>Menor Waiting Time:</strong>
-        <span class="winner-badge" style="background:${c_bwt}22;border:1px solid ${c_bwt}55;color:${c_bwt}">
-          ★ ${best_wt[0]} — ${best_wt[1].avg_waiting.toFixed(2)} ms
-        </span>
-        ${worst_wt[0]!==best_wt[0]
-          ? ` vs <strong>${worst_wt[0]}</strong> (${worst_wt[1].avg_waiting.toFixed(2)} ms). La diferencia es de <strong>${wtDiff}%</strong>.`
-          : ''}
-        ${SCHEDULING_META[best_wt[0]]
-          ? ` Esto se explica porque ${SCHEDULING_META[best_wt[0]].short} ${best_wt[0]==='SJF'||best_wt[0]==='SRTF'?'minimiza activamente el tiempo de espera eligiendo siempre el proceso más corto':'prioriza los procesos de manera que reduce el tiempo ocioso en cola'}.`
-          : ''}
+        <span class="winner-badge" style="background:${c_bwt}22;border:1px solid ${c_bwt}55;color:${c_bwt}">★ ${best_wt[0]} — ${best_wt[1].avg_waiting.toFixed(2)} ms</span>
+        ${worst_wt[0]!==best_wt[0]?` vs <strong>${worst_wt[0]}</strong> (${worst_wt[1].avg_waiting.toFixed(2)} ms). Diferencia: <strong>${wtDiff}%</strong>.`:''}
       </p>
-
-      <p><strong>Menor Turnaround Time:</strong>
-        <span class="winner-badge" style="background:${c_btat}22;border:1px solid ${c_btat}55;color:${c_btat}">
-          ★ ${best_tat[0]} — ${best_tat[1].avg_turnaround.toFixed(2)} ms
-        </span>
-        El turnaround refleja el tiempo total desde que el proceso llega hasta que termina. Un TAT bajo indica que el algoritmo no deja procesos esperando innecesariamente.
-      </p>
-
       <p><strong>Mayor utilización de CPU:</strong>
-        <span class="winner-badge" style="background:${c_bcpu}22;border:1px solid ${c_bcpu}55;color:${c_bcpu}">
-          ★ ${best_cpu[0]} — ${best_cpu[1].cpu_utilization.toFixed(1)}%
-        </span>
-        A mayor CPU%, menos tiempo ocioso. Los algoritmos preemptivos tienden a mantener la CPU más ocupada reasignándola inmediatamente al llegar un nuevo proceso.
+        <span class="winner-badge" style="background:${c_bcpu}22;border:1px solid ${c_bcpu}55;color:${c_bcpu}">★ ${best_cpu[0]} — ${best_cpu[1].cpu_utilization.toFixed(1)}%</span>
+        A mayor CPU%, menos tiempo ocioso. Los algoritmos preemptivos tienden a mantener la CPU más ocupada.
       </p>
-
-      <p><strong>Menos context switches:</strong>
-        <span class="winner-badge" style="background:rgba(110,235,131,.15);border:1px solid rgba(110,235,131,.4);color:#6EEB83">
-          ${best_ctx[0]} — ${best_ctx[1].context_switches||0}
-        </span>
-        vs <strong>${worst_ctx[0]}</strong> (${worst_ctx[1].context_switches||0}).
-        Los context switches tienen costo real de hardware (salvar/restaurar registros, invalidar TLB).
-        Los algoritmos no-preemptivos como FCFS generan menos switches pero pueden dejar la CPU ociosa.
-      </p>
-
-      <p><strong>Ventajas y desventajas observadas:</strong></p>
-      <ul>
-        ${entries.map(([name,d])=>{
-          const m=SCHEDULING_META[name]; if(!m)return '';
-          const isWinWT=name===best_wt[0], isWinCPU=name===best_cpu[0];
-          return `<li><strong>${name}</strong> — WT: ${d.avg_waiting.toFixed(2)}, CPU: ${d.cpu_utilization.toFixed(1)}%, Ctx Sw: ${d.context_switches||0}.
-            ${isWinWT?'✅ Mejor en tiempo de espera. ':''} ${isWinCPU?'✅ Mejor aprovechamiento de CPU. ':''}
-            ${m.starvation.includes('⚠️')?`⚠️ Puede causar starvation — requiere mecanismos adicionales. `:''}
-            ${m.preemptive.includes('❌')?'Bajo overhead de context switch (no preemptivo). ':'Alto overhead por preempción frecuente. '}</li>`;
-        }).join('')}
-      </ul>
-
-      <p><strong>¿Cuál usar con múltiples cores?</strong>
-        Con ${CompState.numCores} core(s) configurados, los algoritmos preemptivos como
-        ${entries.filter(([n])=>SCHEDULING_META[n]&&SCHEDULING_META[n].preemptive.includes('✅')).map(([n])=>n).join(', ')||'ninguno seleccionado'}
-        aprovechan mejor el paralelismo porque pueden redistribuir procesos entre cores en cada quantum.
-        Los algoritmos no-preemptivos asignan un proceso a un core y no lo liberan hasta que termina,
-        pudiendo dejar otros cores ociosos con cargas desequilibradas.
-      </p>
+      <p><strong>Menos context switches:</strong> <strong>${best_ctx[0]}</strong> (${best_ctx[1].context_switches||0}) vs <strong>${worst_ctx[0]}</strong> (${worst_ctx[1].context_switches||0}). Los context switches tienen costo real de hardware.</p>
+      <p><strong>Ventajas y desventajas:</strong></p>
+      <ul>${entries.map(([name,d])=>{
+        const m=SCHEDULING_META[name];if(!m)return'';
+        const isWinWT=name===best_wt[0],isWinCPU=name===best_cpu[0];
+        return`<li><strong>${name}</strong> — WT: ${d.avg_waiting.toFixed(2)}, CPU: ${d.cpu_utilization.toFixed(1)}%, Ctx Sw: ${d.context_switches||0}.
+          ${isWinWT?'✅ Mejor tiempo de espera. ':''} ${isWinCPU?'✅ Mejor uso de CPU. ':''}
+          ${m.starvation&&m.starvation.includes('⚠️')?'⚠️ Puede causar starvation. ':''}
+          ${m.preemptive&&m.preemptive.includes('❌')?'Bajo overhead (no preemptivo). ':''}
+        </li>`;
+      }).join('')}</ul>
+      <p><strong>Cores:</strong> Con ${CompState.numCores} core(s), los algoritmos preemptivos (${entries.filter(([n])=>SCHEDULING_META[n]&&SCHEDULING_META[n].preemptive&&SCHEDULING_META[n].preemptive.includes('✅')).map(([n])=>n).join(', ')||'ninguno'}) aprovechan mejor el paralelismo redistribuyendo procesos en cada quantum.</p>
     </div>`;
-
   } else {
-    // Análisis de paginación
-    const sorted_faults = [...entries].sort((a,b)=>a[1].total_faults-b[1].total_faults);
-    const sorted_hr     = [...entries].sort((a,b)=>b[1].hit_rate-a[1].hit_rate);
-    const best_f = sorted_faults[0], worst_f = sorted_faults[sorted_faults.length-1];
-    const best_h = sorted_hr[0];
-    const c_bf = PID_COLORS[entries.findIndex(([n])=>n===best_f[0])%PID_COLORS.length];
-    const c_bh = PID_COLORS[entries.findIndex(([n])=>n===best_h[0])%PID_COLORS.length];
-
-    section.innerHTML = `<div class="comp-analysis">
+    const sorted_f=[...entries].sort((a,b)=>a[1].total_faults-b[1].total_faults);
+    const best_f=sorted_f[0],worst_f=sorted_f[sorted_f.length-1];
+    const c_bf=PID_COLORS[entries.findIndex(([n])=>n===best_f[0])%PID_COLORS.length];
+    section.innerHTML=`<div class="comp-analysis">
       <h4>🏆 Análisis comparativo de paginación</h4>
-
       <p><strong>Menos Page Faults:</strong>
-        <span class="winner-badge" style="background:${c_bf}22;border:1px solid ${c_bf}55;color:${c_bf}">
-          ★ ${best_f[0]} — ${best_f[1].total_faults} fallos
-        </span>
+        <span class="winner-badge" style="background:${c_bf}22;border:1px solid ${c_bf}55;color:${c_bf}">★ ${best_f[0]} — ${best_f[1].total_faults} fallos</span>
         vs <strong>${worst_f[0]}</strong> (${worst_f[1].total_faults} fallos).
-        ${PAGING_META[best_f[0]]
-          ? ` ${best_f[0]} logra menos fallos porque ${PAGING_META[best_f[0]].short.toLowerCase()} — explota mejor el principio de localidad de la cadena de referencia usada.`
-          : ''}
       </p>
-
-      <p><strong>Mayor Hit Rate:</strong>
-        <span class="winner-badge" style="background:${c_bh}22;border:1px solid ${c_bh}55;color:${c_bh}">
-          ★ ${best_h[0]} — ${best_h[1].hit_rate.toFixed(1)}%
-        </span>
-        Un Hit Rate alto significa que la mayoría de páginas solicitadas ya estaban en memoria, evitando costosos accesos a disco.
-      </p>
-
-      <p><strong>Ventajas y desventajas observadas:</strong></p>
-      <ul>
-        ${entries.map(([name,d])=>{
-          const m=PAGING_META[name]; if(!m)return '';
-          const isWin=name===best_f[0];
-          return `<li><strong>${name}</strong> — ${d.total_faults} fallos, Hit Rate: ${d.hit_rate.toFixed(1)}%.
-            ${isWin?'✅ Menor número de page faults en esta cadena. ':''}
-            ${m.belady.includes('⚠️')?'⚠️ Sufre anomalía de Bélady. ':'✅ No sufre anomalía de Bélady. '}
-            ${m.short}.</li>`;
-        }).join('')}
-      </ul>
-
-      <p><strong>Nota sobre el algoritmo Optimal:</strong>
-        Si está seleccionado, sirve como cota inferior — ningún algoritmo online puede superar su número de fallos.
-        La distancia entre Optimal y los demás mide el "precio" de no conocer el futuro.
-      </p>
+      <ul>${entries.map(([name,d])=>{
+        const m=PAGING_META[name];if(!m)return'';
+        return`<li><strong>${name}</strong> — ${d.total_faults} fallos, Hit Rate: ${d.hit_rate.toFixed(1)}%.
+          ${name===best_f[0]?'✅ Menor número de page faults. ':''}
+          ${m.belady&&m.belady.includes('⚠️')?'⚠️ Sufre anomalía de Bélady. ':m.belady?'✅ No sufre anomalía. ':''}
+        </li>`;
+      }).join('')}</ul>
     </div>`;
   }
 }
 
-
-
-/* ═══ Subtablas por proceso (cálculo individual) ═════════════════════ */
+/* ═══ Subtablas por proceso ═══════════════════════════════════════════ */
 function buildProcessSubtables(entries, isSched){
-  /* Construye SOLO el esqueleto con celdas vacías identificadas por ID.
-     Los valores se rellenan en tiempo real desde updateLiveCellsSched/Page. */
-  const container = document.getElementById('comp-process-subtables');
-  if(!container) return;
+  const container=document.getElementById('comp-process-subtables');
+  if(!container)return;
+  if(!isSched){container.innerHTML='';return;}
 
-  if(!isSched){ container.innerHTML=''; return; }
-
-  const tablesHtml = entries.map(([name, d], ei) => {
-    const color   = PID_COLORS[ei % PID_COLORS.length];
-    const metrics = d.metrics || [];
-    if(!metrics.length) return '';
-
-    const rows = metrics.map((m, mi) => {
-      const pidColor = PID_COLORS[m.pid % PID_COLORS.length];
-      // IDs únicos: st = subtable, ei = algo index, mi = metric/process index
-      return `<tr id="str-${ei}-${mi}">
-        <td style="font-weight:700;text-align:center;color:#222">
-          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${pidColor};margin-right:4px;vertical-align:middle"></span>
-          P${m.pid}
-        </td>
+  const tablesHtml=entries.map(([name,d],ei)=>{
+    const color=PID_COLORS[ei%PID_COLORS.length];
+    const metrics=d.metrics||[];
+    if(!metrics.length)return'';
+    const rows=metrics.map((m,mi)=>{
+      const pidColor=PID_COLORS[m.pid%PID_COLORS.length];
+      return`<tr id="str-${ei}-${mi}">
+        <td style="font-weight:700;text-align:center;color:#222"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${pidColor};margin-right:4px;vertical-align:middle"></span>P${m.pid}</td>
         <td style="text-align:center;color:#555;font-size:11px">${m.arrival_time}</td>
         <td style="text-align:center;color:#555;font-size:11px">${m.burst_time}</td>
         <td id="stct-${ei}-${mi}" style="text-align:center;color:#222">—</td>
         <td id="sttat-${ei}-${mi}" style="text-align:center;color:#222">—</td>
-        <td id="stwt-${ei}-${mi}"  style="text-align:center;color:#222">—</td>
-        <td id="strt-${ei}-${mi}"  style="text-align:center;color:#222">—</td>
+        <td id="stwt-${ei}-${mi}" style="text-align:center;color:#222">—</td>
+        <td id="strt-${ei}-${mi}" style="text-align:center;color:#222">—</td>
       </tr>`;
     }).join('');
-
-    return `<div style="margin-bottom:12px">
+    return`<div style="margin-bottom:12px">
       <div style="font-size:10px;font-weight:700;color:${color};margin-bottom:5px;display:flex;align-items:center;gap:6px">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color}"></span>
-        ${name}
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color}"></span>${name}
       </div>
       <div class="table-wrapper">
         <table style="font-size:11px;background:#fff;color:#111">
-          <thead>
-            <tr style="background:${color}22;color:#333">
-              <th style="text-align:center;color:#333">PID</th>
-              <th style="text-align:center;color:#333">AT</th>
-              <th style="text-align:center;color:#333">BT</th>
-              <th style="text-align:center;color:#333">CT</th>
-              <th style="text-align:center;color:#333">TAT<br>
-                <span style="font-size:8px;font-weight:400;color:#666">(CT−AT)</span>
-              </th>
-              <th style="text-align:center;color:#333">WT<br>
-                <span style="font-size:8px;font-weight:400;color:#666">(TAT−BT)</span>
-              </th>
-              <th style="text-align:center;color:#333">RT<br>
-                <span style="font-size:8px;font-weight:400;color:#666">(1ªCPU−AT)</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
+          <thead><tr style="background:${color}22;color:#333">
+            <th style="text-align:center;color:#333">PID</th>
+            <th style="text-align:center;color:#333">AT</th>
+            <th style="text-align:center;color:#333">BT</th>
+            <th style="text-align:center;color:#333">CT</th>
+            <th style="text-align:center;color:#333">TAT<br><span style="font-size:8px;font-weight:400;color:#666">(CT−AT)</span></th>
+            <th style="text-align:center;color:#333">WT<br><span style="font-size:8px;font-weight:400;color:#666">(TAT−BT)</span></th>
+            <th style="text-align:center;color:#333">RT<br><span style="font-size:8px;font-weight:400;color:#666">(1ªCPU−AT)</span></th>
+          </tr></thead>
+          <tbody>${rows}
             <tr style="background:#f5f5f5;font-style:italic">
               <td colspan="4" style="text-align:right;font-size:10px;color:#666;padding-right:8px">Promedio:</td>
               <td id="stavgtat-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
-              <td id="stavgwt-${ei}"  style="text-align:center;font-weight:700;color:#111">—</td>
-              <td id="stavgrt-${ei}"  style="text-align:center;font-weight:700;color:#111">—</td>
+              <td id="stavgwt-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
+              <td id="stavgrt-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
             </tr>
           </tbody>
         </table>
@@ -1121,136 +1018,88 @@ function buildProcessSubtables(entries, isSched){
     </div>`;
   }).join('');
 
-  container.innerHTML = `
+  container.innerHTML=`
     <div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-top:12px;border-top:1px solid var(--border)">
       <i class="ph ph-function"></i> Cálculo por proceso
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
-      ${tablesHtml}
-    </div>`;
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">${tablesHtml}</div>`;
 }
 
-/* Actualiza las subtablas en tiempo real según el tick actual */
-function updateSubtablesLive(entries, tick, totalTime){
-  if(!entries) return;
-  entries.forEach(([name, d], ei) => {
-    const metrics = d.metrics || [];
-    const frac    = Math.min(tick / totalTime, 1);
-    const fin     = frac >= 0.99;
-
-    // Acumular TAT/WT/RT corridos para el promedio live
-    let sumTAT=0, sumWT=0, sumRT=0, cnt=0;
-
-    metrics.forEach((m, mi) => {
-      // Solo mostrar cuando el proceso "completaría" en este tick proporcional
-      const ctFrac = totalTime > 0 ? (m.completion_time / totalTime) : 1;
-      if (frac < ctFrac * 0.98 && !fin) return; // proceso aún no terminó en este tick
-
-      const ct  = m.completion_time;
-      const at  = m.arrival_time;
-      const bt  = m.burst_time;
-      const tat = m.turnaround_time;
-      const wt  = m.waiting_time;
-      const rt  = m.response_time;
-
-      const setCell = (id, val) => {
-        const el = document.getElementById(id);
-        if(el && el.textContent !== String(val)) el.textContent = val;
-      };
-
-      setCell(`stct-${ei}-${mi}`,  ct ?? '—');
-      setCell(`sttat-${ei}-${mi}`, fin
-        ? `${ct}−${at} = ${tat}`
-        : tat ?? '—');
-      setCell(`stwt-${ei}-${mi}`,  fin
-        ? `${tat}−${bt} = ${wt}`
-        : wt ?? '—');
-      setCell(`strt-${ei}-${mi}`,  fin
-        ? `1ªCPU−${at} = ${rt}`
-        : rt ?? '—');
-
-      sumTAT += tat||0; sumWT += wt||0; sumRT += rt||0; cnt++;
+function updateSubtablesLive(entries,tick,totalTime){
+  if(!entries)return;
+  entries.forEach(([name,d],ei)=>{
+    const metrics=d.metrics||[];
+    const frac=Math.min(tick/totalTime,1);
+    const fin=frac>=0.99;
+    let sumTAT=0,sumWT=0,sumRT=0,cnt=0;
+    metrics.forEach((m,mi)=>{
+      const ctFrac=totalTime>0?(m.completion_time/totalTime):1;
+      if(frac<ctFrac*0.98&&!fin)return;
+      const ct=m.completion_time,at=m.arrival_time,bt=m.burst_time;
+      const tat=m.turnaround_time,wt=m.waiting_time,rt=m.response_time;
+      const setCell=(id,val)=>{const el=document.getElementById(id);if(el&&el.textContent!==String(val))el.textContent=val;};
+      setCell(`stct-${ei}-${mi}`,ct??'—');
+      setCell(`sttat-${ei}-${mi}`,fin?`${ct}−${at} = ${tat}`:tat??'—');
+      setCell(`stwt-${ei}-${mi}`,fin?`${tat}−${bt} = ${wt}`:wt??'—');
+      setCell(`strt-${ei}-${mi}`,fin?`1ªCPU−${at} = ${rt}`:rt??'—');
+      sumTAT+=tat||0;sumWT+=wt||0;sumRT+=rt||0;cnt++;
     });
-
-    if(cnt > 0){
-      const avgEl = (id) => { const el=document.getElementById(id); return el; };
-      const setAvg = (id, v) => { const el=avgEl(id); if(el) el.textContent=v; };
-      setAvg(`stavgtat-${ei}`, (sumTAT/cnt).toFixed(2));
-      setAvg(`stavgwt-${ei}`,  (sumWT /cnt).toFixed(2));
-      setAvg(`stavgrt-${ei}`,  (sumRT /cnt).toFixed(2));
+    if(cnt>0){
+      const setAvg=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+      setAvg(`stavgtat-${ei}`,(sumTAT/cnt).toFixed(2));
+      setAvg(`stavgwt-${ei}`,(sumWT/cnt).toFixed(2));
+      setAvg(`stavgrt-${ei}`,(sumRT/cnt).toFixed(2));
     }
   });
 }
 
-/* ═══ Rellenar fila de promedio y ganador al terminar ════════════════ */
-function fillTableFinal(entries, isSched){
+/* ═══ Rellenar tabla final ════════════════════════════════════════════ */
+function fillTableFinal(entries,isSched){
   if(!entries||!entries.length)return;
-
-  const avgRow    = document.getElementById('comp-avg-row');
-  const winnerRow = document.getElementById('comp-winner-row');
-  const winnerCell= document.getElementById('comp-winner-cell');
+  const avgRow=document.getElementById('comp-avg-row');
+  const winnerRow=document.getElementById('comp-winner-row');
+  const winnerCell=document.getElementById('comp-winner-cell');
   if(!avgRow||!winnerRow)return;
-  // Estilo fila promedio: texto normal, no verde
   avgRow.style.background='rgba(255,255,255,0.04)';
 
   if(isSched){
-    const vals_wt  = entries.map(([,d])=>d.avg_waiting);
-    const vals_tat = entries.map(([,d])=>d.avg_turnaround);
-    const vals_rt  = entries.map(([,d])=>d.avg_response);
-    const vals_cpu = entries.map(([,d])=>d.cpu_utilization);
-    const avg = (arr)=>(arr.reduce((s,v)=>s+v,0)/arr.length);
-    document.getElementById('avg-wt') .textContent = avg(vals_wt).toFixed(2);
-    document.getElementById('avg-tat').textContent = avg(vals_tat).toFixed(2);
-    document.getElementById('avg-rt') .textContent = avg(vals_rt).toFixed(2);
-    document.getElementById('avg-cpu').textContent = avg(vals_cpu).toFixed(1)+'%';
+    const vals_wt =entries.map(([,d])=>d.avg_waiting);
+    const vals_tat=entries.map(([,d])=>d.avg_turnaround);
+    const vals_rt =entries.map(([,d])=>d.avg_response);
+    const vals_cpu=entries.map(([,d])=>d.cpu_utilization);
+    const avg=(arr)=>(arr.reduce((s,v)=>s+v,0)/arr.length);
+    document.getElementById('avg-wt') .textContent=avg(vals_wt).toFixed(2);
+    document.getElementById('avg-tat').textContent=avg(vals_tat).toFixed(2);
+    document.getElementById('avg-rt') .textContent=avg(vals_rt).toFixed(2);
+    document.getElementById('avg-cpu').textContent=avg(vals_cpu).toFixed(1)+'%';
     avgRow.style.display='';
-
-    // Destacar ganadores en negrita
-    const minWT = Math.min(...vals_wt);
-    const maxCPU= Math.max(...vals_cpu);
+    const minWT=Math.min(...vals_wt),maxCPU=Math.max(...vals_cpu);
     entries.forEach(([,d],i)=>{
-      if(d.avg_waiting===minWT){
-        const el=document.getElementById(`ct-wt-${i}`);
-        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
-      }
-      if(d.cpu_utilization===maxCPU){
-        const el=document.getElementById(`ct-cpu-${i}`);
-        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
-      }
+      if(d.avg_waiting===minWT){const el=document.getElementById(`ct-wt-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
+      if(d.cpu_utilization===maxCPU){const el=document.getElementById(`ct-cpu-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
     });
-
-    const winIdx = vals_wt.indexOf(minWT);
-    const winName= entries[winIdx][0];
+    const winIdx=vals_wt.indexOf(minWT);
+    const winName=entries[winIdx][0];
     const winColor=PID_COLORS[winIdx%PID_COLORS.length];
-    winnerCell.innerHTML = `🏆 <strong>Mejor rendimiento general:</strong>
+    winnerCell.innerHTML=`🏆 <strong>Mejor rendimiento general:</strong>
       <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
-      con el menor Waiting Time promedio (${minWT.toFixed(2)} ms).
-      También registró CPU: ${entries[winIdx][1].cpu_utilization.toFixed(1)}% y ${entries[winIdx][1].context_switches||0} context switches.`;
+      con el menor Waiting Time promedio (${minWT.toFixed(2)} ms). CPU: ${entries[winIdx][1].cpu_utilization.toFixed(1)}% — ${entries[winIdx][1].context_switches||0} context switches.`;
     winnerRow.style.display='';
-
+    buildProcessSubtables(entries,true);
   } else {
-    const vals_pf = entries.map(([,d])=>d.total_faults||0);
-    const vals_hr = entries.map(([,d])=>d.hit_rate||0);
-    const vals_fr = entries.map(([,d])=>d.fault_rate||0);
+    const vals_pf=entries.map(([,d])=>d.total_faults||0);
+    const vals_hr=entries.map(([,d])=>d.hit_rate||0);
+    const vals_fr=entries.map(([,d])=>d.fault_rate||0);
     const avg=(arr)=>(arr.reduce((s,v)=>s+v,0)/arr.length);
     document.getElementById('avg-pf').textContent=avg(vals_pf).toFixed(1);
     document.getElementById('avg-hr').textContent=avg(vals_hr).toFixed(1)+'%';
     document.getElementById('avg-fr').textContent=avg(vals_fr).toFixed(1)+'%';
     avgRow.style.display='';
-
-    const minPF=Math.min(...vals_pf);
-    const maxHR=Math.max(...vals_hr);
+    const minPF=Math.min(...vals_pf),maxHR=Math.max(...vals_hr);
     entries.forEach(([,d],i)=>{
-      if((d.total_faults||0)===minPF){
-        const el=document.getElementById(`ct-pf-${i}`);
-        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
-      }
-      if((d.hit_rate||0)===maxHR){
-        const el=document.getElementById(`ct-hr-${i}`);
-        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
-      }
+      if((d.total_faults||0)===minPF){const el=document.getElementById(`ct-pf-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
+      if((d.hit_rate||0)===maxHR){const el=document.getElementById(`ct-hr-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
     });
-
     const winIdx=vals_pf.indexOf(minPF);
     const winName=entries[winIdx][0];
     const winColor=PID_COLORS[winIdx%PID_COLORS.length];
@@ -1258,6 +1107,7 @@ function fillTableFinal(entries, isSched){
       <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
       con solo ${minPF} page faults y Hit Rate de ${entries[winIdx][1].hit_rate.toFixed(1)}%.`;
     winnerRow.style.display='';
+    buildProcessSubtables(entries,false);
   }
 }
 
@@ -1295,7 +1145,7 @@ function compAnimate(ts){
     CompPlayer.playing=false;
     const btn=document.getElementById('comp-btn-play');
     if(btn)btn.innerHTML='<i class="ph ph-arrow-counter-clockwise"></i> Reiniciar';
-    fillTableFinal(CompPlayer.results, CompState.category==='scheduling');
+    fillTableFinal(CompPlayer.results,CompState.category==='scheduling');
     return;
   }
   CompPlayer.rafId=requestAnimationFrame(compAnimate);
@@ -1340,12 +1190,12 @@ window.runComparison  =runComparison;
 window.initComparison =initComparison;
 window.setCompCategory=setCompCategory;
 window.setCompCores   =setCompCores;
-window.updateCompQuantumVisibility=updateCompQuantumVisibility;
 window.toggleCompPlay =toggleCompPlay;
 window.stopCompPlayer =stopCompPlayer;
 window.compSeek       =compSeek;
 window.compStep       =compStep;
 window.setCompSpeed   =setCompSpeed;
+window.updateCompQuantumVisibility=updateCompQuantumVisibility;
 
 (function(){
   function tryInit(){const g=document.getElementById('comp-algo-grid');if(g&&g.children.length===0)initComparison();}
