@@ -1360,9 +1360,11 @@ Address: 123 Main St, Monterrey, NL"></textarea>
                   <i class="ph ph-house"></i> Addresses
                 </button>
               </div>
-              <button class="btn btn-primary" id="btn-extract" style="width: 100%">
-                <i class="ph ph-magnifying-glass"></i> Extract Data
-              </button>
+              <div style="display: grid; gap: 0.75rem;">
+                <button class="btn btn-primary" id="btn-extract" style="width: 100%;">
+                  <i class="ph ph-magnifying-glass"></i> Extract Data
+                </button>
+              </div>
             </div>
 
             <div>
@@ -1399,9 +1401,14 @@ Address: 123 Main St, Monterrey, NL"></textarea>
               </div>
 
               <div class="card">
-                <div class="card-title">
-                  <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
-                  Extracted Data
+                <div class="card-title flex-between" style="align-items: center; gap: 1rem;">
+                  <div>
+                    <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
+                    Extracted Data
+                  </div>
+                  <button class="btn btn-secondary btn-sm" id="btn-download-csv" style="display: none; white-space: nowrap;">
+                    <i class="ph ph-download"></i> Download CSV
+                  </button>
                 </div>
                 <div class="table-wrapper" style="max-height: 400px; overflow-y: auto">
                   <table id="regex-table">

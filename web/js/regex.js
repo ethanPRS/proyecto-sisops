@@ -66,6 +66,49 @@ async function extractRegex() {
   }
 }
 
+function csvEscape(value) {
+  if (value == null) return '';
+  const text = String(value);
+  if (/[",\n\r]/.test(text)) {
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+  return text;
+}
+
+function buildRegexCsv(matches) {
+  const header = ['Category', 'Value', 'Line'];
+  const rows = [header];
+  for (const match of matches) {
+    rows.push([match.category, match.value, match.line_number]);
+  }
+  return rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
+}
+
+function downloadRegexCsv() {
+  const matches = RegexState.matches || [];
+  if (!matches.length) {
+    showToast('No hay datos extraídos para descargar', 'warning');
+    return;
+  }
+
+  const csvContent = buildRegexCsv(matches);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'regex-extracted-data.csv';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
+function setDownloadButtonVisible(visible) {
+  const downloadBtn = document.getElementById('btn-download-csv');
+  if (!downloadBtn) return;
+  downloadBtn.style.display = visible ? 'block' : 'none';
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    State Machine Core
    ═══════════════════════════════════════════════════════════════════════ */
@@ -80,11 +123,12 @@ function initRegexSimulation(result, rawText) {
   } else {
     playbackEl.style.display = 'none';
   }
+  setDownloadButtonVisible(RegexState.matches.length > 0);
   
   const inputEl = document.getElementById('regex-input');
   const backdrop = document.getElementById('regex-backdrop');
   if (inputEl && backdrop) {
-    inputEl.style.display = 'none';
+    inputEl.style.visibility = 'hidden';
     backdrop.style.display = 'block';
   }
   
@@ -300,11 +344,16 @@ Su información: roberto@tech.io, 15/06/1985.`;
     regexPause();
     document.getElementById('regex-backdrop').style.display = 'none';
     const input = document.getElementById('regex-input');
-    input.style.display = 'block';
+    input.style.visibility = 'visible';
     input.focus();
     // Hide controls
     document.getElementById('regex-playback').style.display = 'none';
   });
+
+  const downloadBtn = document.getElementById('btn-download-csv');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', downloadRegexCsv);
+  }
 
   // Controls UI bindings
   document.getElementById('regex-btn-play').addEventListener('click', regexTogglePlay);
