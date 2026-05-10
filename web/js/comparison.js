@@ -1,19 +1,21 @@
 /**
- * comparison.js — Algorithm Comparison v5
+ * comparison.js — Algorithm Comparison v6
  *
- * Fixes vs v4:
- *  - Canvas gantt más alto (BAR_H=56, más padding vertical)
- *  - Métricas en vivo NO desaparecen al terminar (bug flash resuelto)
- *  - Gráficas de barras animan en tiempo real (no solo al final)
- *  - Paginación canvas funciona con steps del API
- *  - Análisis comparativo automático generado (quién ganó, ventajas, desventajas)
- *  - Un solo botón Comparar→Pausar→Reanudar→Reiniciar
+ * Changes vs v5:
+ *  1. RT eliminado de Scheduling (tabla, subtablas, fórmulas, fillTableFinal, análisis)
+ *  2. Subtablas: valores ya no desaparecen al terminar (se bloquean con lockSubCell)
+ *  3. Gráficas: nombres de algoritmos siempre visibles y correctos
+ *  4. Gráficas: eje Y siempre empieza en 0
+ *  5. Gráficas: barras crecen progresivamente con la animación
+ *  6. Gráficas: se actualizan en tiempo real (no solo al final)
+ *  7. Gráficas: valor numérico visible encima de cada barra en todo momento
+ *  8. Ganador en negritas correcto (resaltado inmediato y permanente al terminar)
  */
 
 /* ═══ Metadatos ═══════════════════════════════════════════════════════ */
 
 const SCHEDULING_META = {
-  'FCFS':                  { short:'First-Come, First-Served',   formula:'WT = CT−AT−BT  |  TAT = CT−AT  |  RT = 1ª CPU−AT', explanation:'No-preemptivo. Los procesos se ejecutan en el orden exacto de llegada. Puede causar el "efecto convoy" cuando un proceso largo bloquea a todos los cortos que llegaron después.', useCase:'Colas de impresión y sistemas batch donde el orden de llegada es justo.', preemptive:'❌ No preemptivo', starvation:'❌ No hay starvation', complexity:'O(n)' },
+  'FCFS':                  { short:'First-Come, First-Served',   formula:'WT = CT−AT−BT  |  TAT = CT−AT', explanation:'No-preemptivo. Los procesos se ejecutan en el orden exacto de llegada. Puede causar el "efecto convoy" cuando un proceso largo bloquea a todos los cortos que llegaron después.', useCase:'Colas de impresión y sistemas batch donde el orden de llegada es justo.', preemptive:'❌ No preemptivo', starvation:'❌ No hay starvation', complexity:'O(n)' },
   'SJF':                   { short:'Shortest Job First',          formula:'Selección: min(BT disponibles)  |  WT = CT−AT−BT', explanation:'Elige el proceso con menor burst time. Óptimo en WT promedio, pero requiere conocer el burst time de antemano. Los procesos largos pueden quedar bloqueados indefinidamente.', useCase:'Compiladores batch, servidores donde se conoce el tamaño de la tarea de antemano.', preemptive:'❌ No preemptivo', starvation:'⚠️ Puede causar starvation', complexity:'O(n log n)' },
   'HRRN':                  { short:'Highest Response Ratio Next', formula:'RR = (WT_actual + BT) / BT  |  Selección: max(RR)', explanation:'Calcula el Response Ratio de cada proceso. Premia tanto al de burst corto como al que lleva más esperando. Elimina el starvation de forma natural sin mecanismos adicionales.', useCase:'Sistemas mixtos batch/interactivo que necesitan balancear eficiencia y justicia.', preemptive:'❌ No preemptivo', starvation:'✅ No hay starvation', complexity:'O(n) por decisión' },
   'Round Robin':            { short:'Quantum configurable',        formula:'Cada proceso recibe hasta Q unidades  |  espera máx = (n−1)×Q', explanation:'Cada proceso recibe la CPU por un máximo de Q unidades (quantum). Si no termina, regresa al final de la cola. Garantiza que ningún proceso espere más de (n-1)×Q unidades. El quantum óptimo depende del tipo de carga.', useCase:'Sistemas interactivos, terminales SSH, shells de tiempo compartido.', preemptive:'✅ Preemptivo', starvation:'✅ No hay starvation', complexity:'O(1) por decisión' },
@@ -49,7 +51,7 @@ const CompPlayer = {
   results:null, totalTime:0, currentTick:0,
   playing:false, speed:1.0, rafId:null, lastFrame:0,
   category:'scheduling', marios:[], renderFn:null,
-  barAnimFrame: 0, barAnimId: null,
+  barAnimId: null,
 };
 const CompState = { category:'scheduling', selected:[], numCores:4 };
 
@@ -116,7 +118,7 @@ function updateSelCount() {
   document.getElementById('comp-sel-count').textContent = `${CompState.selected.length} / ${max} seleccionados`;
 }
 
-/* ═══ Quantum visibility — solo para Round Robin y MLFQ ══════════════ */
+/* ═══ Quantum visibility ═════════════════════════════════════════════ */
 function updateCompQuantumVisibility(){
   const needsQuantum = CompState.selected.some(n => n==='Round Robin' || n==='MLFQ');
   const el = document.getElementById('comp-quantum-row');
@@ -181,21 +183,15 @@ function buildResultUI(apiResults) {
   const meta    = isSched ? SCHEDULING_META : PAGING_META;
 
   // Estilos
-  if (!document.getElementById('comp-v5-style')) {
+  if (!document.getElementById('comp-v6-style')) {
     const s = document.createElement('style');
-    s.id = 'comp-v5-style';
+    s.id = 'comp-v6-style';
     s.textContent = `
       .comp-live-cell { transition:color .2s,background .2s; font-size:18px; font-weight:700; color:#fff; }
       .comp-live-cell.flash { color:#6EEB83 !important; background:rgba(110,235,131,.14) !important; }
+      .comp-live-cell.winner-cell { font-weight:900 !important; text-decoration:underline; }
       .comp-mtile { background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center; }
       .comp-mtile-name { font-size:11px;font-weight:700;margin-bottom:8px; }
-      .comp-mtile-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left; }
-      .comp-mtile-kv { display:flex;flex-direction:column;gap:1px; }
-      .comp-mtile-k  { font-size:9px;color:var(--text-muted); }
-      .comp-bar-charts { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
-      @media(max-width:700px){.comp-bar-charts{grid-template-columns:1fr}}
-      .comp-bc-card { background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px 14px; }
-      .comp-bc-title { font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px; }
       .comp-analysis { background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px; }
       .comp-analysis h4 { font-size:13px;font-weight:700;color:var(--accent);margin:0 0 10px; }
       .comp-analysis p  { font-size:12px;color:var(--text-secondary);line-height:1.7;margin:0 0 8px; }
@@ -252,21 +248,20 @@ function buildResultUI(apiResults) {
         </div>
       </div>
     </div>`;
-  // Análisis comparativo (generado dinámicamente al final)
+
   const analysisHTML = `<div id="comp-analysis-section" style="margin-bottom:12px"></div>`;
 
-
-  // ── 3 gráficas de barras debajo de la tabla ─────────────────────────────
+  // ── 3 gráficas de barras ────────────────────────────────────────────
   const bcDefs = isSched
     ? [
-        { id:'cbc-wt',  title:'Avg Waiting Time',    unit:'ms',  higher:false },
-        { id:'cbc-tat', title:'Avg Turnaround Time',  unit:'ms',  higher:false },
-        { id:'cbc-cpu', title:'CPU Utilization',      unit:'%',   higher:true  },
+        { id:'cbc-wt',  title:'Avg Waiting Time (ms)',   unit:'ms',  higher:false },
+        { id:'cbc-tat', title:'Avg Turnaround Time (ms)', unit:'ms',  higher:false },
+        { id:'cbc-cpu', title:'CPU Utilization (%)',      unit:'%',   higher:true  },
       ]
     : [
-        { id:'cbc-pf',  title:'Page Faults',          unit:'',    higher:false },
-        { id:'cbc-hr',  title:'Hit Rate',              unit:'%',   higher:true  },
-        { id:'cbc-fr',  title:'Fault Rate',            unit:'%',   higher:false },
+        { id:'cbc-pf',  title:'Page Faults',              unit:'',    higher:false },
+        { id:'cbc-hr',  title:'Hit Rate (%)',              unit:'%',   higher:true  },
+        { id:'cbc-fr',  title:'Fault Rate (%)',            unit:'%',   higher:false },
       ];
 
   const barChartsHTML = `
@@ -278,36 +273,34 @@ function buildResultUI(apiResults) {
         ${bcDefs.map(bc=>`
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-align:center">${bc.title}</div>
-            <div style="position:relative;height:220px">
-              <canvas id="${bc.id}" style="width:100%;height:220px"></canvas>
+            <div style="position:relative;height:240px">
+              <canvas id="${bc.id}" style="width:100%;height:240px"></canvas>
             </div>
           </div>`).join('')}
       </div>
     </div>`;
 
-  // ── Tabla mejorada con fórmulas, live-fill, fila de avg y ganador ─────────
+  // ── Tabla — SIN columna RT para scheduling ──────────────────────────
   const formulaBar = isSched
     ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:6px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent);line-height:1.8">
         📐 <strong>Fórmulas:</strong>
         WT = CT − AT − BT &nbsp;|&nbsp;
         TAT = CT − AT &nbsp;|&nbsp;
-        RT = 1ª CPU − AT &nbsp;|&nbsp;
         CPU% = Tiempo_ocupado / Tiempo_total × 100 &nbsp;|&nbsp;
         Ctx Sw = cambios de proceso en CPU
       </div>`
     : `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:6px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent);line-height:1.8">
         📐 <strong>Fórmulas:</strong>
         Page Fault Rate = Fallos / Longitud_cadena × 100 &nbsp;|&nbsp;
-        Hit Rate = (Hits / Longitud_cadena) × 100 &nbsp;|&nbsp;
-        Hit = página ya en memoria, evita acceso a disco
+        Hit Rate = (Hits / Longitud_cadena) × 100
       </div>`;
 
+  // FIX #1: Eliminado RT de los headers de scheduling
   const schedHdrs = [
     `Algoritmo`,
     `Core`,
     `Avg WT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(CT−AT−BT)</span>`,
     `Avg TAT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(CT−AT)</span>`,
-    `Avg RT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(1ªCPU−AT)</span>`,
     `CPU %<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(ocupado/total)</span>`,
     `Ctx Sw`,
     `Sim ms`,
@@ -321,6 +314,7 @@ function buildResultUI(apiResults) {
   ];
   const hdrs = isSched ? schedHdrs : pageHdrs;
 
+  // FIX #1: Eliminada celda ct-rt-* de scheduling
   const tableRows = entries.map(([name,d],i)=>{
     const c = PID_COLORS[i%PID_COLORS.length];
     return isSched
@@ -329,7 +323,6 @@ function buildResultUI(apiResults) {
           <td style="color:var(--text-muted);font-size:11px">Core ${i%CompState.numCores}</td>
           <td id="ct-wt-${i}"  class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
           <td id="ct-tat-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
-          <td id="ct-rt-${i}"  class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
           <td id="ct-cpu-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
           <td style="text-align:center;color:var(--text-muted)">${d.context_switches??'—'}</td>
           <td style="text-align:center;color:var(--text-muted);font-size:11px">${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
@@ -345,19 +338,18 @@ function buildResultUI(apiResults) {
         </tr>`;
   }).join('');
 
-  // Filas de promedio y ganador (se rellenan cuando termina la animación)
+  // FIX #1: Eliminada columna avg-rt y ajustado colspan
   const avgRow = isSched
     ? `<tr id="comp-avg-row" style="background:rgba(110,235,131,.06);font-style:italic;display:none">
         <td style="font-size:11px;font-weight:700;color:var(--text-secondary)">Promedio</td>
         <td>—</td>
         <td id="avg-wt"  style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td id="avg-tat" style="text-align:center;font-size:12px;font-weight:600">—</td>
-        <td id="avg-rt"  style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td id="avg-cpu" style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td>—</td><td>—</td>
       </tr>
       <tr id="comp-winner-row" style="display:none">
-        <td colspan="8" id="comp-winner-cell" style="text-align:center;padding:8px;font-size:12px;border-top:1px solid var(--border)"></td>
+        <td colspan="7" id="comp-winner-cell" style="text-align:center;padding:8px;font-size:12px;border-top:1px solid var(--border)"></td>
       </tr>`
     : `<tr id="comp-avg-row" style="background:rgba(110,235,131,.06);font-style:italic;display:none">
         <td style="font-size:11px;font-weight:700;color:var(--text-secondary)">Promedio</td>
@@ -410,13 +402,13 @@ function buildResultUI(apiResults) {
   startBarChartAnimation(entries, isSched);
 }
 
-/* ═══ Canvas Gantt (estilo Mario) ════════════════════════════════════ */
+/* ═══ Canvas Gantt ═══════════════════════════════════════════════════ */
 const COMP_BAR_H   = 70;
 const COMP_ROW_GAP = 28;
 const COMP_LEFT    = 148;
 const COMP_TOP     = 46;
 const COMP_BOTTOM  = 52;
-const CMS = 2; // Mario sprite scale
+const CMS = 2;
 const CMW = 16*CMS, CMH = 16*CMS;
 
 function initCompCanvas(entries) {
@@ -452,54 +444,45 @@ function initCompCanvas(entries) {
   const scale = (cw - COMP_LEFT - 28) / totalTime;
 
   function drawIdleBlock(ctx, x, y, w, h) {
-  if (w <= 1) return;
-  // Fondo gris oscuro
-  ctx.fillStyle = 'rgba(60,60,80,0.55)';
-  roundRect(ctx, x, y, w, h, 4); ctx.fill();
-  // Borde punteado
-  ctx.save();
-  ctx.strokeStyle = 'rgba(150,150,180,0.35)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
-  roundRect(ctx, x+0.5, y+0.5, w-1, h-1, 4); ctx.stroke();
-  ctx.setLineDash([]);
-  // Hatch diagonal (estilo "no disponible")
-  ctx.strokeStyle = 'rgba(120,120,150,0.18)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  const step = 8;
-  for (let d2 = -h; d2 < w + h; d2 += step) {
-    ctx.moveTo(x + d2, y);
-    ctx.lineTo(x + d2 + h, y + h);
+    if (w <= 1) return;
+    ctx.fillStyle = 'rgba(60,60,80,0.55)';
+    roundRect(ctx, x, y, w, h, 4); ctx.fill();
+    ctx.save();
+    ctx.strokeStyle = 'rgba(150,150,180,0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    roundRect(ctx, x+0.5, y+0.5, w-1, h-1, 4); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(120,120,150,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const step = 8;
+    for (let d2 = -h; d2 < w + h; d2 += step) {
+      ctx.moveTo(x + d2, y);
+      ctx.lineTo(x + d2 + h, y + h);
+    }
+    ctx.stroke();
+    ctx.restore();
+    if (w > 28) {
+      ctx.fillStyle = 'rgba(160,160,190,0.65)';
+      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('IDLE', x + w / 2, y + h / 2 + 3);
+    }
   }
-  ctx.stroke();
-  ctx.restore();
-  // Etiqueta IDLE si hay espacio
-  if (w > 28) {
-    ctx.fillStyle = 'rgba(160,160,190,0.65)';
-    ctx.font = 'bold 9px "JetBrains Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('IDLE', x + w / 2, y + h / 2 + 3);
-  }
-}
 
-function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
+  function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
     if (w<=0) return;
     const c = marioBlockColor(pidIdx);
-    // Sombra
     ctx.fillStyle='rgba(0,0,0,0.3)';
     roundRect(ctx,x+2,y+3,w,h,5); ctx.fill();
-    // Gradiente 3D
     const g = ctx.createLinearGradient(x,y,x,y+h);
     g.addColorStop(0,c.top); g.addColorStop(0.45,c.mid); g.addColorStop(1,c.dark);
     ctx.fillStyle=g; roundRect(ctx,x,y,w,h,5); ctx.fill();
-    // Brillo superior
     ctx.fillStyle='rgba(255,255,255,0.2)';
     roundRect(ctx,x+2,y+2,w-4,h*0.28,3); ctx.fill();
-    // Borde inferior oscuro
     ctx.fillStyle=c.dark+'cc';
     roundRect(ctx,x+1,y+h-5,w-2,5,[0,0,5,5]); ctx.fill();
-    // Etiqueta PID
     if (w>20) {
       const fs = Math.min(10,Math.max(7,w/5));
       ctx.fillStyle='rgba(0,0,0,0.6)';
@@ -515,16 +498,13 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
 
     ctx.clearRect(0,0,cw,height);
 
-    // Fondo
     const bg = ctx.createLinearGradient(0,0,0,height);
     bg.addColorStop(0,'#03030E'); bg.addColorStop(1,'#070720');
     ctx.fillStyle=bg; ctx.fillRect(0,0,cw,height);
 
-    // Estrellas pixel
     ctx.fillStyle='rgba(255,255,255,0.4)';
     [[28,7],[85,13],[170,5],[255,11],[360,4],[450,17],[530,8],[640,13],[750,6],[860,10]].forEach(([sx,sy])=>{ if(sx<cw)ctx.fillRect(sx,sy,2,2); });
 
-    // Columnas verticales suaves
     ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1; ctx.setLineDash([1,4]);
     for(let t=0;t<=totalTime;t++){const x=COMP_LEFT+t*scale;ctx.beginPath();ctx.moveTo(x,COMP_TOP);ctx.lineTo(x,axisY);ctx.stroke();}
     ctx.setLineDash([]);
@@ -534,21 +514,17 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
       const mario = CompPlayer.marios[idx];
       const color = PID_COLORS[idx%PID_COLORS.length];
 
-      // Fondo fila
       ctx.fillStyle='rgba(255,255,255,0.015)';
       roundRect(ctx,COMP_LEFT-2,rowY-2,cw-COMP_LEFT-18,COMP_BAR_H+4,6); ctx.fill();
 
-      // Label izquierdo
       ctx.font='bold 11px "Inter",sans-serif'; ctx.textAlign='right'; ctx.fillStyle=color;
       const lbl=name.length>13?name.slice(0,12)+'…':name;
       ctx.fillText(lbl,COMP_LEFT-12,rowY+COMP_BAR_H/2+4);
-      // Número de orden
       ctx.fillStyle=color+'33'; roundRect(ctx,COMP_LEFT-136,rowY+COMP_BAR_H/2-10,20,20,10); ctx.fill();
       ctx.fillStyle=color; ctx.font='bold 10px monospace'; ctx.textAlign='center';
       ctx.fillText(idx+1,COMP_LEFT-126,rowY+COMP_BAR_H/2+4);
 
       if (isSched) {
-        // Barra base
         ctx.fillStyle='rgba(255,255,255,0.025)';
         roundRect(ctx,COMP_LEFT,rowY,cw-COMP_LEFT-28,COMP_BAR_H,5); ctx.fill();
 
@@ -565,11 +541,9 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
           }
         });
 
-        // Piso Mario
         ctx.fillStyle='#2A0F00'; ctx.fillRect(COMP_LEFT,rowY+COMP_BAR_H,cw-COMP_LEFT-28,4);
         ctx.fillStyle='#4A1A00'; ctx.fillRect(COMP_LEFT,rowY+COMP_BAR_H+1,cw-COMP_LEFT-28,2);
 
-        // Mario
         updateCompMario(mario,idx,d.gantt,tick,scale,rowY);
         if(mario.visible&&typeof MARIO_SPRITE_FRAMES!=='undefined')
           drawCompMarioSprite(ctx,mario.x,mario.y,mario.jumping,mario.frame);
@@ -577,7 +551,6 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
         updateLiveCellsSched(idx,d,tick,totalTime);
 
       } else {
-        // Paginación
         const steps=d.steps||[];
         const visN=Math.min(Math.floor(tick),steps.length);
         const bMaxW=cw-COMP_LEFT-28;
@@ -594,7 +567,6 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
             ctx.fillStyle='#10B98166'; roundRect(ctx,x,rowY,sw-1,COMP_BAR_H,3); ctx.fill();
             if(sw>12){ctx.fillStyle='#6ee7b7';ctx.font=`${Math.min(9,sw*.5)}px monospace`;ctx.textAlign='center';ctx.fillText(st.page_requested,x+sw/2,rowY+COMP_BAR_H/2+4);}
           }
-          // Número de frame
           if(sw>8){
             const fa=st.frames_after||[];
             ctx.fillStyle='rgba(255,255,255,.25)';
@@ -603,10 +575,8 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
           }
         }
 
-        // Piso
         ctx.fillStyle='#2A0F00'; ctx.fillRect(COMP_LEFT,rowY+COMP_BAR_H,bMaxW,4);
 
-        // Mario sobre los pasos
         if(visN>0&&typeof MARIO_SPRITE_FRAMES!=='undefined'){
           const mX=COMP_LEFT+(visN-0.5)*sw-CMW/2;
           const mY=rowY-CMH-2;
@@ -618,11 +588,9 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
       }
     });
 
-    // Eje X
     ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.moveTo(COMP_LEFT,axisY+8); ctx.lineTo(cw-20,axisY+8); ctx.stroke();
 
-    // Ticks tiempo
     const step=Math.max(1,Math.round(totalTime/12));
     ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px "JetBrains Mono",monospace'; ctx.textAlign='center';
     for(let t=0;t<=totalTime;t+=step){
@@ -631,7 +599,6 @@ function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
       ctx.fillText(t,x,axisY+25);
     }
 
-    // Cursor neón
     const cx2=COMP_LEFT+tick*scale;
     ctx.save(); ctx.shadowColor='#6EEB83'; ctx.shadowBlur=10;
     ctx.strokeStyle='#6EEB83'; ctx.lineWidth=2; ctx.setLineDash([4,3]);
@@ -681,12 +648,11 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
 }
 
-/* ═══ Celdas en vivo (FIX: no borrar al terminar) ════════════════════ */
+/* ═══ Celdas en vivo ═════════════════════════════════════════════════ */
 function flashCell(id, val){
   const el=document.getElementById(id); if(!el)return;
-  if(el.dataset.finalVal===val)return; // evitar re-render innecesario
+  if(el.dataset.locked)return; // FIX #2: no sobreescribir celdas bloqueadas
   el.textContent=val;
-  if(el.dataset.locked)return; // ya terminó, no flashear más
   el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   setTimeout(()=>el.classList.remove('flash'),500);
 }
@@ -694,50 +660,69 @@ function flashCell(id, val){
 function lockCell(id, val){
   const el=document.getElementById(id); if(!el)return;
   el.textContent=val;
-  el.dataset.finalVal=val;
   el.dataset.locked='1';
-  el.style.color='var(--text-primary)';
+  // Mantener el color de ganador si ya fue marcado
+  if(!el.classList.contains('winner-cell')){
+    el.style.color='var(--text-primary)';
+  }
 }
 
+// FIX #2: versión para subtablas (fondo blanco, texto oscuro)
+function lockSubCell(id, val){
+  const el=document.getElementById(id); if(!el)return;
+  el.textContent=val;
+  el.dataset.locked='1';
+}
+
+/* ═══ FIX #1: updateLiveCellsSched sin RT ════════════════════════════ */
 function updateLiveCellsSched(idx,d,tick,totalTime){
   const f=Math.min(tick/totalTime,1);
   if(f<0.02)return;
   const fin=f>=0.99;
   const wt =fin?d.avg_waiting.toFixed(2)   :(d.avg_waiting   *f).toFixed(2);
   const tat=fin?d.avg_turnaround.toFixed(2):(d.avg_turnaround*f).toFixed(2);
-  const rt =fin?d.avg_response.toFixed(2)  :(d.avg_response  *f).toFixed(2);
   const cpu=fin?d.cpu_utilization.toFixed(1)+'%':(d.cpu_utilization*f).toFixed(1)+'%';
+
   if(fin){
-    lockCell(`ct-wt-${idx}`, wt); lockCell(`ct-tat-${idx}`, tat);
-    lockCell(`ct-rt-${idx}`, rt); lockCell(`ct-cpu-${idx}`, cpu);
+    lockCell(`ct-wt-${idx}`, wt);
+    lockCell(`ct-tat-${idx}`, tat);
+    lockCell(`ct-cpu-${idx}`, cpu);
   } else {
-    flashCell(`ct-wt-${idx}`, wt); flashCell(`ct-tat-${idx}`, tat);
-    flashCell(`ct-rt-${idx}`, rt); flashCell(`ct-cpu-${idx}`, cpu);
-    // Negrita en vivo: el que lleva menor WT hasta ahora
-    highlightLiveWinner(idx, parseFloat(wt));
+    flashCell(`ct-wt-${idx}`, wt);
+    flashCell(`ct-tat-${idx}`, tat);
+    flashCell(`ct-cpu-${idx}`, cpu);
   }
 
-  // Actualizar subtablas en tiempo real
+  // FIX #8: resaltar ganador en vivo
+  highlightLiveWinner(idx, parseFloat(wt), fin);
+
   if(CompPlayer.results)
     updateSubtablesLive(CompPlayer.results, tick, totalTime);
 }
 
-// Resalta en tiempo real el algoritmo con menor WT hasta ahora
+/* ═══ FIX #8: Ganador en negritas correcto ═══════════════════════════ */
 const _liveWT = {};
-function highlightLiveWinner(idx, wt){
+const _wtLocked = {};
+
+function highlightLiveWinner(idx, wt, isFinal){
   _liveWT[idx] = wt;
-  const vals = Object.values(_liveWT);
+  if(isFinal) _wtLocked[idx] = true;
+
+  const vals = Object.entries(_liveWT);
   if(vals.length < 2) return;
-  const minVal = Math.min(...vals);
-  Object.entries(_liveWT).forEach(([i, v])=>{
+  const minVal = Math.min(...vals.map(([,v])=>v));
+
+  vals.forEach(([i, v])=>{
     const el = document.getElementById(`ct-wt-${i}`);
     if(!el) return;
     if(v === minVal){
-      el.style.fontWeight = '800';
-      el.style.textDecoration = 'underline';
+      el.classList.add('winner-cell');
+      el.style.fontWeight = '900';
+      el.style.color = PID_COLORS[parseInt(i) % PID_COLORS.length];
     } else {
-      el.style.fontWeight = '400';
-      el.style.textDecoration = 'none';
+      el.classList.remove('winner-cell');
+      el.style.fontWeight = isFinal ? '400' : '';
+      if(isFinal) el.style.color = 'var(--text-primary)';
     }
   });
 }
@@ -750,98 +735,121 @@ function updateLiveCellsPage(idx,d,step,total){
   const fr=(faults/step*100).toFixed(1)+'%';
   const fin=step>=total;
   if(fin){
-    lockCell(`cv-pf-${idx}`,String(faults)); lockCell(`cv-hr-${idx}`,hr);
-    lockCell(`cv-fr-${idx}`,fr);
     lockCell(`ct-pf-${idx}`,String(faults)); lockCell(`ct-hr-${idx}`,hr.replace('%',''));
     lockCell(`ct-fr-${idx}`,fr.replace('%',''));
   } else {
-    flashCell(`cv-pf-${idx}`,String(faults)); flashCell(`cv-hr-${idx}`,hr);
-    flashCell(`cv-fr-${idx}`,fr);
     flashCell(`ct-pf-${idx}`,String(faults)); flashCell(`ct-hr-${idx}`,hr.replace('%',''));
     flashCell(`ct-fr-${idx}`,fr.replace('%',''));
   }
 }
 
-/* ═══ Gráficas de barras animadas en tiempo real ══════════════════════ */
-const _barState = {}; // { [canvasId]: { current: [], target: [] } }
-
+/* ═══ Gráficas de barras — FIX #3 #4 #5 #6 #7 ════════════════════════
+ *
+ *  #3  Nombres siempre visibles y sin truncar innecesariamente
+ *  #4  Eje Y empieza en 0 siempre (nMax calculado sobre valores finales)
+ *  #5  Barras crecen con frac = currentTick/totalTime
+ *  #6  Loop de animación ligado al RAF del Gantt (startBarChartAnimation)
+ *  #7  Valor numérico encima de cada barra durante toda la animación
+ * ════════════════════════════════════════════════════════════════════ */
 function startBarChartAnimation(entries, isSched){
   cancelAnimationFrame(CompPlayer.barAnimId);
 
   const bcDefs = isSched
     ? [
-        { id:'cbc-wt',  fn: (d,f)=>d.avg_waiting*f,        higher:false },
-        { id:'cbc-tat', fn: (d,f)=>d.avg_turnaround*f,     higher:false },
-        { id:'cbc-cpu', fn: (d,f)=>d.cpu_utilization*f,    higher:true  },
+        { id:'cbc-wt',  fn:(d,f)=>d.avg_waiting*f,        finalFn:(d)=>d.avg_waiting,        higher:false },
+        { id:'cbc-tat', fn:(d,f)=>d.avg_turnaround*f,     finalFn:(d)=>d.avg_turnaround,     higher:false },
+        { id:'cbc-cpu', fn:(d,f)=>d.cpu_utilization*f,    finalFn:(d)=>d.cpu_utilization,    higher:true  },
       ]
     : [
-        { id:'cbc-pf',  fn: (d,f)=>(d.total_faults||0)*f,  higher:false },
-        { id:'cbc-hr',  fn: (d,f)=>(d.hit_rate||0)*f,       higher:true  },
-        { id:'cbc-fr',  fn: (d,f)=>(d.fault_rate||0)*f,     higher:false },
+        { id:'cbc-pf',  fn:(d,f)=>(d.total_faults||0)*f,  finalFn:(d)=>d.total_faults||0,   higher:false },
+        { id:'cbc-hr',  fn:(d,f)=>(d.hit_rate||0)*f,      finalFn:(d)=>d.hit_rate||0,        higher:true  },
+        { id:'cbc-fr',  fn:(d,f)=>(d.fault_rate||0)*f,    finalFn:(d)=>d.fault_rate||0,      higher:false },
       ];
+
+  // FIX #4: calcular máximo con valores finales (no * frac) para que el eje no cambie
+  const maxVals = bcDefs.map(bc => Math.max(...entries.map(([,d])=>bc.finalFn(d)), 0.001));
 
   const names = entries.map(([n])=>n);
 
   function loopDraw(){
-    const frac = CompPlayer.totalTime>0 ? Math.min(CompPlayer.currentTick/CompPlayer.totalTime,1) : 0;
-    bcDefs.forEach(bc=>{
-      const vals = entries.map(([,d])=>bc.fn(d,frac));
-      drawBarChartMario(bc.id, names, vals, bc.higher, frac);
+    const frac = CompPlayer.totalTime>0
+      ? Math.min(CompPlayer.currentTick/CompPlayer.totalTime, 1)
+      : 0;
+
+    bcDefs.forEach((bc, bi)=>{
+      // FIX #5 #6: valores crecen con frac en tiempo real
+      const vals = entries.map(([,d])=>bc.fn(d, frac));
+      drawBarChart(bc.id, names, vals, bc.higher, maxVals[bi]);
     });
-    if(CompPlayer.playing || frac<1){
+
+    if(CompPlayer.playing || frac < 1){
       CompPlayer.barAnimId = requestAnimationFrame(loopDraw);
     } else {
-      // Final: valores reales
-      bcDefs.forEach(bc=>{
-        const vals = entries.map(([,d])=>bc.fn(d,1));
-        drawBarChartMario(bc.id, names, vals, bc.higher, 1);
+      // Final: dibujar valores reales exactos
+      bcDefs.forEach((bc, bi)=>{
+        const vals = entries.map(([,d])=>bc.finalFn(d));
+        drawBarChart(bc.id, names, vals, bc.higher, maxVals[bi]);
       });
       generateAnalysis(entries, isSched);
     }
   }
+
   loopDraw();
 }
 
-function drawBarChartMario(canvasId, labels, values, higherIsBetter, frac){
+/**
+ * drawBarChart — dibuja una gráfica de barras estilo Mario.
+ *
+ * FIX #3: nombres completos en dos líneas si son largos
+ * FIX #4: nMax fijo (recibido como parámetro)
+ * FIX #7: valor numérico siempre visible encima de la barra
+ */
+function drawBarChart(canvasId, labels, values, higherIsBetter, nMax){
   const canvas=document.getElementById(canvasId); if(!canvas)return;
   const ctx=canvas.getContext('2d');
   const dpr=window.devicePixelRatio||1;
   const cont=canvas.parentElement;
   const W=cont.clientWidth||260;
-  const H=240;
+  const H=260;
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.height=H+'px';
   ctx.scale(dpr,dpr);
 
-  // Layout:  T=espacio número arriba, B=espacio nombre abajo
-  const L=14, R=14, T=30, B=52;
+  // Layout
+  const L=10, R=10, T=36, B=64; // B más grande para nombres de 2 líneas
   const cw=W-L-R, ch=H-T-B;
+  const safMax = Math.max(nMax, 0.001);
 
   ctx.clearRect(0,0,W,H);
 
-  const maxV=Math.max(...values,0.001);
-  const nMax=maxV*1.2;
   const n=values.length;
-  const gap=Math.max(8, cw*0.06);
-  const bw=Math.max(20, (cw - gap*(n+1)) / n);
+  const gap=Math.max(6, cw*0.05);
+  const bw=Math.max(18, (cw - gap*(n+1)) / n);
   const totalW=n*bw + gap*(n+1);
   const sx=L + (cw-totalW)/2 + gap;
 
-  // Línea base
-  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1;
+  // Línea base Y=0
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.moveTo(L,T+ch); ctx.lineTo(W-R,T+ch); ctx.stroke();
+
+  // Líneas guía horizontales sutiles
+  [0.25, 0.5, 0.75].forEach(pct=>{
+    const gy=T+ch*(1-pct);
+    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(L,gy); ctx.lineTo(W-R,gy); ctx.stroke();
+  });
 
   const isWinner=(v)=> higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
 
   values.forEach((v,i)=>{
     const x   = sx + i*(bw+gap);
-    const bh  = Math.max((v/nMax)*ch, 3);
+    // FIX #4 + #5: altura basada en safMax fijo
+    const bh  = Math.max((v/safMax)*ch, v>0?3:0);
     const y   = T+ch-bh;
     const c   = marioBlockColor(i);
     const win = isWinner(v);
-    const cx  = x + bw/2;  // centro horizontal de la barra
+    const cx  = x + bw/2;
 
-    // ── Barra ─────────────────────────────────────────────────────────
     // Sombra
     ctx.fillStyle='rgba(0,0,0,0.2)';
     roundRect(ctx,x+2,y+3,bw,bh,5); ctx.fill();
@@ -851,65 +859,95 @@ function drawBarChartMario(canvasId, labels, values, higherIsBetter, frac){
     g.addColorStop(0,c.top); g.addColorStop(0.5,c.mid); g.addColorStop(1,c.dark);
     ctx.fillStyle=g; roundRect(ctx,x,y,bw,bh,5); ctx.fill();
 
-    // Brillo superior
-    ctx.fillStyle='rgba(255,255,255,0.2)';
-    roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.28,10),3); ctx.fill();
+    // Brillo
+    if(bh>8){
+      ctx.fillStyle='rgba(255,255,255,0.2)';
+      roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.28,10),3); ctx.fill();
+    }
 
     // Contorno ganador
     if(win){
       ctx.save();
       ctx.strokeStyle=c.top; ctx.lineWidth=2.5;
-      ctx.shadowColor=c.top; ctx.shadowBlur=10;
+      ctx.shadowColor=c.top; ctx.shadowBlur=12;
       roundRect(ctx,x-1,y-1,bw+2,bh+2,6); ctx.stroke();
       ctx.restore();
     }
 
-    // ── Número ARRIBA de la barra — siempre visible ────────────────────
+    // ── FIX #7: Valor numérico encima de la barra — SIEMPRE visible ──
     const numStr = v.toFixed(1);
     ctx.save();
+    ctx.textAlign='center';
+    ctx.textBaseline='bottom';
+
+    const numY = y - 4; // justo encima de la barra
+
     if(win){
-      // Pill de fondo para el ganador
-      ctx.font = 'bold 12px "JetBrains Mono",monospace';
-      const tw = ctx.measureText(numStr).width;
-      ctx.fillStyle = c.mid+'55';
-      roundRect(ctx, cx-tw/2-5, y-26, tw+10, 20, 4); ctx.fill();
-      ctx.fillStyle = c.top;
+      ctx.font='bold 12px "JetBrains Mono",monospace';
+      const tw=ctx.measureText(numStr).width;
+      // Pill de fondo
+      ctx.fillStyle=c.mid+'66';
+      roundRect(ctx, cx-tw/2-5, numY-18, tw+10, 20, 4); ctx.fill();
+      ctx.fillStyle=c.top;
     } else {
-      ctx.font = '11px "JetBrains Mono",monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font='11px "JetBrains Mono",monospace';
+      ctx.fillStyle='rgba(255,255,255,0.9)';
     }
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(numStr, cx, y-16);
+    ctx.fillText(numStr, cx, numY);
     ctx.restore();
 
-    // ── Nombre ABAJO — siempre visible, sin truncar si cabe ──────────
-    // Línea 1: nombre completo (o truncado si no cabe)
-    const maxChars = Math.floor(bw / 6.5);
-    const lbl = labels[i].length > maxChars ? labels[i].slice(0,maxChars-1)+'…' : labels[i];
+    // ── FIX #3: Nombre del algoritmo — 2 líneas si es necesario ──────
     ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    if(win){
-      ctx.font = 'bold 10px "Inter",sans-serif';
-      ctx.fillStyle = c.top;
-    } else {
-      ctx.font = '10px "Inter",sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    }
-    ctx.fillText(lbl, cx, T+ch+10);
+    ctx.textAlign='center';
+    ctx.textBaseline='top';
 
-    // Línea 2: ★ MEJOR o valor vacío para no-ganadores
+    const lineY1 = T+ch+8;
+    const lineY2 = T+ch+22;
+    const lineY3 = T+ch+36; // ★ MEJOR
+
+    const words = labels[i].split(' ');
+    let line1='', line2='';
+
+    if(labels[i].length <= 10){
+      line1 = labels[i];
+    } else {
+      // Intentar dividir en 2 líneas por espacio
+      let best = 0;
+      for(let w=1; w<words.length; w++){
+        const candidate = words.slice(0,w).join(' ');
+        if(candidate.length <= 11){ best=w; } else break;
+      }
+      if(best>0 && best<words.length){
+        line1 = words.slice(0,best).join(' ');
+        line2 = words.slice(best).join(' ');
+      } else {
+        // Cortar con –
+        line1 = labels[i].slice(0,10);
+        line2 = labels[i].slice(10);
+      }
+    }
+
     if(win){
-      ctx.font = 'bold 10px sans-serif';
-      ctx.fillStyle = c.top;
-      ctx.fillText('★ MEJOR', cx, T+ch+24);
+      ctx.font='bold 9px "Inter",sans-serif';
+      ctx.fillStyle=c.top;
+    } else {
+      ctx.font='9px "Inter",sans-serif';
+      ctx.fillStyle='rgba(255,255,255,0.7)';
+    }
+    ctx.fillText(line1, cx, lineY1);
+    if(line2) ctx.fillText(line2, cx, lineY2);
+
+    if(win){
+      const starY = line2 ? lineY3 : lineY2;
+      ctx.font='bold 9px sans-serif';
+      ctx.fillStyle=c.top;
+      ctx.fillText('★ MEJOR', cx, starY);
     }
     ctx.restore();
   });
 }
 
-/* ═══ Análisis comparativo automático ════════════════════════════════ */
+/* ═══ Análisis comparativo ═══════════════════════════════════════════ */
 function generateAnalysis(entries, isSched){
   const section=document.getElementById('comp-analysis-section');
   if(!section)return;
@@ -932,9 +970,9 @@ function generateAnalysis(entries, isSched){
       </p>
       <p><strong>Mayor utilización de CPU:</strong>
         <span class="winner-badge" style="background:${c_bcpu}22;border:1px solid ${c_bcpu}55;color:${c_bcpu}">★ ${best_cpu[0]} — ${best_cpu[1].cpu_utilization.toFixed(1)}%</span>
-        A mayor CPU%, menos tiempo ocioso. Los algoritmos preemptivos tienden a mantener la CPU más ocupada.
+        A mayor CPU%, menos tiempo ocioso.
       </p>
-      <p><strong>Menos context switches:</strong> <strong>${best_ctx[0]}</strong> (${best_ctx[1].context_switches||0}) vs <strong>${worst_ctx[0]}</strong> (${worst_ctx[1].context_switches||0}). Los context switches tienen costo real de hardware.</p>
+      <p><strong>Menos context switches:</strong> <strong>${best_ctx[0]}</strong> (${best_ctx[1].context_switches||0}) vs <strong>${worst_ctx[0]}</strong> (${worst_ctx[1].context_switches||0}).</p>
       <p><strong>Ventajas y desventajas:</strong></p>
       <ul>${entries.map(([name,d])=>{
         const m=SCHEDULING_META[name];if(!m)return'';
@@ -945,7 +983,7 @@ function generateAnalysis(entries, isSched){
           ${m.preemptive&&m.preemptive.includes('❌')?'Bajo overhead (no preemptivo). ':''}
         </li>`;
       }).join('')}</ul>
-      <p><strong>Cores:</strong> Con ${CompState.numCores} core(s), los algoritmos preemptivos (${entries.filter(([n])=>SCHEDULING_META[n]&&SCHEDULING_META[n].preemptive&&SCHEDULING_META[n].preemptive.includes('✅')).map(([n])=>n).join(', ')||'ninguno'}) aprovechan mejor el paralelismo redistribuyendo procesos en cada quantum.</p>
+      <p><strong>Cores:</strong> Con ${CompState.numCores} core(s), los algoritmos preemptivos (${entries.filter(([n])=>SCHEDULING_META[n]&&SCHEDULING_META[n].preemptive&&SCHEDULING_META[n].preemptive.includes('✅')).map(([n])=>n).join(', ')||'ninguno'}) aprovechan mejor el paralelismo.</p>
     </div>`;
   } else {
     const sorted_f=[...entries].sort((a,b)=>a[1].total_faults-b[1].total_faults);
@@ -968,7 +1006,7 @@ function generateAnalysis(entries, isSched){
   }
 }
 
-/* ═══ Subtablas por proceso ═══════════════════════════════════════════ */
+/* ═══ Subtablas por proceso — FIX #1 (sin RT) + FIX #2 (no desaparecen) */
 function buildProcessSubtables(entries, isSched){
   const container=document.getElementById('comp-process-subtables');
   if(!container)return;
@@ -978,6 +1016,7 @@ function buildProcessSubtables(entries, isSched){
     const color=PID_COLORS[ei%PID_COLORS.length];
     const metrics=d.metrics||[];
     if(!metrics.length)return'';
+    // FIX #1: Eliminada columna RT de subtablas
     const rows=metrics.map((m,mi)=>{
       const pidColor=PID_COLORS[m.pid%PID_COLORS.length];
       return`<tr id="str-${ei}-${mi}">
@@ -987,7 +1026,6 @@ function buildProcessSubtables(entries, isSched){
         <td id="stct-${ei}-${mi}" style="text-align:center;color:#222">—</td>
         <td id="sttat-${ei}-${mi}" style="text-align:center;color:#222">—</td>
         <td id="stwt-${ei}-${mi}" style="text-align:center;color:#222">—</td>
-        <td id="strt-${ei}-${mi}" style="text-align:center;color:#222">—</td>
       </tr>`;
     }).join('');
     return`<div style="margin-bottom:12px">
@@ -1003,14 +1041,12 @@ function buildProcessSubtables(entries, isSched){
             <th style="text-align:center;color:#333">CT</th>
             <th style="text-align:center;color:#333">TAT<br><span style="font-size:8px;font-weight:400;color:#666">(CT−AT)</span></th>
             <th style="text-align:center;color:#333">WT<br><span style="font-size:8px;font-weight:400;color:#666">(TAT−BT)</span></th>
-            <th style="text-align:center;color:#333">RT<br><span style="font-size:8px;font-weight:400;color:#666">(1ªCPU−AT)</span></th>
           </tr></thead>
           <tbody>${rows}
             <tr style="background:#f5f5f5;font-style:italic">
               <td colspan="4" style="text-align:right;font-size:10px;color:#666;padding-right:8px">Promedio:</td>
               <td id="stavgtat-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
               <td id="stavgwt-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
-              <td id="stavgrt-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
             </tr>
           </tbody>
         </table>
@@ -1022,62 +1058,93 @@ function buildProcessSubtables(entries, isSched){
     <div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-top:12px;border-top:1px solid var(--border)">
       <i class="ph ph-function"></i> Cálculo por proceso
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">${tablesHtml}</div>`;
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">${tablesHtml}</div>`;
 }
 
+/* ═══ FIX #2: updateSubtablesLive usa lockSubCell para no borrar valores */
 function updateSubtablesLive(entries,tick,totalTime){
   if(!entries)return;
   entries.forEach(([name,d],ei)=>{
     const metrics=d.metrics||[];
     const frac=Math.min(tick/totalTime,1);
     const fin=frac>=0.99;
-    let sumTAT=0,sumWT=0,sumRT=0,cnt=0;
+    let sumTAT=0,sumWT=0,cnt=0;
     metrics.forEach((m,mi)=>{
       const ctFrac=totalTime>0?(m.completion_time/totalTime):1;
+      // Mostrar celda cuando la fracción de tiempo supera cuando el proceso terminó
       if(frac<ctFrac*0.98&&!fin)return;
+
       const ct=m.completion_time,at=m.arrival_time,bt=m.burst_time;
-      const tat=m.turnaround_time,wt=m.waiting_time,rt=m.response_time;
-      const setCell=(id,val)=>{const el=document.getElementById(id);if(el&&el.textContent!==String(val))el.textContent=val;};
-      setCell(`stct-${ei}-${mi}`,ct??'—');
-      setCell(`sttat-${ei}-${mi}`,fin?`${ct}−${at} = ${tat}`:tat??'—');
-      setCell(`stwt-${ei}-${mi}`,fin?`${tat}−${bt} = ${wt}`:wt??'—');
-      setCell(`strt-${ei}-${mi}`,fin?`1ªCPU−${at} = ${rt}`:rt??'—');
-      sumTAT+=tat||0;sumWT+=wt||0;sumRT+=rt||0;cnt++;
+      const tat=m.turnaround_time,wt=m.waiting_time;
+
+      // FIX #2: usar lockSubCell — una vez escrito no se borra
+      const setSubCell=(id,val)=>{
+        const el=document.getElementById(id);
+        if(!el)return;
+        if(el.dataset.locked)return; // no sobreescribir
+        el.textContent=val;
+        el.dataset.locked='1';
+      };
+
+      setSubCell(`stct-${ei}-${mi}`,  ct??'—');
+      setSubCell(`sttat-${ei}-${mi}`, fin?`${ct}−${at} = ${tat}`:(tat??'—'));
+      setSubCell(`stwt-${ei}-${mi}`,  fin?`${tat}−${bt} = ${wt}`:(wt??'—'));
+
+      sumTAT+=tat||0; sumWT+=wt||0; cnt++;
     });
     if(cnt>0){
-      const setAvg=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+      const setAvg=(id,v)=>{
+        const el=document.getElementById(id);
+        if(el&&!el.dataset.locked){el.textContent=v; if(fin)el.dataset.locked='1';}
+      };
       setAvg(`stavgtat-${ei}`,(sumTAT/cnt).toFixed(2));
       setAvg(`stavgwt-${ei}`,(sumWT/cnt).toFixed(2));
-      setAvg(`stavgrt-${ei}`,(sumRT/cnt).toFixed(2));
     }
   });
 }
 
-/* ═══ Rellenar tabla final ════════════════════════════════════════════ */
+/* ═══ Rellenar tabla final — FIX #1 (sin RT) + FIX #8 (ganador negritas) */
 function fillTableFinal(entries,isSched){
   if(!entries||!entries.length)return;
   const avgRow=document.getElementById('comp-avg-row');
   const winnerRow=document.getElementById('comp-winner-row');
   const winnerCell=document.getElementById('comp-winner-cell');
   if(!avgRow||!winnerRow)return;
-  avgRow.style.background='rgba(255,255,255,0.04)';
 
   if(isSched){
     const vals_wt =entries.map(([,d])=>d.avg_waiting);
     const vals_tat=entries.map(([,d])=>d.avg_turnaround);
-    const vals_rt =entries.map(([,d])=>d.avg_response);
     const vals_cpu=entries.map(([,d])=>d.cpu_utilization);
     const avg=(arr)=>(arr.reduce((s,v)=>s+v,0)/arr.length);
     document.getElementById('avg-wt') .textContent=avg(vals_wt).toFixed(2);
     document.getElementById('avg-tat').textContent=avg(vals_tat).toFixed(2);
-    document.getElementById('avg-rt') .textContent=avg(vals_rt).toFixed(2);
     document.getElementById('avg-cpu').textContent=avg(vals_cpu).toFixed(1)+'%';
     avgRow.style.display='';
-    const minWT=Math.min(...vals_wt),maxCPU=Math.max(...vals_cpu);
+
+    const minWT=Math.min(...vals_wt);
+    const maxCPU=Math.max(...vals_cpu);
+
+    // FIX #8: aplicar clase winner-cell permanente al mejor WT y CPU
     entries.forEach(([,d],i)=>{
-      if(d.avg_waiting===minWT){const el=document.getElementById(`ct-wt-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
-      if(d.cpu_utilization===maxCPU){const el=document.getElementById(`ct-cpu-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
+      const wtEl=document.getElementById(`ct-wt-${i}`);
+      if(wtEl){
+        if(d.avg_waiting===minWT){
+          wtEl.classList.add('winner-cell');
+          wtEl.style.fontWeight='900';
+          wtEl.style.color=PID_COLORS[i%PID_COLORS.length];
+        } else {
+          wtEl.classList.remove('winner-cell');
+          wtEl.style.fontWeight='400';
+          wtEl.style.color='var(--text-primary)';
+        }
+      }
+      const cpuEl=document.getElementById(`ct-cpu-${i}`);
+      if(cpuEl&&d.cpu_utilization===maxCPU){
+        cpuEl.style.fontWeight='900';
+        cpuEl.style.color=PID_COLORS[i%PID_COLORS.length];
+      }
     });
+
     const winIdx=vals_wt.indexOf(minWT);
     const winName=entries[winIdx][0];
     const winColor=PID_COLORS[winIdx%PID_COLORS.length];
@@ -1085,7 +1152,7 @@ function fillTableFinal(entries,isSched){
       <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
       con el menor Waiting Time promedio (${minWT.toFixed(2)} ms). CPU: ${entries[winIdx][1].cpu_utilization.toFixed(1)}% — ${entries[winIdx][1].context_switches||0} context switches.`;
     winnerRow.style.display='';
-    buildProcessSubtables(entries,true);
+
   } else {
     const vals_pf=entries.map(([,d])=>d.total_faults||0);
     const vals_hr=entries.map(([,d])=>d.hit_rate||0);
@@ -1097,7 +1164,7 @@ function fillTableFinal(entries,isSched){
     avgRow.style.display='';
     const minPF=Math.min(...vals_pf),maxHR=Math.max(...vals_hr);
     entries.forEach(([,d],i)=>{
-      if((d.total_faults||0)===minPF){const el=document.getElementById(`ct-pf-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
+      if((d.total_faults||0)===minPF){const el=document.getElementById(`ct-pf-${i}`);if(el){el.classList.add('winner-cell');el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
       if((d.hit_rate||0)===maxHR){const el=document.getElementById(`ct-hr-${i}`);if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}}
     });
     const winIdx=vals_pf.indexOf(minPF);
@@ -1107,7 +1174,6 @@ function fillTableFinal(entries,isSched){
       <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
       con solo ${minPF} page faults y Hit Rate de ${entries[winIdx][1].hit_rate.toFixed(1)}%.`;
     winnerRow.style.display='';
-    buildProcessSubtables(entries,false);
   }
 }
 
@@ -1181,6 +1247,9 @@ function setCompSpeed(val){
 
 function clearCompResults(){
   stopCompPlayer();
+  // Limpiar estado de ganador en vivo
+  for(const k in _liveWT) delete _liveWT[k];
+  for(const k in _wtLocked) delete _wtLocked[k];
   const r=document.getElementById('comp-results');
   if(r)r.innerHTML='';
 }
