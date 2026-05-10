@@ -1,124 +1,92 @@
 /**
- * comparison.js — Algorithm Comparison v4
+ * comparison.js — Algorithm Comparison v5
  *
- * Cambios vs v3:
- *  - UN solo botón "▶ Comparar & Reproducir" — ejecuta la API y arranca la animación automáticamente
- *  - Gantt GRANDE (BAR_H=52px) con estilo Mario: bloques con gradiente 3D, borde inferior oscuro,
- *    etiqueta de PID estilo pixel-font, fondo de ladrillos/piso, igual que los juegos de Mario
- *  - Barras animadas de la versión anterior integradas (versión colorida per-algo)
- *  - Más gráficas: WT, TAT, RT, CPU%, Ctx Switches, Timeline de gantt comparativo
- *  - Layout organizado en secciones colapsables: Gantt → Métricas vivas → Gráficas de barras → Tabla → Explicaciones
- *  - Mario corre + salta en cada uno de los gantts
- *  - Gráfica de barras vertical animada (Chart.js-style en canvas) debajo del Gantt
+ * Fixes vs v4:
+ *  - Canvas gantt más alto (BAR_H=56, más padding vertical)
+ *  - Métricas en vivo NO desaparecen al terminar (bug flash resuelto)
+ *  - Gráficas de barras animan en tiempo real (no solo al final)
+ *  - Paginación canvas funciona con steps del API
+ *  - Análisis comparativo automático generado (quién ganó, ventajas, desventajas)
+ *  - Un solo botón Comparar→Pausar→Reanudar→Reiniciar
  */
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Metadatos de algoritmos
-   ═══════════════════════════════════════════════════════════════════════ */
+/* ═══ Metadatos ═══════════════════════════════════════════════════════ */
 
 const SCHEDULING_META = {
-  'FCFS':                  { short:'First-Come, First-Served',   formula:'WT = CT−AT−BT  |  TAT = CT−AT  |  RT = 1ª CPU − AT', explanation:'No-preemptivo. Los procesos se ejecutan en el orden exacto de llegada. Puede causar el "efecto convoy" cuando un proceso largo bloquea a todos los cortos.', useCase:'Colas de impresión y sistemas batch.', preemptive:'❌ No preemptivo', starvation:'❌ No ocurre', complexity:'O(n)' },
-  'SJF':                   { short:'Shortest Job First',          formula:'Selección: min(BT disponibles)  |  WT = CT−AT−BT', explanation:'Elige el proceso con menor burst time. Óptimo en WT promedio, pero requiere conocer el burst time de antemano y puede causar starvation.', useCase:'Compiladores batch, servidores donde se conoce el tamaño de la tarea.', preemptive:'❌ No preemptivo', starvation:'⚠️ Puede ocurrir', complexity:'O(n log n)' },
-  'HRRN':                  { short:'Highest Response Ratio Next', formula:'RR = (WT_actual + BT) / BT  |  Selección: max(RR)', explanation:'Calcula el Response Ratio de cada proceso. Combina la prioridad por burst corto con aging implícito — elimina starvation sin sacrificar eficiencia.', useCase:'Sistemas mixtos batch/interactivo que necesitan justicia y eficiencia.', preemptive:'❌ No preemptivo', starvation:'✅ No ocurre', complexity:'O(n)' },
-  'Round Robin':            { short:'Quantum configurable',        formula:'Cada proceso recibe hasta Q unidades  |  espera máx = (n−1)×Q', explanation:'Cada proceso recibe la CPU por un máximo de Q unidades (quantum). Si no termina, vuelve al final de la cola circular. Garantiza equidad y baja latencia.', useCase:'Sistemas interactivos, terminales SSH, shells.', preemptive:'✅ Preemptivo', starvation:'✅ No ocurre', complexity:'O(1)' },
-  'SRTF':                  { short:'Shortest Remaining Time',     formula:'Preempta si llega proceso con menor tiempo restante  |  min(remaining_burst)', explanation:'Variante preemptiva de SJF. En cada tick compara el tiempo restante de todos los procesos. Mayor overhead de context switch, pero minimiza el WT total.', useCase:'Servidores web de alto rendimiento donde se conoce el tamaño de la request.', preemptive:'✅ Preemptivo', starvation:'⚠️ Puede ocurrir', complexity:'O(n) por tick' },
-  'Priority (Preemptive)': { short:'Prioridad preemptiva',        formula:'Selección: min(priority)  |  Preempta si llega mayor prioridad', explanation:'Siempre corre el proceso de mayor prioridad disponible. Preempta al actual si llega uno de mayor prioridad. Requiere aging para evitar starvation de procesos de baja prioridad.', useCase:'Kernels de SO, interrupciones hardware, sistemas de tiempo real.', preemptive:'✅ Preemptivo', starvation:'⚠️ Puede ocurrir', complexity:'O(log n)' },
-  'Multilevel Queue':       { short:'Colas por categoría fija',    formula:'Cola_0 (alta) → Cola_1 → Cola_n (baja)  |  sin migración de cola', explanation:'Divide procesos en colas permanentes por tipo (sistema, interactivo, batch). Cada cola tiene su propio algoritmo. Los procesos nunca cambian de cola.', useCase:'SO con clases bien definidas: procesos de sistema, usuario y batch.', preemptive:'✅ Entre colas', starvation:'⚠️ Colas inferiores', complexity:'O(k×n)' },
-  'MLFQ':                  { short:'Multilevel Feedback Queue',   formula:'Nuevo → Cola_0 (quantum corto)  |  agota quantum → baja cola  |  I/O → sube cola', explanation:'Los procesos cambian de cola según su comportamiento. CPU-bound bajan de prioridad; I/O-bound se mantienen arriba. Aprende el patrón de uso sin necesitar burst times.', useCase:'Sistemas de propósito general modernos. Linux CFS comparte estos principios.', preemptive:'✅ Preemptivo', starvation:'✅ Controlado con aging', complexity:'O(k)' },
+  'FCFS':                  { short:'First-Come, First-Served',   formula:'WT = CT−AT−BT  |  TAT = CT−AT  |  RT = 1ª CPU−AT', explanation:'No-preemptivo. Los procesos se ejecutan en el orden exacto de llegada. Puede causar el "efecto convoy" cuando un proceso largo bloquea a todos los cortos que llegaron después.', useCase:'Colas de impresión y sistemas batch donde el orden de llegada es justo.', preemptive:'❌ No preemptivo', starvation:'❌ No hay starvation', complexity:'O(n)' },
+  'SJF':                   { short:'Shortest Job First',          formula:'Selección: min(BT disponibles)  |  WT = CT−AT−BT', explanation:'Elige el proceso con menor burst time. Óptimo en WT promedio, pero requiere conocer el burst time de antemano. Los procesos largos pueden quedar bloqueados indefinidamente.', useCase:'Compiladores batch, servidores donde se conoce el tamaño de la tarea de antemano.', preemptive:'❌ No preemptivo', starvation:'⚠️ Puede causar starvation', complexity:'O(n log n)' },
+  'HRRN':                  { short:'Highest Response Ratio Next', formula:'RR = (WT_actual + BT) / BT  |  Selección: max(RR)', explanation:'Calcula el Response Ratio de cada proceso. Premia tanto al de burst corto como al que lleva más esperando. Elimina el starvation de forma natural sin mecanismos adicionales.', useCase:'Sistemas mixtos batch/interactivo que necesitan balancear eficiencia y justicia.', preemptive:'❌ No preemptivo', starvation:'✅ No hay starvation', complexity:'O(n) por decisión' },
+  'Round Robin':            { short:'Quantum configurable',        formula:'Cada proceso recibe hasta Q unidades  |  espera máx = (n−1)×Q', explanation:'Cada proceso recibe la CPU por un máximo de Q unidades (quantum). Si no termina, regresa al final de la cola. Garantiza que ningún proceso espere más de (n-1)×Q unidades. El quantum óptimo depende del tipo de carga.', useCase:'Sistemas interactivos, terminales SSH, shells de tiempo compartido.', preemptive:'✅ Preemptivo', starvation:'✅ No hay starvation', complexity:'O(1) por decisión' },
+  'SRTF':                  { short:'Shortest Remaining Time',     formula:'En cada tick: si llega proceso con menor tiempo restante → preempta  |  min(remaining)', explanation:'Variante preemptiva de SJF. En cada tick compara el tiempo restante de todos los procesos disponibles. Minimiza el tiempo de espera total pero genera más context switches y puede causar starvation severo en procesos largos.', useCase:'Servidores web de alto rendimiento donde se conoce el tamaño de la request.', preemptive:'✅ Preemptivo', starvation:'⚠️ Puede causar starvation', complexity:'O(n) por tick' },
+  'Priority (Preemptive)': { short:'Prioridad preemptiva',        formula:'Selección: min(priority)  |  Si llega proceso con mayor prioridad → preempta', explanation:'Siempre ejecuta el proceso de mayor prioridad disponible. Preempta al proceso actual si llega uno de mayor prioridad. Sin mecanismo de aging puede dejar procesos de baja prioridad esperando indefinidamente.', useCase:'Kernels de SO, manejo de interrupciones de hardware, sistemas de tiempo real.', preemptive:'✅ Preemptivo', starvation:'⚠️ Requiere aging para evitar starvation', complexity:'O(log n) con heap' },
+  'Multilevel Queue':       { short:'Colas por categoría fija',    formula:'Cola_0 (alta pri) → Cola_1 → Cola_n (baja)  |  proceso no cambia de cola', explanation:'Divide los procesos en colas permanentes por tipo (sistema, interactivo, batch). Cada cola tiene su propio algoritmo interno. Las colas superiores tienen prioridad absoluta sobre las inferiores.', useCase:'SO con clases bien definidas: procesos de sistema, procesos de usuario, procesos batch.', preemptive:'✅ Entre colas', starvation:'⚠️ Colas inferiores pueden quedar bloqueadas', complexity:'O(k×n), k = colas' },
+  'MLFQ':                  { short:'Multilevel Feedback Queue',   formula:'Nuevo → Cola_0 (Q corto)  |  agota quantum → baja cola  |  hace I/O → sube cola', explanation:'Los procesos cambian de cola según su comportamiento real. Los CPU-bound bajan de prioridad al agotar su quantum; los I/O-bound se mantienen arriba por ser más interactivos. Aprende el patrón de uso sin necesitar burst times previos.', useCase:'Sistemas de propósito general modernos. Linux CFS y Windows NT comparten estos principios.', preemptive:'✅ Preemptivo', starvation:'✅ Controlado con aging periódico', complexity:'O(k) por decisión' },
 };
 
 const PAGING_META = {
-  'FIFO':          { short:'First-In, First-Out',        formula:'Evictar: página más antigua en memoria', explanation:'La página que llegó primero es la primera en salir. Simple con una cola FIFO. Sufre la paradoja de Bélady.', useCase:'Sistemas embebidos con memoria muy limitada.', belady:'⚠️ Sufre anomalía de Bélady' },
-  'LRU':           { short:'Least Recently Used',         formula:'Evictar: min(last_access_time) → página menos usada recientemente', explanation:'Evicta la página que no fue usada hace más tiempo. Explota la localidad temporal. La más usada en la práctica.', useCase:'Linux (aproximado con bit ref), Windows, la mayoría de SO modernos.', belady:'✅ No sufre anomalía' },
-  'Optimal':       { short:'Bélady (teórico)',            formula:'Evictar: página que se usará MÁS tarde en el futuro', explanation:'Requiere conocer el futuro. Imposible de implementar online. Referencia teórica de benchmark.', useCase:'Evaluación teórica, análisis de traces de memoria.', belady:'✅ No sufre anomalía (es el óptimo)' },
-  'Clock':         { short:'Reloj circular',              formula:'bit_ref=1 → limpiar y avanzar  |  bit_ref=0 → evictar', explanation:'Puntero circular sobre frames. Da segunda oportunidad a páginas referenciadas recientemente. Aproxima LRU con O(1).', useCase:'Linux page daemon (kswapd), implementaciones reales de VM.', belady:'✅ No sufre anomalía' },
-  'Second Chance': { short:'Enhanced Clock',              formula:'(R=0, D=0)→evictar  |  (R=0, D=1)→segunda oportunidad  |  (R=1,*)→limpiar R', explanation:'Clock con bit dirty. Prioriza evictar páginas limpias no referenciadas. Reduce I/O de swap.', useCase:'Sistemas con alto costo de escritura a disco al hacer swap.', belady:'✅ No sufre anomalía' },
+  'FIFO':          { short:'First-In, First-Out',        formula:'Evictar: página con más tiempo en memoria (la más antigua)', explanation:'La página que llegó primero es la primera en salir. Simple de implementar con una cola FIFO. Sufre la paradoja de Bélady: añadir más frames puede aumentar los fallos de página.', useCase:'Sistemas embebidos con memoria muy limitada donde la simplicidad de implementación es clave.', belady:'⚠️ Sufre anomalía de Bélady' },
+  'LRU':           { short:'Least Recently Used',         formula:'Evictar: min(last_access_time) → página menos usada recientemente', explanation:'Evicta la página que no fue accedida hace más tiempo. Explota el principio de localidad temporal. La aproximación más usada en la práctica; costosa en hardware puro.', useCase:'Linux (approximado con bit de referencia), Windows, la mayoría de SO modernos.', belady:'✅ No sufre anomalía de Bélady' },
+  'Optimal':       { short:'Bélady (teórico)',            formula:'Evictar: página que se necesitará más tarde en el futuro (o nunca)', explanation:'Requiere conocer el futuro de la cadena de referencias. Imposible de implementar online. Sirve como benchmark teórico para medir qué tan lejos están los algoritmos reales del óptimo.', useCase:'Evaluación teórica y análisis offline de traces de memoria para comparar algoritmos.', belady:'✅ No sufre anomalía (es el óptimo)' },
+  'Clock':         { short:'Reloj circular',              formula:'bit_ref=1 → limpiar y avanzar puntero  |  bit_ref=0 → evictar', explanation:'Puntero circular sobre frames. Da segunda oportunidad a páginas referenciadas recientemente limpiando su bit. Aproxima LRU con O(1) de overhead por sustitución.', useCase:'Linux page daemon (kswapd), implementaciones reales de VM donde el overhead importa.', belady:'✅ No sufre anomalía de Bélady' },
+  'Second Chance': { short:'Enhanced Clock con bit dirty', formula:'(R=0,D=0) → evictar  |  (R=0,D=1) → segunda oportunidad  |  (R=1,*) → limpiar R', explanation:'Variante del Clock que añade el bit dirty (modificada). Prioriza evictar páginas no referenciadas y limpias. Reduce el I/O de swap al evitar escribir a disco páginas sucias cuando hay páginas limpias disponibles.', useCase:'Sistemas con alto costo de I/O de swap donde minimizar escrituras a disco es prioritario.', belady:'✅ No sufre anomalía de Bélady' },
 };
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Paleta Mario para bloques
-   ═══════════════════════════════════════════════════════════════════════ */
-
-// Colores Mario por PID (más vibrantes que PID_COLORS genérico)
+/* ═══ Paleta Mario ════════════════════════════════════════════════════ */
 const MARIO_BLOCK_COLORS = [
-  { top:'#FF4545', mid:'#E52521', dark:'#8B0000' }, // rojo Mario
-  { top:'#5BAEF2', mid:'#2563EB', dark:'#1E3A7A' }, // azul
-  { top:'#4DD670', mid:'#10B981', dark:'#065F46' }, // verde
-  { top:'#FFCF3B', mid:'#F59E0B', dark:'#92400E' }, // naranja/amarillo
-  { top:'#C084FC', mid:'#8B5CF6', dark:'#4C1D95' }, // morado
-  { top:'#F472B6', mid:'#EC4899', dark:'#831843' }, // rosa
-  { top:'#22D3EE', mid:'#0891B2', dark:'#164E63' }, // cyan
-  { top:'#A3E635', mid:'#65A30D', dark:'#365314' }, // lima
+  { top:'#FF5E5E', mid:'#E52521', dark:'#8B1010' },
+  { top:'#5BAEF2', mid:'#2563EB', dark:'#1E3A7A' },
+  { top:'#4DD670', mid:'#10B981', dark:'#065F46' },
+  { top:'#FFD65B', mid:'#F59E0B', dark:'#92400E' },
+  { top:'#C084FC', mid:'#8B5CF6', dark:'#4C1D95' },
+  { top:'#F472B6', mid:'#EC4899', dark:'#831843' },
+  { top:'#22D3EE', mid:'#0891B2', dark:'#164E63' },
+  { top:'#A3E635', mid:'#65A30D', dark:'#365314' },
 ];
+function marioBlockColor(i) { return MARIO_BLOCK_COLORS[i % MARIO_BLOCK_COLORS.length]; }
 
-function marioBlockColor(pid) {
-  return MARIO_BLOCK_COLORS[pid % MARIO_BLOCK_COLORS.length];
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   Estado
-   ═══════════════════════════════════════════════════════════════════════ */
-
+/* ═══ Estado ══════════════════════════════════════════════════════════ */
 const CompPlayer = {
-  results: null, totalTime: 0, currentTick: 0,
-  playing: false, speed: 1.0, rafId: null, lastFrame: 0,
-  category: 'scheduling', marios: [], renderFn: null,
+  results:null, totalTime:0, currentTick:0,
+  playing:false, speed:1.0, rafId:null, lastFrame:0,
+  category:'scheduling', marios:[], renderFn:null,
+  barAnimFrame: 0, barAnimId: null,
 };
+const CompState = { category:'scheduling', selected:[], numCores:4 };
 
-const CompState = {
-  category: 'scheduling', selected: [], numCores: 4,
-};
-
-/* ═══════════════════════════════════════════════════════════════════════
-   Init
-   ═══════════════════════════════════════════════════════════════════════ */
-
+/* ═══ Init ════════════════════════════════════════════════════════════ */
 function initComparison() {
-  if (document.getElementById('comp-algo-grid').children.length === 0) {
+  if (document.getElementById('comp-algo-grid').children.length === 0)
     buildAlgoCards('scheduling');
-  }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Categoría
-   ═══════════════════════════════════════════════════════════════════════ */
-
+/* ═══ Categoría ═══════════════════════════════════════════════════════ */
 function setCompCategory(cat) {
-  CompState.category = cat;
-  CompState.selected = [];
-  document.getElementById('comp-tab-sched').classList.toggle('active', cat === 'scheduling');
-  document.getElementById('comp-tab-page').classList.toggle('active', cat === 'paging');
-  const max = cat === 'scheduling' ? 4 : 5;
+  CompState.category = cat; CompState.selected = [];
+  document.getElementById('comp-tab-sched').classList.toggle('active', cat==='scheduling');
+  document.getElementById('comp-tab-page').classList.toggle('active',  cat==='paging');
+  const max = cat==='scheduling' ? 4 : 5;
   document.getElementById('comp-algo-hint').textContent =
-    `Selecciona 2–${max} algoritmos de ${cat === 'scheduling' ? 'scheduling' : 'paginación'}`;
-  document.getElementById('comp-sched-opts').style.display = cat === 'scheduling' ? 'flex' : 'none';
-  document.getElementById('comp-page-opts').style.display  = cat === 'paging'     ? 'flex' : 'none';
-  buildAlgoCards(cat);
-  clearCompResults();
-  updateSelCount();
+    `Selecciona 2–${max} algoritmos de ${cat==='scheduling'?'scheduling':'paginación'}`;
+  document.getElementById('comp-sched-opts').style.display = cat==='scheduling'?'flex':'none';
+  document.getElementById('comp-page-opts').style.display  = cat==='paging'    ?'flex':'none';
+  buildAlgoCards(cat); clearCompResults(); updateSelCount();
   document.getElementById('btn-run-comparison').disabled = true;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Tarjetas de algoritmos
-   ═══════════════════════════════════════════════════════════════════════ */
-
+/* ═══ Tarjetas ════════════════════════════════════════════════════════ */
 function buildAlgoCards(cat) {
   const grid = document.getElementById('comp-algo-grid');
   grid.innerHTML = '';
-  const meta = cat === 'scheduling' ? SCHEDULING_META : PAGING_META;
+  const meta = cat==='scheduling' ? SCHEDULING_META : PAGING_META;
   Object.entries(meta).forEach(([name, info], i) => {
     const color = PID_COLORS[i % PID_COLORS.length];
-    const card = document.createElement('div');
-    card.className = 'comp-algo-card';
-    card.dataset.name = name;
+    const card  = document.createElement('div');
+    card.className = 'comp-algo-card'; card.dataset.name = name;
+    const badge = info.preemptive || info.belady || '';
     card.innerHTML = `
       <div style="font-weight:700;font-size:12px;color:var(--text-primary);margin-bottom:3px">${name}</div>
-      <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${info.short}</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        ${info.preemptive ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:${color}22;border:1px solid ${color}44;color:${color}">${info.preemptive}</span>` : ''}
-        ${info.belady     ? `<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:${color}22;border:1px solid ${color}44;color:${color}">${info.belady}</span>` : ''}
-      </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:5px;line-height:1.3">${info.short}</div>
+      ${badge ? `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:${color}22;border:1px solid ${color}44;color:${color}">${badge}</span>` : ''}
     `;
     card.addEventListener('click', () => toggleAlgoCard(card, name, color));
     grid.appendChild(card);
@@ -126,85 +94,68 @@ function buildAlgoCards(cat) {
 }
 
 function toggleAlgoCard(card, name, color) {
-  const max = CompState.category === 'scheduling' ? 4 : 5;
-  const isSelected = CompState.selected.includes(name);
-  if (isSelected) {
-    CompState.selected = CompState.selected.filter(n => n !== name);
-    card.style.borderColor = '';
-    card.style.background = '';
-    card.style.boxShadow = '';
+  const max = CompState.category==='scheduling' ? 4 : 5;
+  const sel = CompState.selected.includes(name);
+  if (sel) {
+    CompState.selected = CompState.selected.filter(n => n!==name);
+    card.style.cssText = '';
   } else {
     if (CompState.selected.length >= max) return;
     CompState.selected.push(name);
     card.style.borderColor = color;
-    card.style.background = color + '18';
-    card.style.boxShadow = `0 0 0 2px ${color}55`;
+    card.style.background  = color+'18';
+    card.style.boxShadow   = `0 0 0 2px ${color}55`;
   }
   updateSelCount();
   document.getElementById('btn-run-comparison').disabled = CompState.selected.length < 2;
 }
 
 function updateSelCount() {
-  const max = CompState.category === 'scheduling' ? 4 : 5;
+  const max = CompState.category==='scheduling' ? 4 : 5;
   document.getElementById('comp-sel-count').textContent = `${CompState.selected.length} / ${max} seleccionados`;
 }
-
 function setCompCores(val) {
   CompState.numCores = parseInt(val);
-  document.getElementById('comp-cores-label').textContent = `${val} core${val > 1 ? 's' : ''}`;
+  document.getElementById('comp-cores-label').textContent = `${val} core${val>1?'s':''}`;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Ejecutar — UN solo botón que hace fetch + arranca animación
-   ═══════════════════════════════════════════════════════════════════════ */
-
+/* ═══ Ejecutar ════════════════════════════════════════════════════════ */
 async function runComparison() {
   if (CompState.selected.length < 2) return;
-  if (CompState.category === 'scheduling' && AppState.processes.length === 0) {
-    showToast('Agrega procesos primero en la pantalla de Processes', 'warning');
-    return;
+  if (CompState.category==='scheduling' && AppState.processes.length===0) {
+    showToast('Agrega procesos primero en la pantalla de Processes','warning'); return;
   }
-
   const btn = document.getElementById('btn-run-comparison');
   btn.disabled = true;
-  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></div> Ejecutando threads…';
-
+  btn.innerHTML = '<div class="spinner" style="width:13px;height:13px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></div> Ejecutando threads…';
   const log = document.getElementById('comp-thread-log');
   log.textContent = `⚙  ${CompState.selected.length} threads | ${CompState.numCores} core(s)…`;
-
-  clearCompResults();
-  stopCompPlayer();
+  clearCompResults(); stopCompPlayer();
 
   try {
     let apiResults;
-    if (CompState.category === 'scheduling') {
-      const quantum = parseInt(document.getElementById('comp-quantum').value) || 2;
+    if (CompState.category==='scheduling') {
+      const quantum = parseInt(document.getElementById('comp-quantum').value)||2;
       apiResults = await apiCall('/api/schedule/compare-selected', {
-        algorithms: CompState.selected, quantum,
-        num_cores: CompState.numCores, processes: AppState.processes,
+        algorithms:CompState.selected, quantum, num_cores:CompState.numCores,
+        processes:AppState.processes,
       });
     } else {
       const refRaw = document.getElementById('comp-ref-string').value;
-      const refStr = refRaw.split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && n >= 0);
-      const frames = parseInt(document.getElementById('comp-frames').value) || 3;
-      if (!refStr.length) { showToast('Cadena de referencia inválida', 'warning'); return; }
+      const refStr = refRaw.split(/[\s,]+/).map(Number).filter(n=>!isNaN(n)&&n>=0);
+      const frames = parseInt(document.getElementById('comp-frames').value)||3;
+      if (!refStr.length) { showToast('Cadena de referencia inválida','warning'); return; }
       apiResults = await apiCall('/api/page-replacement/compare', {
-        algorithms: CompState.selected, reference_string: refStr,
-        num_frames: frames, num_cores: CompState.numCores,
+        algorithms:CompState.selected, reference_string:refStr,
+        num_frames:frames, num_cores:CompState.numCores,
       });
     }
-
-    const n = Object.values(apiResults).filter(d => !d.error).length;
+    const n = Object.values(apiResults).filter(d=>!d.error).length;
     log.textContent = `✓  ${n} threads completados`;
-    showToast(`${n} algoritmos comparados`, 'success');
-
+    showToast(`${n} algoritmos comparados`,'success');
     buildResultUI(apiResults);
-    // Autoplay inmediato
-    setTimeout(() => {
-      if (CompPlayer.renderFn && !CompPlayer.playing) startCompPlay();
-    }, 120);
-
-  } catch (err) {
+    setTimeout(() => { if (CompPlayer.renderFn && !CompPlayer.playing) startCompPlay(); }, 150);
+  } catch(err) {
     log.textContent = `❌  ${err.message}`;
   } finally {
     btn.disabled = false;
@@ -212,774 +163,851 @@ async function runComparison() {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Construir UI de resultados
-   ═══════════════════════════════════════════════════════════════════════ */
-
+/* ═══ UI principal ════════════════════════════════════════════════════ */
 function buildResultUI(apiResults) {
   const container = document.getElementById('comp-results');
-  const entries   = Object.entries(apiResults).filter(([, d]) => !d.error);
+  const entries   = Object.entries(apiResults).filter(([,d])=>!d.error);
   if (!entries.length) return;
-  const isSched = CompState.category === 'scheduling';
+  const isSched = CompState.category==='scheduling';
   const meta    = isSched ? SCHEDULING_META : PAGING_META;
 
-  // ── Estilos locales (inyectar una vez) ──────────────────────────────
-  if (!document.getElementById('comp-v4-style')) {
+  // Estilos
+  if (!document.getElementById('comp-v5-style')) {
     const s = document.createElement('style');
-    s.id = 'comp-v4-style';
+    s.id = 'comp-v5-style';
     s.textContent = `
-      .comp-live-cell { transition: color .25s, background .25s; }
-      .comp-live-cell.flash { color:#6EEB83 !important; background:rgba(110,235,131,.12) !important; }
-      .comp-section { margin-bottom:16px; }
-      .comp-section-title {
-        font-size:12px; font-weight:700; color:var(--text-secondary);
-        text-transform:uppercase; letter-spacing:.06em;
-        margin-bottom:8px; display:flex; align-items:center; gap:6px;
-      }
-      .comp-metrics-row {
-        display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px;
-      }
-      .comp-metric-tile {
-        background:var(--bg-card); border:1px solid var(--border); border-radius:10px;
-        padding:12px 14px; text-align:center;
-      }
-      .comp-metric-tile .val { font-size:22px; font-weight:700; color:var(--accent); margin:4px 0 2px; }
-      .comp-metric-tile .lbl { font-size:10px; color:var(--text-muted); }
-      .comp-metric-tile .sub { font-size:11px; color:var(--text-secondary); }
-      .comp-winner { outline:2px solid #6EEB83; outline-offset:2px; }
-      .comp-bar-charts { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-      @media (max-width:700px) { .comp-bar-charts { grid-template-columns:1fr; } }
+      .comp-live-cell { transition:color .2s,background .2s; font-size:18px; font-weight:700; color:#fff; }
+      .comp-live-cell.flash { color:#6EEB83 !important; background:rgba(110,235,131,.14) !important; }
+      .comp-mtile { background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center; }
+      .comp-mtile-name { font-size:11px;font-weight:700;margin-bottom:8px; }
+      .comp-mtile-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left; }
+      .comp-mtile-kv { display:flex;flex-direction:column;gap:1px; }
+      .comp-mtile-k  { font-size:9px;color:var(--text-muted); }
+      .comp-bar-charts { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+      @media(max-width:700px){.comp-bar-charts{grid-template-columns:1fr}}
+      .comp-bc-card { background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px 14px; }
+      .comp-bc-title { font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px; }
+      .comp-analysis { background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px; }
+      .comp-analysis h4 { font-size:13px;font-weight:700;color:var(--accent);margin:0 0 10px; }
+      .comp-analysis p  { font-size:12px;color:var(--text-secondary);line-height:1.7;margin:0 0 8px; }
+      .comp-analysis .winner-badge { display:inline-block;padding:2px 10px;border-radius:99px;font-size:10px;font-weight:700; }
+      .comp-analysis ul { margin:6px 0 10px 16px;font-size:12px;color:var(--text-secondary);line-height:1.8; }
     `;
     document.head.appendChild(s);
   }
 
-  // ── Panel de procesos ───────────────────────────────────────────────
-  const vis = typeof getEffectiveVisibility === 'function'
-    ? getEffectiveVisibility() : { threadsVisible:false, forksVisible:false };
-
+  // Panel procesos
   let procPanel = '';
-  if (isSched && AppState.processes.length > 0) {
-    const tiles = AppState.processes.map((p, i) => {
-      const c = PID_COLORS[i % PID_COLORS.length];
-      const tb = (vis.threadsVisible && p.threads && p.threads.length)
-        ? p.threads.map(t => `<span style="font-size:9px;background:#2563eb33;color:#60a5fa;border:1px solid #3b82f666;border-radius:4px;padding:1px 5px;margin-right:2px">🧵T${t.tid}</span>`).join('') : '';
-      const fb = (vis.forksVisible && p.forks && p.forks.length)
-        ? p.forks.map(f => `<span style="font-size:9px;background:#10b98133;color:#34d399;border:1px solid #10b98166;border-radius:4px;padding:1px 5px;margin-right:2px">⑂F${f.fid}</span>`).join('') : '';
+  if (isSched && AppState.processes.length>0) {
+    const vis = typeof getEffectiveVisibility==='function' ? getEffectiveVisibility() : {threadsVisible:false,forksVisible:false};
+    const tiles = AppState.processes.map((p,i)=>{
+      const c = PID_COLORS[i%PID_COLORS.length];
+      const tb = (vis.threadsVisible&&p.threads&&p.threads.length)
+        ? p.threads.map(t=>`<span style="font-size:9px;background:#2563eb33;color:#60a5fa;border:1px solid #3b82f666;border-radius:4px;padding:1px 5px;margin-right:2px">🧵T${t.tid}</span>`).join('') : '';
+      const fb = (vis.forksVisible&&p.forks&&p.forks.length)
+        ? p.forks.map(f=>`<span style="font-size:9px;background:#10b98133;color:#34d399;border:1px solid #10b98166;border-radius:4px;padding:1px 5px;margin-right:2px">⑂F${f.fid}</span>`).join('') : '';
       return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:8px 10px;border-radius:8px;border:1.5px solid ${c}55;background:${c}11;min-width:68px">
         <div style="font-weight:800;font-size:14px;color:${c}">P${p.pid}</div>
         <div style="font-size:9px;color:var(--text-muted)">BT=${p.burst_time} AT=${p.arrival_time}</div>
-        <div>${tb}${fb}</div>
-      </div>`;
+        <div>${tb}${fb}</div></div>`;
     }).join('');
-    procPanel = `<div class="card comp-section">
-      <div class="comp-section-title"><i class="ph ph-stack"></i> Procesos en comparación</div>
+    procPanel = `<div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="ph ph-stack"></i> Procesos en comparación</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px">${tiles}</div>
     </div>`;
   }
 
-  // ── Gantt canvas GRANDE ─────────────────────────────────────────────
-  const ganttSection = `
-    <div class="card comp-section" id="comp-gantt-card">
-      <div class="comp-section-title" style="justify-content:space-between">
-        <span><i class="ph ph-chart-bar"></i> Gantt comparativo en tiempo real</span>
-        <span id="comp-tick-label" style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none">t = 0</span>
+  // Gantt
+  const ganttHTML = `
+    <div class="card" style="margin-bottom:12px" id="comp-gantt-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em"><i class="ph ph-chart-bar"></i> Gantt comparativo en tiempo real</span>
+        <span id="comp-tick-label" style="font-size:11px;color:var(--text-muted)">t = 0</span>
       </div>
-      <div id="comp-canvas-container" style="position:relative;width:100%;border-radius:8px;overflow:hidden;background:#080814;border:1px solid rgba(255,255,255,0.08)">
+      <div id="comp-canvas-container" style="position:relative;width:100%;border-radius:8px;overflow:hidden;background:#05050F;border:1px solid rgba(255,255,255,0.07)">
         <canvas id="comp-canvas" style="display:block;width:100%"></canvas>
       </div>
-      <!-- Controles integrados (UN solo set, sin botón Play separado) -->
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn btn-secondary btn-sm" style="border-radius:50%" onclick="compSeek(0)" title="Reset"><i class="ph ph-skip-back"></i></button>
-        <button class="btn btn-secondary btn-sm" style="border-radius:50%" onclick="compStep(-1)" title="Paso atrás"><i class="ph ph-rewind"></i></button>
+        <button class="btn btn-secondary btn-sm" style="border-radius:50%" onclick="compStep(-1)"><i class="ph ph-rewind"></i></button>
         <button class="btn btn-primary" id="comp-btn-play" style="border-radius:24px;padding:7px 24px;font-size:1rem;font-weight:700" onclick="toggleCompPlay()">
           <i class="ph ph-pause"></i> Pausar
         </button>
-        <button class="btn btn-secondary btn-sm" style="border-radius:50%" onclick="compStep(1)" title="Paso adelante"><i class="ph ph-fast-forward"></i></button>
-        <button class="btn btn-secondary btn-sm" style="border-radius:50%" onclick="compSeek(CompPlayer.totalTime)" title="Ir al final"><i class="ph ph-skip-forward"></i></button>
+        <button class="btn btn-secondary btn-sm" style="border-radius:50%" onclick="compStep(1)"><i class="ph ph-fast-forward"></i></button>
+        <button class="btn btn-secondary btn-sm" style="border-radius:50%" onclick="compSeek(CompPlayer.totalTime)"><i class="ph ph-skip-forward"></i></button>
         <span id="comp-step-counter" style="font-size:12px;color:var(--text-muted);min-width:58px">0 / 0</span>
-        <div style="display:flex;align-items:center;gap:6px;margin-left:6px">
+        <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
           <label for="comp-speed" style="font-size:11px;color:var(--text-muted)">Velocidad</label>
           <input type="range" id="comp-speed" min="0.25" max="4" step="0.25" value="1" style="width:76px" oninput="setCompSpeed(this.value)">
-          <span id="comp-speed-label" style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.12);padding:2px 7px;border-radius:6px;color:#fff;border:1px solid rgba(255,255,255,0.16)">1x</span>
+          <span id="comp-speed-label" style="font-size:11px;font-weight:600;background:rgba(255,255,255,.12);padding:2px 7px;border-radius:6px;color:#fff;border:1px solid rgba(255,255,255,.16)">1x</span>
         </div>
       </div>
     </div>`;
 
-  // ── Métricas vivas ──────────────────────────────────────────────────
-  const isS = isSched;
-  const metricTiles = entries.map(([name, d], i) => {
-    const c = PID_COLORS[i % PID_COLORS.length];
-    return `<div class="comp-metric-tile" id="comp-mtile-${i}">
-      <div style="font-size:10px;font-weight:700;color:${c};margin-bottom:4px">${name}</div>
-      ${isS ? `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;text-align:left">
-          <div><div style="font-size:9px;color:var(--text-muted)">WT</div><div id="comp-cell-wt-${i}" class="comp-live-cell" style="font-size:15px;font-weight:700;color:#fff">—</div></div>
-          <div><div style="font-size:9px;color:var(--text-muted)">TAT</div><div id="comp-cell-tat-${i}" class="comp-live-cell" style="font-size:15px;font-weight:700;color:#fff">—</div></div>
-          <div><div style="font-size:9px;color:var(--text-muted)">RT</div><div id="comp-cell-rt-${i}" class="comp-live-cell" style="font-size:15px;font-weight:700;color:#fff">—</div></div>
-          <div><div style="font-size:9px;color:var(--text-muted)">CPU%</div><div id="comp-cell-cpu-${i}" class="comp-live-cell" style="font-size:15px;font-weight:700;color:#fff">—</div></div>
-        </div>` : `
-        <div><div style="font-size:9px;color:var(--text-muted)">Faults</div><div id="comp-cell-pf-${i}" class="comp-live-cell" style="font-size:20px;font-weight:700;color:#fff">—</div></div>
-        <div style="font-size:10px;color:var(--text-muted)">Hit <span id="comp-cell-hr-${i}" class="comp-live-cell">—</span></div>`}
-    </div>`;
-  }).join('');
-
-  const metricsSection = `
-    <div class="comp-section">
-      <div class="comp-section-title"><i class="ph ph-activity"></i> Métricas en vivo</div>
-      <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;padding:5px 10px;background:rgba(110,235,131,0.06);border-radius:6px;border-left:3px solid var(--accent)">
-        📐 ${isS
-          ? 'WT = CT−AT−BT &nbsp;|&nbsp; TAT = CT−AT &nbsp;|&nbsp; RT = 1ª CPU−AT &nbsp;|&nbsp; CPU% = Tiempo_ocupado/Tiempo_total × 100'
-          : 'Fault Rate = Fallos/Longitud_cadena × 100 &nbsp;|&nbsp; Hit Rate = 100 − Fault Rate'}
+  // Tiles de métricas vivas
+  const tileRowHTML = `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="ph ph-activity"></i> Métricas en vivo</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:5px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent)">
+        📐 ${isSched
+          ? 'WT = CT−AT−BT &nbsp;|&nbsp; TAT = CT−AT &nbsp;|&nbsp; RT = 1ª CPU−AT &nbsp;|&nbsp; CPU% = Tiempo_ocupado / Tiempo_total × 100'
+          : 'Page Fault Rate = Fallos / Longitud_cadena × 100 &nbsp;|&nbsp; Hit Rate = 100 − Fault Rate &nbsp;|&nbsp; Hit = página ya en memoria = NO fault'}
       </div>
-      <div class="comp-metrics-row">${metricTiles}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+        ${entries.map(([name,d],i)=>{
+          const c = PID_COLORS[i%PID_COLORS.length];
+          return `<div class="comp-mtile" id="comp-mtile-${i}" style="border-color:${c}33">
+            <div class="comp-mtile-name" style="color:${c}">${name}</div>
+            ${isSched
+              ? `<div class="comp-mtile-grid">
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Waiting Time</span><span id="cv-wt-${i}" class="comp-live-cell">—</span></div>
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Turnaround</span><span id="cv-tat-${i}" class="comp-live-cell">—</span></div>
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Response</span><span id="cv-rt-${i}" class="comp-live-cell">—</span></div>
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">CPU Util</span><span id="cv-cpu-${i}" class="comp-live-cell">—</span></div>
+                </div>`
+              : `<div class="comp-mtile-grid">
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Page Faults</span><span id="cv-pf-${i}" class="comp-live-cell">—</span></div>
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Hit Rate</span><span id="cv-hr-${i}" class="comp-live-cell">—</span></div>
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Fault Rate</span><span id="cv-fr-${i}" class="comp-live-cell">—</span></div>
+                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Frames</span><span class="comp-live-cell">${d.num_frames}</span></div>
+                </div>`}
+          </div>`;
+        }).join('')}
+      </div>
     </div>`;
 
-  // ── Gráficas de barras (canvas 2D) ──────────────────────────────────
-  const barChartsSection = isS ? `
-    <div class="comp-section">
-      <div class="comp-section-title"><i class="ph ph-chart-bar"></i> Comparación de métricas</div>
+  // Gráficas de barras (animadas en tiempo real)
+  const bcIDs = isSched
+    ? ['comp-bc-wt','comp-bc-tat','comp-bc-rt','comp-bc-cpu','comp-bc-ctx','comp-bc-sim']
+    : ['comp-bc-pf','comp-bc-fr','comp-bc-hr','comp-bc-sim'];
+  const bcTitles = isSched
+    ? ['Avg Waiting Time','Avg Turnaround Time','Avg Response Time','CPU Utilization (%)','Context Switches','Simulation Time (ms)']
+    : ['Page Faults','Fault Rate (%)','Hit Rate (%)','Simulation Time (ms)'];
+
+  const barChartsHTML = `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="ph ph-chart-bar"></i> Comparación de métricas</div>
       <div class="comp-bar-charts">
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Avg Waiting Time (ms)</div><div style="height:160px;position:relative"><canvas id="comp-bc-wt"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Avg Turnaround Time (ms)</div><div style="height:160px;position:relative"><canvas id="comp-bc-tat"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Avg Response Time (ms)</div><div style="height:160px;position:relative"><canvas id="comp-bc-rt"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">CPU Utilization (%)</div><div style="height:160px;position:relative"><canvas id="comp-bc-cpu"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Context Switches</div><div style="height:160px;position:relative"><canvas id="comp-bc-ctx"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Simulation Time (ms)</div><div style="height:160px;position:relative"><canvas id="comp-bc-sim"></canvas></div></div>
-      </div>
-    </div>` : `
-    <div class="comp-section">
-      <div class="comp-section-title"><i class="ph ph-chart-bar"></i> Comparación de métricas</div>
-      <div class="comp-bar-charts">
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Page Faults totales</div><div style="height:160px;position:relative"><canvas id="comp-bc-pf"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Fault Rate (%)</div><div style="height:160px;position:relative"><canvas id="comp-bc-fr"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Hit Rate (%)</div><div style="height:160px;position:relative"><canvas id="comp-bc-hr"></canvas></div></div>
-        <div class="card" style="padding:12px"><div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Simulation Time (ms)</div><div style="height:160px;position:relative"><canvas id="comp-bc-sim"></canvas></div></div>
+        ${bcIDs.map((id,i)=>`
+          <div class="comp-bc-card">
+            <div class="comp-bc-title">${bcTitles[i]}</div>
+            <div style="height:150px;position:relative"><canvas id="${id}"></canvas></div>
+          </div>`).join('')}
       </div>
     </div>`;
 
-  // ── Tabla comparativa ───────────────────────────────────────────────
-  const hdrs = isS
-    ? ['Algoritmo','Core','Avg WT','Avg TAT','Avg RT','CPU %','Ctx Sw.','Sim ms']
+  // Análisis comparativo (generado dinámicamente al final)
+  const analysisHTML = `<div id="comp-analysis-section" style="margin-bottom:12px"></div>`;
+
+  // Tabla
+  const hdrs = isSched
+    ? ['Algoritmo','Core','Avg WT','Avg TAT','Avg RT','CPU %','Ctx Sw','Sim ms']
     : ['Algoritmo','Core','Page Faults','Hit Rate %','Fault Rate %','Frames','Sim ms'];
-
-  const tableRows = entries.map(([name, d], i) => {
-    const c = PID_COLORS[i % PID_COLORS.length];
-    const core = i % CompState.numCores;
-    return isS
+  const tableRows = entries.map(([name,d],i)=>{
+    const c = PID_COLORS[i%PID_COLORS.length];
+    return isSched
       ? `<tr>
           <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px"></span>${name}</td>
-          <td>Core ${core}</td>
-          <td id="comp-cell-wt2-${i}" class="comp-live-cell">—</td>
-          <td id="comp-cell-tat2-${i}" class="comp-live-cell">—</td>
-          <td id="comp-cell-rt2-${i}" class="comp-live-cell">—</td>
-          <td id="comp-cell-cpu2-${i}" class="comp-live-cell">—</td>
-          <td>${d.context_switches ?? '—'}</td>
-          <td>${d.elapsed_ms != null ? d.elapsed_ms.toFixed(1) : '—'}</td>
+          <td>Core ${i%CompState.numCores}</td>
+          <td id="ct-wt-${i}" class="comp-live-cell" style="font-size:13px">—</td>
+          <td id="ct-tat-${i}" class="comp-live-cell" style="font-size:13px">—</td>
+          <td id="ct-rt-${i}" class="comp-live-cell" style="font-size:13px">—</td>
+          <td id="ct-cpu-${i}" class="comp-live-cell" style="font-size:13px">—</td>
+          <td>${d.context_switches??'—'}</td>
+          <td>${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
         </tr>`
       : `<tr>
           <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px"></span>${name}</td>
-          <td>Core ${i % CompState.numCores}</td>
-          <td id="comp-cell-pf2-${i}" class="comp-live-cell">—</td>
-          <td id="comp-cell-hr2-${i}" class="comp-live-cell">—</td>
-          <td id="comp-cell-fr2-${i}" class="comp-live-cell">—</td>
-          <td>${d.num_frames ?? '—'}</td>
-          <td>${d.elapsed_ms != null ? d.elapsed_ms.toFixed(1) : '—'}</td>
+          <td>Core ${i%CompState.numCores}</td>
+          <td id="ct-pf-${i}" class="comp-live-cell" style="font-size:13px">—</td>
+          <td id="ct-hr-${i}" class="comp-live-cell" style="font-size:13px">—</td>
+          <td id="ct-fr-${i}" class="comp-live-cell" style="font-size:13px">—</td>
+          <td>${d.num_frames??'—'}</td>
+          <td>${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
         </tr>`;
   }).join('');
 
-  const tableSection = `
-    <div class="card comp-section">
-      <div class="comp-section-title"><i class="ph ph-clipboard-text"></i> Tabla de métricas</div>
-      <div class="table-wrapper">
-        <table><thead><tr>${hdrs.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${tableRows}</tbody></table>
-      </div>
+  const tableHTML = `
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="ph ph-clipboard-text"></i> Tabla de métricas</div>
+      <div class="table-wrapper"><table>
+        <thead><tr>${hdrs.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table></div>
     </div>`;
 
-  // ── Explicaciones ───────────────────────────────────────────────────
-  const explSection = `
-    <div class="card comp-section">
-      <div class="comp-section-title"><i class="ph ph-lightbulb"></i> Algoritmos: fórmulas y casos de uso</div>
-      ${entries.map(([name], i) => {
+  // Explicaciones
+  const explHTML = `
+    <div class="card">
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px"><i class="ph ph-lightbulb"></i> Algoritmos: fórmulas, análisis y casos de uso</div>
+      ${entries.map(([name],i)=>{
         const m = meta[name]; if (!m) return '';
-        const c = PID_COLORS[i % PID_COLORS.length];
-        const badges = [
-          m.preemptive && `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:${c}22;border:1px solid ${c}55;color:${c}">${m.preemptive}</span>`,
-          m.starvation && `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-muted)">${m.starvation}</span>`,
-          m.complexity && `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-muted)">${m.complexity}</span>`,
-          m.belady     && `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:${c}22;border:1px solid ${c}55;color:${c}">${m.belady}</span>`,
-        ].filter(Boolean).join(' ');
+        const c = PID_COLORS[i%PID_COLORS.length];
+        const b1 = m.preemptive ? `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:${c}22;border:1px solid ${c}55;color:${c}">${m.preemptive}</span>` : '';
+        const b2 = m.starvation ? `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-muted)">${m.starvation}</span>` : '';
+        const b3 = m.complexity ? `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text-muted)">${m.complexity}</span>` : '';
+        const b4 = m.belady     ? `<span style="font-size:9px;padding:2px 8px;border-radius:99px;background:${c}22;border:1px solid ${c}55;color:${c}">${m.belady}</span>` : '';
         return `<div style="border-left:3px solid ${c};padding:10px 14px;margin-bottom:10px;background:var(--bg-surface);border-radius:0 8px 8px 0">
-          <div style="font-weight:700;font-size:13px;color:${c};margin-bottom:3px">${name} — <span style="font-weight:400;color:var(--text-secondary)">${m.short}</span></div>
+          <div style="font-weight:700;font-size:13px;color:${c};margin-bottom:3px">${name} <span style="font-weight:400;color:var(--text-secondary)">— ${m.short}</span></div>
           <div style="font-size:10px;color:var(--text-muted);font-family:monospace;margin-bottom:6px;padding:4px 8px;background:rgba(255,255,255,.04);border-radius:4px">${m.formula}</div>
           <div style="font-size:12px;color:var(--text-secondary);line-height:1.65;margin-bottom:6px">${m.explanation}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">${badges}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">${b1}${b2}${b3}${b4}</div>
           <div style="font-size:11px;color:var(--text-muted)">💡 <em>${m.useCase}</em></div>
         </div>`;
       }).join('')}
     </div>`;
 
-  container.innerHTML = procPanel + ganttSection + metricsSection + barChartsSection + tableSection + explSection;
+  container.innerHTML = procPanel + ganttHTML + tileRowHTML + barChartsHTML + analysisHTML + tableHTML + explHTML;
 
-  // Iniciar canvas Gantt grande
   initCompCanvas(entries);
-
-  // Dibujar gráficas de barras estáticas (se actualizarán al final de la animación)
-  setTimeout(() => drawAllBarCharts(entries, isSched), 80);
+  // Arrancar animación de gráficas de barras (en tiempo real)
+  startBarChartAnimation(entries, isSched);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Canvas Gantt GRANDE con estilo Mario
-   ═══════════════════════════════════════════════════════════════════════ */
-
-const COMP_BAR_H   = 52;   // barras grandes
-const COMP_ROW_GAP = 18;
-const COMP_LEFT    = 140;
-const COMP_TOP     = 16;
-const COMP_BOTTOM  = 36;
-const COMP_MARIO_SCALE = 2;
-const COMP_MARIO_W = 16 * COMP_MARIO_SCALE;
-const COMP_MARIO_H = 16 * COMP_MARIO_SCALE;
+/* ═══ Canvas Gantt (estilo Mario) ════════════════════════════════════ */
+const COMP_BAR_H   = 56;
+const COMP_ROW_GAP = 20;
+const COMP_LEFT    = 148;
+const COMP_TOP     = 20;
+const COMP_BOTTOM  = 40;
+const CMS = 2; // Mario sprite scale
+const CMW = 16*CMS, CMH = 16*CMS;
 
 function initCompCanvas(entries) {
-  const isSched = CompState.category === 'scheduling';
+  const isSched = CompState.category==='scheduling';
   const canvas  = document.getElementById('comp-canvas');
   const cont    = document.getElementById('comp-canvas-container');
-  if (!canvas || !cont) return;
+  if (!canvas||!cont) return;
 
-  const nAlgos = entries.length;
-  const height  = COMP_TOP + nAlgos * (COMP_BAR_H + COMP_ROW_GAP) + COMP_BOTTOM + 24;
-  const dpr     = window.devicePixelRatio || 1;
-  const cw      = cont.clientWidth || 900;
+  const n = entries.length;
+  const height = COMP_TOP + n*(COMP_BAR_H+COMP_ROW_GAP) + COMP_BOTTOM + 30;
+  const dpr = window.devicePixelRatio||1;
+  const cw  = cont.clientWidth||900;
 
-  canvas.width  = cw * dpr;
-  canvas.height = height * dpr;
-  canvas.style.height = height + 'px';
+  canvas.width  = cw*dpr; canvas.height = height*dpr;
+  canvas.style.height = height+'px';
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
-  // Total time
   let totalTime = 1;
   if (isSched) {
-    entries.forEach(([, d]) => {
-      if (d.gantt && d.gantt.length) totalTime = Math.max(totalTime, Math.max(...d.gantt.map(e => e.end)));
-    });
+    entries.forEach(([,d])=>{ if (d.gantt&&d.gantt.length) totalTime=Math.max(totalTime,Math.max(...d.gantt.map(e=>e.end))); });
   } else {
-    entries.forEach(([, d]) => { if (d.ref_length) totalTime = Math.max(totalTime, d.ref_length); });
+    entries.forEach(([,d])=>{ if (d.ref_length) totalTime=Math.max(totalTime,d.ref_length); });
   }
 
-  CompPlayer.marios = entries.map(() => ({
-    x: COMP_LEFT, y: 0, frame: 0, frameTimer: 0,
-    jumping: false, jumpVel: 0, baseY: 0, lastBlock: null, visible: false,
-  }));
-
-  CompPlayer.results   = entries;
+  CompPlayer.marios = entries.map(()=>({ x:COMP_LEFT,y:0,frame:0,frameTimer:0,jumping:false,jumpVel:0,baseY:0,lastBlock:null,visible:false }));
+  CompPlayer.results  = entries;
   CompPlayer.totalTime = totalTime;
   CompPlayer.currentTick = 0;
-  CompPlayer.category  = CompState.category;
-
-  const scale = (cw - COMP_LEFT - 24) / totalTime;
-
+  CompPlayer.category = CompState.category;
   document.getElementById('comp-step-counter').textContent = `0 / ${totalTime}`;
 
+  const scale = (cw - COMP_LEFT - 28) / totalTime;
+
   function drawMarioBlock(ctx, x, y, w, h, pidIdx) {
-    if (w <= 0) return;
+    if (w<=0) return;
     const c = marioBlockColor(pidIdx);
     // Sombra
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    roundRect(ctx, x + 2, y + 3, w, h, 5); ctx.fill();
-    // Cara principal
-    const grad = ctx.createLinearGradient(x, y, x, y + h);
-    grad.addColorStop(0,   c.top);
-    grad.addColorStop(0.5, c.mid);
-    grad.addColorStop(1,   c.dark);
-    ctx.fillStyle = grad;
-    roundRect(ctx, x, y, w, h, 5); ctx.fill();
-    // Highlight superior (brillo Mario)
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    roundRect(ctx, x + 2, y + 2, w - 4, h * 0.3, 3); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    roundRect(ctx,x+2,y+3,w,h,5); ctx.fill();
+    // Gradiente 3D
+    const g = ctx.createLinearGradient(x,y,x,y+h);
+    g.addColorStop(0,c.top); g.addColorStop(0.45,c.mid); g.addColorStop(1,c.dark);
+    ctx.fillStyle=g; roundRect(ctx,x,y,w,h,5); ctx.fill();
+    // Brillo superior
+    ctx.fillStyle='rgba(255,255,255,0.2)';
+    roundRect(ctx,x+2,y+2,w-4,h*0.28,3); ctx.fill();
     // Borde inferior oscuro
-    ctx.fillStyle = c.dark;
-    roundRect(ctx, x, y + h - 4, w, 4, [0,0,5,5]); ctx.fill();
+    ctx.fillStyle=c.dark+'cc';
+    roundRect(ctx,x+1,y+h-5,w-2,5,[0,0,5,5]); ctx.fill();
     // Etiqueta PID
-    if (w > 22) {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.font = `bold ${Math.min(11, Math.max(7, w / 4))}px "Press Start 2P", monospace`;
-      ctx.textAlign = 'center';
-      ctx.fillText(`P${pidIdx}`, x + w / 2, y + h / 2 + 4);
+    if (w>20) {
+      const fs = Math.min(10,Math.max(7,w/5));
+      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.font=`bold ${fs}px "Press Start 2P",monospace`;
+      ctx.textAlign='center';
+      ctx.fillText(`P${pidIdx}`,x+w/2,y+h/2+fs*0.35);
     }
-  }
-
-  function drawIdleBlock(ctx, x, y, w, h) {
-    if (w <= 0) return;
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    roundRect(ctx, x, y, w, h, 5); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    roundRect(ctx, x, y, w, h, 5); ctx.stroke();
-  }
-
-  function drawFloor(ctx, y, w) {
-    // Piso estilo Mario: línea marrón + textura
-    ctx.fillStyle = '#3D1A00';
-    ctx.fillRect(COMP_LEFT, y, w - COMP_LEFT - 24, 4);
-    ctx.fillStyle = '#5B2D00';
-    ctx.fillRect(COMP_LEFT, y + 1, w - COMP_LEFT - 24, 2);
   }
 
   function render() {
     const tick = CompPlayer.currentTick;
-    const w    = cw;
-    const axisY = COMP_TOP + nAlgos * (COMP_BAR_H + COMP_ROW_GAP);
+    const axisY = COMP_TOP + n*(COMP_BAR_H+COMP_ROW_GAP);
 
-    ctx.clearRect(0, 0, w, height);
+    ctx.clearRect(0,0,cw,height);
 
-    // Fondo con patrón de cielo Mario (noche/espacio)
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    bgGrad.addColorStop(0, '#04040F');
-    bgGrad.addColorStop(1, '#080820');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, height);
+    // Fondo
+    const bg = ctx.createLinearGradient(0,0,0,height);
+    bg.addColorStop(0,'#03030E'); bg.addColorStop(1,'#070720');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,cw,height);
 
-    // Estrellas de fondo pixeladas
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    const stars = [[30,8],[90,15],[180,6],[260,12],[350,5],[440,18],[510,9],[600,14],[700,7],[800,11]];
-    stars.forEach(([sx,sy]) => { if (sx < w) ctx.fillRect(sx, sy, 2, 2); });
+    // Estrellas pixel
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    [[28,7],[85,13],[170,5],[255,11],[360,4],[450,17],[530,8],[640,13],[750,6],[860,10]].forEach(([sx,sy])=>{ if(sx<cw)ctx.fillRect(sx,sy,2,2); });
 
-    // Grid lines verticales suaves
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1; ctx.setLineDash([2,4]);
-    for (let t = 0; t <= totalTime; t++) {
-      const x = COMP_LEFT + t * scale;
-      ctx.beginPath(); ctx.moveTo(x, COMP_TOP); ctx.lineTo(x, axisY); ctx.stroke();
-    }
+    // Columnas verticales suaves
+    ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1; ctx.setLineDash([1,4]);
+    for(let t=0;t<=totalTime;t++){const x=COMP_LEFT+t*scale;ctx.beginPath();ctx.moveTo(x,COMP_TOP);ctx.lineTo(x,axisY);ctx.stroke();}
     ctx.setLineDash([]);
 
-    entries.forEach(([name, d], idx) => {
-      const rowY  = COMP_TOP + idx * (COMP_BAR_H + COMP_ROW_GAP);
+    entries.forEach(([name,d],idx)=>{
+      const rowY = COMP_TOP + idx*(COMP_BAR_H+COMP_ROW_GAP);
       const mario = CompPlayer.marios[idx];
-      const color = PID_COLORS[idx % PID_COLORS.length];
+      const color = PID_COLORS[idx%PID_COLORS.length];
 
-      // Fondo de la fila (tierra Mario)
-      ctx.fillStyle = 'rgba(255,255,255,0.02)';
-      roundRect(ctx, COMP_LEFT - 4, rowY - 2, w - COMP_LEFT - 18, COMP_BAR_H + 4, 6);
-      ctx.fill();
+      // Fondo fila
+      ctx.fillStyle='rgba(255,255,255,0.015)';
+      roundRect(ctx,COMP_LEFT-2,rowY-2,cw-COMP_LEFT-18,COMP_BAR_H+4,6); ctx.fill();
 
-      // Etiqueta del algoritmo con estilo
-      ctx.fillStyle = color;
-      ctx.font = 'bold 11px "Inter", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(name.length > 14 ? name.slice(0,13)+'…' : name, COMP_LEFT - 10, rowY + COMP_BAR_H / 2 + 4);
-      // Badge de índice
-      ctx.fillStyle = color + '33';
-      roundRect(ctx, COMP_LEFT - 128, rowY + COMP_BAR_H / 2 - 9, 18, 18, 9);
-      ctx.fill();
-      ctx.fillStyle = color;
-      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-      ctx.fillText(idx + 1, COMP_LEFT - 119, rowY + COMP_BAR_H / 2 + 4);
+      // Label izquierdo
+      ctx.font='bold 11px "Inter",sans-serif'; ctx.textAlign='right'; ctx.fillStyle=color;
+      const lbl=name.length>13?name.slice(0,12)+'…':name;
+      ctx.fillText(lbl,COMP_LEFT-12,rowY+COMP_BAR_H/2+4);
+      // Número de orden
+      ctx.fillStyle=color+'33'; roundRect(ctx,COMP_LEFT-136,rowY+COMP_BAR_H/2-10,20,20,10); ctx.fill();
+      ctx.fillStyle=color; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+      ctx.fillText(idx+1,COMP_LEFT-126,rowY+COMP_BAR_H/2+4);
 
       if (isSched) {
-        const gantt = d.gantt || [];
+        // Barra base
+        ctx.fillStyle='rgba(255,255,255,0.025)';
+        roundRect(ctx,COMP_LEFT,rowY,cw-COMP_LEFT-28,COMP_BAR_H,5); ctx.fill();
 
-        // Barra base vacía
-        ctx.fillStyle = 'rgba(255,255,255,0.03)';
-        roundRect(ctx, COMP_LEFT, rowY, (w - COMP_LEFT - 24), COMP_BAR_H, 5);
-        ctx.fill();
-
-        gantt.forEach(entry => {
-          const x = COMP_LEFT + entry.start * scale;
-          if (entry.end <= tick) {
-            const bw = (entry.end - entry.start) * scale;
-            if (entry.pid < 0) drawIdleBlock(ctx, x, rowY, bw, COMP_BAR_H);
-            else drawMarioBlock(ctx, x, rowY, bw, COMP_BAR_H, entry.pid);
-          } else if (entry.start < tick) {
-            const bw = (tick - entry.start) * scale;
-            if (entry.pid < 0) drawIdleBlock(ctx, x, rowY, bw, COMP_BAR_H);
-            else {
-              const c = marioBlockColor(entry.pid);
-              ctx.globalAlpha = 0.6;
-              drawMarioBlock(ctx, x, rowY, bw, COMP_BAR_H, entry.pid);
-              ctx.globalAlpha = 1;
-            }
+        (d.gantt||[]).forEach(entry=>{
+          const x=COMP_LEFT+entry.start*scale;
+          if (entry.end<=tick) {
+            const bw=(entry.end-entry.start)*scale;
+            if(entry.pid<0){ctx.fillStyle='rgba(255,255,255,.03)';roundRect(ctx,x,rowY,bw,COMP_BAR_H,4);ctx.fill();}
+            else drawMarioBlock(ctx,x,rowY,bw,COMP_BAR_H,entry.pid);
+          } else if (entry.start<tick) {
+            const bw=(tick-entry.start)*scale;
+            if(entry.pid<0){ctx.fillStyle='rgba(255,255,255,.02)';roundRect(ctx,x,rowY,bw,COMP_BAR_H,4);ctx.fill();}
+            else{ctx.globalAlpha=0.55;drawMarioBlock(ctx,x,rowY,bw,COMP_BAR_H,entry.pid);ctx.globalAlpha=1;}
           }
         });
 
-        // Piso de la fila
-        drawFloor(ctx, rowY + COMP_BAR_H, w);
+        // Piso Mario
+        ctx.fillStyle='#2A0F00'; ctx.fillRect(COMP_LEFT,rowY+COMP_BAR_H,cw-COMP_LEFT-28,4);
+        ctx.fillStyle='#4A1A00'; ctx.fillRect(COMP_LEFT,rowY+COMP_BAR_H+1,cw-COMP_LEFT-28,2);
 
         // Mario
-        updateCompMario(mario, idx, d.gantt, tick, scale, rowY);
-        if (mario.visible && typeof MARIO_SPRITE_FRAMES !== 'undefined') {
-          drawCompMarioSprite(ctx, mario.x, mario.y, mario.jumping, mario.frame);
-        }
+        updateCompMario(mario,idx,d.gantt,tick,scale,rowY);
+        if(mario.visible&&typeof MARIO_SPRITE_FRAMES!=='undefined')
+          drawCompMarioSprite(ctx,mario.x,mario.y,mario.jumping,mario.frame);
 
-        // Actualizar celdas
-        updateLiveCellsSched(idx, d, tick, totalTime);
+        updateLiveCellsSched(idx,d,tick,totalTime);
 
       } else {
-        // Paginación: bloques por step
-        const steps = d.steps || [];
-        const visN  = Math.min(Math.floor(tick), steps.length);
-        const bMaxW = w - COMP_LEFT - 24;
-        const sw    = bMaxW / (steps.length || 1);
+        // Paginación
+        const steps=d.steps||[];
+        const visN=Math.min(Math.floor(tick),steps.length);
+        const bMaxW=cw-COMP_LEFT-28;
+        const sw=steps.length>0?bMaxW/steps.length:bMaxW;
 
-        ctx.fillStyle = 'rgba(255,255,255,0.03)';
-        roundRect(ctx, COMP_LEFT, rowY, bMaxW, COMP_BAR_H, 5); ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,.02)';
+        roundRect(ctx,COMP_LEFT,rowY,bMaxW,COMP_BAR_H,5); ctx.fill();
 
-        for (let s = 0; s < visN; s++) {
-          const st = steps[s];
-          const x  = COMP_LEFT + s * sw;
-          if (st.fault) {
-            drawMarioBlock(ctx, x, rowY, sw - 1, COMP_BAR_H, 0); // rojo = fault
-          } else {
-            ctx.fillStyle = '#10B98166';
-            roundRect(ctx, x, rowY, sw - 1, COMP_BAR_H, 3); ctx.fill();
-            ctx.fillStyle = '#6ee7b7';
-            ctx.font = `${Math.min(9, sw * 0.5)}px monospace`; ctx.textAlign = 'center';
-            if (sw > 12) ctx.fillText(st.page_requested, x + sw / 2, rowY + COMP_BAR_H / 2 + 4);
+        for(let s=0;s<visN;s++){
+          const st=steps[s];
+          const x=COMP_LEFT+s*sw;
+          if(st.fault) drawMarioBlock(ctx,x,rowY,sw-1,COMP_BAR_H,0);
+          else{
+            ctx.fillStyle='#10B98166'; roundRect(ctx,x,rowY,sw-1,COMP_BAR_H,3); ctx.fill();
+            if(sw>12){ctx.fillStyle='#6ee7b7';ctx.font=`${Math.min(9,sw*.5)}px monospace`;ctx.textAlign='center';ctx.fillText(st.page_requested,x+sw/2,rowY+COMP_BAR_H/2+4);}
+          }
+          // Número de frame
+          if(sw>8){
+            const fa=st.frames_after||[];
+            ctx.fillStyle='rgba(255,255,255,.25)';
+            ctx.font='7px monospace'; ctx.textAlign='center';
+            fa.slice(0,3).forEach((f,fi)=>{if(f!=null)ctx.fillText(f,x+sw/2,rowY+COMP_BAR_H-10+(fi-1)*8);});
           }
         }
-        drawFloor(ctx, rowY + COMP_BAR_H, w);
-        if (visN > 0 && typeof MARIO_SPRITE_FRAMES !== 'undefined') {
-          const mX = COMP_LEFT + (visN - 0.5) * sw - COMP_MARIO_W / 2;
-          const mY = rowY - COMP_MARIO_H - 2;
-          mario.frame = Math.floor(tick * 4) % 4;
-          drawCompMarioSprite(ctx, mX, mY, false, mario.frame);
+
+        // Piso
+        ctx.fillStyle='#2A0F00'; ctx.fillRect(COMP_LEFT,rowY+COMP_BAR_H,bMaxW,4);
+
+        // Mario sobre los pasos
+        if(visN>0&&typeof MARIO_SPRITE_FRAMES!=='undefined'){
+          const mX=COMP_LEFT+(visN-0.5)*sw-CMW/2;
+          const mY=rowY-CMH-2;
+          mario.frame=Math.floor(tick*5)%4;
+          drawCompMarioSprite(ctx,mX,mY,false,mario.frame);
         }
-        updateLiveCellsPage(idx, d, Math.floor(tick), steps.length);
+
+        updateLiveCellsPage(idx,d,Math.floor(tick),steps.length);
       }
     });
 
     // Eje X
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(COMP_LEFT, axisY + 6); ctx.lineTo(w - 20, axisY + 6); ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(COMP_LEFT,axisY+8); ctx.lineTo(cw-20,axisY+8); ctx.stroke();
 
-    // Ticks de tiempo
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font = '9px "JetBrains Mono", monospace'; ctx.textAlign = 'center';
-    const step = Math.max(1, Math.round(totalTime / 12));
-    for (let t = 0; t <= totalTime; t += step) {
-      const x = COMP_LEFT + t * scale;
-      ctx.beginPath(); ctx.moveTo(x, axisY + 4); ctx.lineTo(x, axisY + 10); ctx.stroke();
-      ctx.fillText(t, x, axisY + 22);
+    // Ticks tiempo
+    const step=Math.max(1,Math.round(totalTime/12));
+    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px "JetBrains Mono",monospace'; ctx.textAlign='center';
+    for(let t=0;t<=totalTime;t+=step){
+      const x=COMP_LEFT+t*scale;
+      ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.beginPath(); ctx.moveTo(x,axisY+6); ctx.lineTo(x,axisY+12); ctx.stroke();
+      ctx.fillText(t,x,axisY+25);
     }
 
-    // Cursor de tiempo (línea verde neón)
-    const cursorX = COMP_LEFT + tick * scale;
-    ctx.strokeStyle = '#6EEB83';
-    ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
-    ctx.shadowColor = '#6EEB83'; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.moveTo(cursorX, 0); ctx.lineTo(cursorX, axisY); ctx.stroke();
-    ctx.shadowBlur = 0; ctx.setLineDash([]);
+    // Cursor neón
+    const cx2=COMP_LEFT+tick*scale;
+    ctx.save(); ctx.shadowColor='#6EEB83'; ctx.shadowBlur=10;
+    ctx.strokeStyle='#6EEB83'; ctx.lineWidth=2; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(cx2,0); ctx.lineTo(cx2,axisY+4); ctx.stroke();
+    ctx.restore(); ctx.setLineDash([]);
 
-    // Tick label
-    document.getElementById('comp-tick-label').textContent = `t = ${tick.toFixed(1)}`;
-    document.getElementById('comp-step-counter').textContent = `${Math.round(tick)} / ${totalTime}`;
+    document.getElementById('comp-tick-label').textContent=`t = ${tick.toFixed(1)}`;
+    document.getElementById('comp-step-counter').textContent=`${Math.round(tick)} / ${totalTime}`;
   }
 
   CompPlayer.renderFn = render;
   render();
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Mario helpers
-   ═══════════════════════════════════════════════════════════════════════ */
+/* ═══ Mario helpers ════════════════════════════════════════════════════ */
+function updateCompMario(mario,idx,gantt,tick,scale,rowY){
+  const real=(gantt||[]).filter(e=>e.pid>=0);
+  if(!real.length||tick<=0){mario.visible=false;return;}
+  mario.visible=true;
+  let running=null;
+  for(const e of real){if(tick>e.start&&tick<=e.end){running=e;break;}}
+  const tx=running?COMP_LEFT+Math.min(running.end,tick)*scale-CMW/2:COMP_LEFT+tick*scale-CMW/2;
+  mario.x+=(tx-mario.x)*.18;
+  mario.baseY=rowY-CMH-2;
+  if(running&&running.pid!==mario.lastBlock&&mario.lastBlock!==null&&!mario.jumping){mario.jumping=true;mario.jumpVel=-95;}
+  if(running)mario.lastBlock=running.pid;
+  const dt=1/60;
+  if(mario.jumping){mario.y+=mario.jumpVel*dt;mario.jumpVel+=290*dt;if(mario.y>=mario.baseY){mario.y=mario.baseY;mario.jumping=false;mario.jumpVel=0;}}
+  else{mario.y=mario.baseY;mario.frameTimer=(mario.frameTimer||0)+dt;if(mario.frameTimer>=0.12){mario.frameTimer=0;mario.frame=(mario.frame+1)%4;}}
+}
 
-function updateCompMario(mario, idx, gantt, tick, scale, rowY) {
-  const real = (gantt || []).filter(e => e.pid >= 0);
-  if (!real.length || tick <= 0) { mario.visible = false; return; }
-  mario.visible = true;
-  let running = null;
-  for (const e of real) { if (tick > e.start && tick <= e.end) { running = e; break; } }
-  const targetX = running
-    ? COMP_LEFT + Math.min(running.end, tick) * scale - COMP_MARIO_W / 2
-    : COMP_LEFT + tick * scale - COMP_MARIO_W / 2;
-  mario.x += (targetX - mario.x) * 0.2;
-  mario.baseY = rowY - COMP_MARIO_H - 2;
-  if (running && running.pid !== mario.lastBlock && mario.lastBlock !== null && !mario.jumping) {
-    mario.jumping = true; mario.jumpVel = -95;
+function drawCompMarioSprite(ctx,mx,my,jumping,frame){
+  if(typeof MARIO_SPRITE_FRAMES==='undefined')return;
+  const keys=typeof MARIO_RUN_KEYS!=='undefined'?MARIO_RUN_KEYS:['stand','run1','run2','run1'];
+  const key=jumping?'jump':keys[frame%4];
+  const grid=MARIO_SPRITE_FRAMES[key]||MARIO_SPRITE_FRAMES.stand;
+  const s=CMS;
+  for(let r=0;r<16;r++)for(let c=0;c<16;c++){const col=grid[r][c];if(col===null)continue;ctx.fillStyle=col;ctx.fillRect(Math.round(mx+c*s),Math.round(my+r*s),s,s);}
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  if(Array.isArray(r)){
+    const[tl,tr,br,bl]=r.map(v=>Math.max(0,v));
+    ctx.beginPath();ctx.moveTo(x+tl,y);ctx.lineTo(x+w-tr,y);ctx.quadraticCurveTo(x+w,y,x+w,y+tr);ctx.lineTo(x+w,y+h-br);ctx.quadraticCurveTo(x+w,y+h,x+w-br,y+h);ctx.lineTo(x+bl,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-bl);ctx.lineTo(x,y+tl);ctx.quadraticCurveTo(x,y,x+tl,y);ctx.closePath();return;
   }
-  if (running) mario.lastBlock = running.pid;
-  const dt = 1/60;
-  if (mario.jumping) {
-    mario.y += mario.jumpVel * dt; mario.jumpVel += 290 * dt;
-    if (mario.y >= mario.baseY) { mario.y = mario.baseY; mario.jumping = false; mario.jumpVel = 0; }
+  r=Math.max(0,Math.min(r,w/2,h/2));
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+
+/* ═══ Celdas en vivo (FIX: no borrar al terminar) ════════════════════ */
+function flashCell(id, val){
+  const el=document.getElementById(id); if(!el)return;
+  if(el.dataset.finalVal===val)return; // evitar re-render innecesario
+  el.textContent=val;
+  if(el.dataset.locked)return; // ya terminó, no flashear más
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  setTimeout(()=>el.classList.remove('flash'),500);
+}
+
+function lockCell(id, val){
+  const el=document.getElementById(id); if(!el)return;
+  el.textContent=val;
+  el.dataset.finalVal=val;
+  el.dataset.locked='1';
+  el.style.color='#6EEB83'; // verde permanente al terminar
+}
+
+function updateLiveCellsSched(idx,d,tick,totalTime){
+  const f=Math.min(tick/totalTime,1);
+  if(f<0.02)return;
+  const fin=f>=0.99;
+  const wt =fin?d.avg_waiting.toFixed(2)   :(d.avg_waiting   *f).toFixed(2);
+  const tat=fin?d.avg_turnaround.toFixed(2):(d.avg_turnaround*f).toFixed(2);
+  const rt =fin?d.avg_response.toFixed(2)  :(d.avg_response  *f).toFixed(2);
+  const cpu=fin?d.cpu_utilization.toFixed(1)+'%':(d.cpu_utilization*f).toFixed(1)+'%';
+  if(fin){
+    lockCell(`cv-wt-${idx}`, wt); lockCell(`cv-tat-${idx}`, tat);
+    lockCell(`cv-rt-${idx}`, rt); lockCell(`cv-cpu-${idx}`, cpu);
+    lockCell(`ct-wt-${idx}`, wt); lockCell(`ct-tat-${idx}`, tat);
+    lockCell(`ct-rt-${idx}`, rt); lockCell(`ct-cpu-${idx}`, cpu);
   } else {
-    mario.y = mario.baseY;
-    mario.frameTimer = (mario.frameTimer||0) + dt;
-    if (mario.frameTimer >= 0.13) { mario.frameTimer = 0; mario.frame = (mario.frame+1)%4; }
+    flashCell(`cv-wt-${idx}`, wt); flashCell(`cv-tat-${idx}`, tat);
+    flashCell(`cv-rt-${idx}`, rt); flashCell(`cv-cpu-${idx}`, cpu);
+    flashCell(`ct-wt-${idx}`, wt); flashCell(`ct-tat-${idx}`, tat);
+    flashCell(`ct-rt-${idx}`, rt); flashCell(`ct-cpu-${idx}`, cpu);
   }
 }
 
-function drawCompMarioSprite(ctx, mx, my, jumping, frame) {
-  if (typeof MARIO_SPRITE_FRAMES === 'undefined') return;
-  const runKeys = typeof MARIO_RUN_KEYS !== 'undefined' ? MARIO_RUN_KEYS : ['stand','run1','run2','run1'];
-  const key  = jumping ? 'jump' : runKeys[frame % 4];
-  const grid = MARIO_SPRITE_FRAMES[key] || MARIO_SPRITE_FRAMES.stand;
-  const s    = COMP_MARIO_SCALE;
-  for (let r = 0; r < 16; r++) {
-    for (let c = 0; c < 16; c++) {
-      const col = grid[r][c];
-      if (col === null) continue;
-      ctx.fillStyle = col;
-      ctx.fillRect(Math.round(mx + c*s), Math.round(my + r*s), s, s);
+function updateLiveCellsPage(idx,d,step,total){
+  if(step<=0||!d.steps)return;
+  const now=d.steps.slice(0,step);
+  const faults=now.filter(s=>s.fault).length;
+  const hr=((step-faults)/step*100).toFixed(1)+'%';
+  const fr=(faults/step*100).toFixed(1)+'%';
+  const fin=step>=total;
+  if(fin){
+    lockCell(`cv-pf-${idx}`,String(faults)); lockCell(`cv-hr-${idx}`,hr);
+    lockCell(`cv-fr-${idx}`,fr);
+    lockCell(`ct-pf-${idx}`,String(faults)); lockCell(`ct-hr-${idx}`,hr.replace('%',''));
+    lockCell(`ct-fr-${idx}`,fr.replace('%',''));
+  } else {
+    flashCell(`cv-pf-${idx}`,String(faults)); flashCell(`cv-hr-${idx}`,hr);
+    flashCell(`cv-fr-${idx}`,fr);
+    flashCell(`ct-pf-${idx}`,String(faults)); flashCell(`ct-hr-${idx}`,hr.replace('%',''));
+    flashCell(`ct-fr-${idx}`,fr.replace('%',''));
+  }
+}
+
+/* ═══ Gráficas de barras animadas en tiempo real ══════════════════════ */
+const _barState = {}; // { [canvasId]: { current: [], target: [] } }
+
+function startBarChartAnimation(entries, isSched){
+  cancelAnimationFrame(CompPlayer.barAnimId);
+  const bcIDs = isSched
+    ? ['comp-bc-wt','comp-bc-tat','comp-bc-rt','comp-bc-cpu','comp-bc-ctx','comp-bc-sim']
+    : ['comp-bc-pf','comp-bc-fr','comp-bc-hr','comp-bc-sim'];
+
+  const labels = entries.map(([n])=>n);
+
+  function getTargets(frac){
+    if(isSched) return {
+      'comp-bc-wt':  entries.map(([,d])=>d.avg_waiting   *frac),
+      'comp-bc-tat': entries.map(([,d])=>d.avg_turnaround*frac),
+      'comp-bc-rt':  entries.map(([,d])=>d.avg_response  *frac),
+      'comp-bc-cpu': entries.map(([,d])=>d.cpu_utilization*frac),
+      'comp-bc-ctx': entries.map(([,d])=>(d.context_switches||0)*frac),
+      'comp-bc-sim': entries.map(([,d])=>(d.elapsed_ms||0)*frac),
+    };
+    return {
+      'comp-bc-pf':  entries.map(([,d])=>(d.total_faults||0)*frac),
+      'comp-bc-fr':  entries.map(([,d])=>(d.fault_rate||0)*frac),
+      'comp-bc-hr':  entries.map(([,d])=>(d.hit_rate||0)*frac),
+      'comp-bc-sim': entries.map(([,d])=>(d.elapsed_ms||0)*frac),
+    };
+  }
+
+  function winnerFn(isCPUorHR){ return (v,arr)=> isCPUorHR ? v===Math.max(...arr) : v===Math.min(...arr); }
+  const winnerMap = isSched
+    ? {'comp-bc-wt':false,'comp-bc-tat':false,'comp-bc-rt':false,'comp-bc-cpu':true,'comp-bc-ctx':false,'comp-bc-sim':false}
+    : {'comp-bc-pf':false,'comp-bc-fr':false,'comp-bc-hr':true,'comp-bc-sim':false};
+
+  function loopDraw(){
+    const frac = CompPlayer.totalTime>0 ? Math.min(CompPlayer.currentTick/CompPlayer.totalTime,1) : 0;
+    const targets = getTargets(frac);
+    bcIDs.forEach(id=>{
+      const vals = targets[id]||[];
+      if(vals.length) drawBarChartLive(id, labels, vals, winnerMap[id]);
+    });
+    if(CompPlayer.playing || frac<1){
+      CompPlayer.barAnimId = requestAnimationFrame(loopDraw);
+    } else {
+      // Final: valores reales
+      const finalTargets = getTargets(1);
+      bcIDs.forEach(id=>{
+        const vals=finalTargets[id]||[];
+        if(vals.length) drawBarChartLive(id,labels,vals,winnerMap[id]);
+      });
+      generateAnalysis(entries, isSched);
     }
   }
+  loopDraw();
 }
 
-function roundRect(ctx, x, y, w, h, r) {
-  if (Array.isArray(r)) {
-    // [tl, tr, br, bl]
-    const [tl,tr,br,bl] = r.map(v => Math.max(0,v));
-    ctx.beginPath();
-    ctx.moveTo(x+tl,y);
-    ctx.lineTo(x+w-tr,y); ctx.quadraticCurveTo(x+w,y,x+w,y+tr);
-    ctx.lineTo(x+w,y+h-br); ctx.quadraticCurveTo(x+w,y+h,x+w-br,y+h);
-    ctx.lineTo(x+bl,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-bl);
-    ctx.lineTo(x,y+tl); ctx.quadraticCurveTo(x,y,x+tl,y);
-    ctx.closePath();
-    return;
-  }
-  r = Math.max(0, Math.min(r, w/2, h/2));
-  ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();
-}
+function drawBarChartLive(canvasId, labels, values, higherIsBetter){
+  const canvas=document.getElementById(canvasId); if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const cont=canvas.parentElement;
+  const W=cont.clientWidth||280, H=cont.clientHeight||150;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.height=H+'px';
+  ctx.scale(dpr,dpr);
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Gráficas de barras (canvas 2D estático)
-   ═══════════════════════════════════════════════════════════════════════ */
+  const L=44,R=10,T=18,B=38;
+  const cw=W-L-R, ch=H-T-B;
+  const maxV=Math.max(...values,0.01);
+  const nMax=Math.ceil(maxV*1.18)||1;
+  const barCount=values.length;
+  const gap=10;
+  const bw=Math.min((cw-gap*(barCount+1))/barCount,64);
+  const startX=L+(cw-(barCount*bw+gap*(barCount-1)))/2;
 
-function drawBarChartStatic(canvasId, labels, values, winnerFn) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const cont = canvas.parentElement;
-  const W = cont.clientWidth || 300;
-  const H = cont.clientHeight || 160;
-  canvas.width  = W * dpr; canvas.height = H * dpr;
-  canvas.style.height = H + 'px';
-  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
 
-  const L=40, R=12, T=10, B=36;
-  const cw = W-L-R, ch = H-T-B;
-  const maxV = Math.max(...values, 0.01);
-  const niceMax = Math.ceil(maxV * 1.15) || 1;
-  const barCount = values.length;
-  const gap = 8;
-  const bw  = Math.min((cw - gap*(barCount+1)) / barCount, 60);
-  const startX = L + (cw - (barCount*bw + gap*(barCount-1))) / 2;
-
-  ctx.fillStyle = 'rgba(8,8,20,0.0)'; ctx.fillRect(0,0,W,H);
-
-  // Y grid
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
-  for (let i=0;i<=4;i++) {
-    const y = T + (ch/4)*i;
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+  for(let i=0;i<=4;i++){
+    const y=T+(ch/4)*i;
     ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(W-R,y); ctx.stroke();
     ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='8px monospace'; ctx.textAlign='right';
-    ctx.fillText((niceMax*(1-i/4)).toFixed(1), L-4, y+3);
+    ctx.fillText((nMax*(1-i/4)).toFixed(1),L-4,y+3);
   }
   ctx.setLineDash([]);
 
-  // Bars
-  values.forEach((v, i) => {
-    const x   = startX + i * (bw + gap);
-    const bh  = (v / niceMax) * ch;
-    const y   = T + ch - bh;
-    const c   = marioBlockColor(i);
-    const isW = winnerFn ? winnerFn(v, values) : false;
+  const isWinner = (v) => higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
 
-    const grad = ctx.createLinearGradient(x, y, x, y+bh);
-    grad.addColorStop(0, c.top); grad.addColorStop(1, c.mid);
-    ctx.fillStyle = grad;
-    roundRect(ctx, x, y, bw, bh, 4); ctx.fill();
-    if (isW) {
-      ctx.strokeStyle = '#6EEB83'; ctx.lineWidth = 2;
-      roundRect(ctx, x-1, y-1, bw+2, bh+2, 5); ctx.stroke();
-      ctx.fillStyle='#6EEB83'; ctx.font='bold 8px monospace'; ctx.textAlign='center';
-      ctx.fillText('★', x+bw/2, y-4);
+  values.forEach((v,i)=>{
+    const x=startX+i*(bw+gap);
+    const bh=Math.max((v/nMax)*ch,1);
+    const y=T+ch-bh;
+    const c=marioBlockColor(i);
+    const win=isWinner(v);
+
+    // Sombra
+    ctx.fillStyle='rgba(0,0,0,0.2)'; roundRect(ctx,x+2,y+3,bw,bh,4); ctx.fill();
+
+    // Barra gradiente Mario
+    const g=ctx.createLinearGradient(x,y,x,y+bh);
+    g.addColorStop(0,c.top); g.addColorStop(0.5,c.mid); g.addColorStop(1,c.dark);
+    ctx.fillStyle=g; roundRect(ctx,x,y,bw,bh,4); ctx.fill();
+
+    // Brillo
+    ctx.fillStyle='rgba(255,255,255,.18)'; roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*.3,10),3); ctx.fill();
+
+    // Contorno ganador
+    if(win){
+      ctx.save(); ctx.shadowColor='#6EEB83'; ctx.shadowBlur=12;
+      ctx.strokeStyle='#6EEB83'; ctx.lineWidth=2;
+      roundRect(ctx,x-1,y-1,bw+2,bh+2,5); ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle='#6EEB83'; ctx.font='bold 9px monospace'; ctx.textAlign='center';
+      ctx.fillText('★',x+bw/2,y-5);
     }
+
     // Valor
-    ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.font='bold 8px monospace'; ctx.textAlign='center';
-    ctx.fillText(v.toFixed(1), x+bw/2, y-2-(isW?6:0));
+    ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.font=`bold 8px monospace`; ctx.textAlign='center';
+    ctx.fillText(v.toFixed(1),x+bw/2,y-(win?14:4));
+
     // Label
-    ctx.fillStyle = isW ? '#6EEB83' : 'rgba(255,255,255,0.45)';
-    ctx.font = `${isW?'bold ':''} 8px sans-serif`; ctx.textAlign='center';
-    const lbl = labels[i].length>8 ? labels[i].slice(0,7)+'…' : labels[i];
-    ctx.fillText(lbl, x+bw/2, T+ch+14);
+    ctx.fillStyle=win?'#6EEB83':'rgba(255,255,255,0.45)';
+    ctx.font=`${win?'bold ':''} 8px sans-serif`; ctx.textAlign='center';
+    const lbl=labels[i].length>7?labels[i].slice(0,6)+'…':labels[i];
+    ctx.fillText(lbl,x+bw/2,T+ch+14);
   });
 }
 
-function drawAllBarCharts(entries, isSched) {
-  const names  = entries.map(([n]) => n);
-  const minWin = (v, arr) => v === Math.min(...arr);
-  const maxWin = (v, arr) => v === Math.max(...arr);
+/* ═══ Análisis comparativo automático ════════════════════════════════ */
+function generateAnalysis(entries, isSched){
+  const section=document.getElementById('comp-analysis-section');
+  if(!section)return;
 
-  if (isSched) {
-    drawBarChartStatic('comp-bc-wt',  names, entries.map(([,d])=>d.avg_waiting),     minWin);
-    drawBarChartStatic('comp-bc-tat', names, entries.map(([,d])=>d.avg_turnaround),   minWin);
-    drawBarChartStatic('comp-bc-rt',  names, entries.map(([,d])=>d.avg_response),     minWin);
-    drawBarChartStatic('comp-bc-cpu', names, entries.map(([,d])=>d.cpu_utilization),  maxWin);
-    drawBarChartStatic('comp-bc-ctx', names, entries.map(([,d])=>d.context_switches||0), minWin);
-    drawBarChartStatic('comp-bc-sim', names, entries.map(([,d])=>d.elapsed_ms||0),    minWin);
+  if(isSched){
+    const sorted_wt  = [...entries].sort((a,b)=>a[1].avg_waiting   -b[1].avg_waiting);
+    const sorted_tat = [...entries].sort((a,b)=>a[1].avg_turnaround-b[1].avg_turnaround);
+    const sorted_cpu = [...entries].sort((a,b)=>b[1].cpu_utilization-a[1].cpu_utilization);
+    const sorted_ctx = [...entries].sort((a,b)=>(a[1].context_switches||0)-(b[1].context_switches||0));
+    const best_wt    = sorted_wt[0],  worst_wt  = sorted_wt[sorted_wt.length-1];
+    const best_tat   = sorted_tat[0], best_cpu  = sorted_cpu[0];
+    const best_ctx   = sorted_ctx[0], worst_ctx = sorted_ctx[sorted_ctx.length-1];
+    const c_bwt  = PID_COLORS[entries.findIndex(([n])=>n===best_wt[0])%PID_COLORS.length];
+    const c_btat = PID_COLORS[entries.findIndex(([n])=>n===best_tat[0])%PID_COLORS.length];
+    const c_bcpu = PID_COLORS[entries.findIndex(([n])=>n===best_cpu[0])%PID_COLORS.length];
+
+    const wtDiff = ((worst_wt[1].avg_waiting-best_wt[1].avg_waiting)/best_wt[1].avg_waiting*100).toFixed(0);
+    const overall = best_wt[0]===best_tat[0] ? best_wt[0] : best_wt[0];
+
+    section.innerHTML = `<div class="comp-analysis">
+      <h4>🏆 Análisis comparativo de resultados</h4>
+
+      <p><strong>Menor Waiting Time:</strong>
+        <span class="winner-badge" style="background:${c_bwt}22;border:1px solid ${c_bwt}55;color:${c_bwt}">
+          ★ ${best_wt[0]} — ${best_wt[1].avg_waiting.toFixed(2)} ms
+        </span>
+        ${worst_wt[0]!==best_wt[0]
+          ? ` vs <strong>${worst_wt[0]}</strong> (${worst_wt[1].avg_waiting.toFixed(2)} ms). La diferencia es de <strong>${wtDiff}%</strong>.`
+          : ''}
+        ${SCHEDULING_META[best_wt[0]]
+          ? ` Esto se explica porque ${SCHEDULING_META[best_wt[0]].short} ${best_wt[0]==='SJF'||best_wt[0]==='SRTF'?'minimiza activamente el tiempo de espera eligiendo siempre el proceso más corto':'prioriza los procesos de manera que reduce el tiempo ocioso en cola'}.`
+          : ''}
+      </p>
+
+      <p><strong>Menor Turnaround Time:</strong>
+        <span class="winner-badge" style="background:${c_btat}22;border:1px solid ${c_btat}55;color:${c_btat}">
+          ★ ${best_tat[0]} — ${best_tat[1].avg_turnaround.toFixed(2)} ms
+        </span>
+        El turnaround refleja el tiempo total desde que el proceso llega hasta que termina. Un TAT bajo indica que el algoritmo no deja procesos esperando innecesariamente.
+      </p>
+
+      <p><strong>Mayor utilización de CPU:</strong>
+        <span class="winner-badge" style="background:${c_bcpu}22;border:1px solid ${c_bcpu}55;color:${c_bcpu}">
+          ★ ${best_cpu[0]} — ${best_cpu[1].cpu_utilization.toFixed(1)}%
+        </span>
+        A mayor CPU%, menos tiempo ocioso. Los algoritmos preemptivos tienden a mantener la CPU más ocupada reasignándola inmediatamente al llegar un nuevo proceso.
+      </p>
+
+      <p><strong>Menos context switches:</strong>
+        <span class="winner-badge" style="background:rgba(110,235,131,.15);border:1px solid rgba(110,235,131,.4);color:#6EEB83">
+          ${best_ctx[0]} — ${best_ctx[1].context_switches||0}
+        </span>
+        vs <strong>${worst_ctx[0]}</strong> (${worst_ctx[1].context_switches||0}).
+        Los context switches tienen costo real de hardware (salvar/restaurar registros, invalidar TLB).
+        Los algoritmos no-preemptivos como FCFS generan menos switches pero pueden dejar la CPU ociosa.
+      </p>
+
+      <p><strong>Ventajas y desventajas observadas:</strong></p>
+      <ul>
+        ${entries.map(([name,d])=>{
+          const m=SCHEDULING_META[name]; if(!m)return '';
+          const isWinWT=name===best_wt[0], isWinCPU=name===best_cpu[0];
+          return `<li><strong>${name}</strong> — WT: ${d.avg_waiting.toFixed(2)}, CPU: ${d.cpu_utilization.toFixed(1)}%, Ctx Sw: ${d.context_switches||0}.
+            ${isWinWT?'✅ Mejor en tiempo de espera. ':''} ${isWinCPU?'✅ Mejor aprovechamiento de CPU. ':''}
+            ${m.starvation.includes('⚠️')?`⚠️ Puede causar starvation — requiere mecanismos adicionales. `:''}
+            ${m.preemptive.includes('❌')?'Bajo overhead de context switch (no preemptivo). ':'Alto overhead por preempción frecuente. '}</li>`;
+        }).join('')}
+      </ul>
+
+      <p><strong>¿Cuál usar con múltiples cores?</strong>
+        Con ${CompState.numCores} core(s) configurados, los algoritmos preemptivos como
+        ${entries.filter(([n])=>SCHEDULING_META[n]&&SCHEDULING_META[n].preemptive.includes('✅')).map(([n])=>n).join(', ')||'ninguno seleccionado'}
+        aprovechan mejor el paralelismo porque pueden redistribuir procesos entre cores en cada quantum.
+        Los algoritmos no-preemptivos asignan un proceso a un core y no lo liberan hasta que termina,
+        pudiendo dejar otros cores ociosos con cargas desequilibradas.
+      </p>
+    </div>`;
+
   } else {
-    drawBarChartStatic('comp-bc-pf',  names, entries.map(([,d])=>d.total_faults||0),  minWin);
-    drawBarChartStatic('comp-bc-fr',  names, entries.map(([,d])=>d.fault_rate||0),    minWin);
-    drawBarChartStatic('comp-bc-hr',  names, entries.map(([,d])=>d.hit_rate||0),      maxWin);
-    drawBarChartStatic('comp-bc-sim', names, entries.map(([,d])=>d.elapsed_ms||0),    minWin);
+    // Análisis de paginación
+    const sorted_faults = [...entries].sort((a,b)=>a[1].total_faults-b[1].total_faults);
+    const sorted_hr     = [...entries].sort((a,b)=>b[1].hit_rate-a[1].hit_rate);
+    const best_f = sorted_faults[0], worst_f = sorted_faults[sorted_faults.length-1];
+    const best_h = sorted_hr[0];
+    const c_bf = PID_COLORS[entries.findIndex(([n])=>n===best_f[0])%PID_COLORS.length];
+    const c_bh = PID_COLORS[entries.findIndex(([n])=>n===best_h[0])%PID_COLORS.length];
+
+    section.innerHTML = `<div class="comp-analysis">
+      <h4>🏆 Análisis comparativo de paginación</h4>
+
+      <p><strong>Menos Page Faults:</strong>
+        <span class="winner-badge" style="background:${c_bf}22;border:1px solid ${c_bf}55;color:${c_bf}">
+          ★ ${best_f[0]} — ${best_f[1].total_faults} fallos
+        </span>
+        vs <strong>${worst_f[0]}</strong> (${worst_f[1].total_faults} fallos).
+        ${PAGING_META[best_f[0]]
+          ? ` ${best_f[0]} logra menos fallos porque ${PAGING_META[best_f[0]].short.toLowerCase()} — explota mejor el principio de localidad de la cadena de referencia usada.`
+          : ''}
+      </p>
+
+      <p><strong>Mayor Hit Rate:</strong>
+        <span class="winner-badge" style="background:${c_bh}22;border:1px solid ${c_bh}55;color:${c_bh}">
+          ★ ${best_h[0]} — ${best_h[1].hit_rate.toFixed(1)}%
+        </span>
+        Un Hit Rate alto significa que la mayoría de páginas solicitadas ya estaban en memoria, evitando costosos accesos a disco.
+      </p>
+
+      <p><strong>Ventajas y desventajas observadas:</strong></p>
+      <ul>
+        ${entries.map(([name,d])=>{
+          const m=PAGING_META[name]; if(!m)return '';
+          const isWin=name===best_f[0];
+          return `<li><strong>${name}</strong> — ${d.total_faults} fallos, Hit Rate: ${d.hit_rate.toFixed(1)}%.
+            ${isWin?'✅ Menor número de page faults en esta cadena. ':''}
+            ${m.belady.includes('⚠️')?'⚠️ Sufre anomalía de Bélady. ':'✅ No sufre anomalía de Bélady. '}
+            ${m.short}.</li>`;
+        }).join('')}
+      </ul>
+
+      <p><strong>Nota sobre el algoritmo Optimal:</strong>
+        Si está seleccionado, sirve como cota inferior — ningún algoritmo online puede superar su número de fallos.
+        La distancia entre Optimal y los demás mide el "precio" de no conocer el futuro.
+      </p>
+    </div>`;
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Celdas de tabla en vivo
-   ═══════════════════════════════════════════════════════════════════════ */
-
-function flash(id, val) {
-  const el = document.getElementById(id); if (!el) return;
-  if (el.textContent === val) return;
-  el.textContent = val;
-  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
-  setTimeout(() => el.classList.remove('flash'), 600);
-}
-
-function updateLiveCellsSched(idx, d, tick, totalTime) {
-  const f = Math.min(tick / totalTime, 1);
-  if (f < 0.03) return;
-  const fin = f >= 0.99;
-  const wt  = fin ? d.avg_waiting.toFixed(2)    : (d.avg_waiting    * f).toFixed(2);
-  const tat = fin ? d.avg_turnaround.toFixed(2)  : (d.avg_turnaround * f).toFixed(2);
-  const rt  = fin ? d.avg_response.toFixed(2)    : (d.avg_response   * f).toFixed(2);
-  const cpu = fin ? d.cpu_utilization.toFixed(1) : (d.cpu_utilization* f).toFixed(1);
-  // tiles
-  flash(`comp-cell-wt-${idx}`,  wt);
-  flash(`comp-cell-tat-${idx}`, tat);
-  flash(`comp-cell-rt-${idx}`,  rt);
-  flash(`comp-cell-cpu-${idx}`, cpu+'%');
-  // tabla
-  flash(`comp-cell-wt2-${idx}`,  wt);
-  flash(`comp-cell-tat2-${idx}`, tat);
-  flash(`comp-cell-rt2-${idx}`,  rt);
-  flash(`comp-cell-cpu2-${idx}`, cpu+'%');
-}
-
-function updateLiveCellsPage(idx, d, step, total) {
-  if (step <= 0 || !d.steps) return;
-  const now    = d.steps.slice(0, step);
-  const faults = now.filter(s => s.fault).length;
-  const hr     = ((step - faults) / step * 100).toFixed(1);
-  const fr     = (faults / step * 100).toFixed(1);
-  flash(`comp-cell-pf-${idx}`, String(faults));
-  flash(`comp-cell-hr-${idx}`, hr+'%');
-  flash(`comp-cell-pf2-${idx}`, String(faults));
-  flash(`comp-cell-hr2-${idx}`, hr);
-  flash(`comp-cell-fr2-${idx}`, fr);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   Controles de playback
-   ═══════════════════════════════════════════════════════════════════════ */
-
-function startCompPlay() {
-  if (!CompPlayer.renderFn || CompPlayer.playing) return;
-  CompPlayer.playing = true;
-  const btn = document.getElementById('comp-btn-play');
-  if (btn) btn.innerHTML = '<i class="ph ph-pause"></i> Pausar';
-  CompPlayer.lastFrame = performance.now();
+/* ═══ Controles playback ══════════════════════════════════════════════ */
+function startCompPlay(){
+  if(!CompPlayer.renderFn||CompPlayer.playing)return;
+  CompPlayer.playing=true;
+  const btn=document.getElementById('comp-btn-play');
+  if(btn)btn.innerHTML='<i class="ph ph-pause"></i> Pausar';
+  CompPlayer.lastFrame=performance.now();
   compAnimate();
 }
 
-function toggleCompPlay() {
-  if (!CompPlayer.renderFn) return;
-  if (CompPlayer.playing) {
-    CompPlayer.playing = false;
+function toggleCompPlay(){
+  if(!CompPlayer.renderFn)return;
+  if(CompPlayer.playing){
+    CompPlayer.playing=false;
     cancelAnimationFrame(CompPlayer.rafId);
-    const btn = document.getElementById('comp-btn-play');
-    if (btn) btn.innerHTML = '<i class="ph ph-play"></i> Reanudar';
+    const btn=document.getElementById('comp-btn-play');
+    if(btn)btn.innerHTML='<i class="ph ph-play"></i> Reanudar';
   } else {
-    if (CompPlayer.currentTick >= CompPlayer.totalTime) CompPlayer.currentTick = 0;
+    if(CompPlayer.currentTick>=CompPlayer.totalTime)CompPlayer.currentTick=0;
     startCompPlay();
   }
 }
 
-function compAnimate(ts) {
-  if (!CompPlayer.playing) return;
-  ts = ts || performance.now();
-  const dt = Math.min((ts - CompPlayer.lastFrame) / 1000, 0.1);
-  CompPlayer.lastFrame = ts;
-  CompPlayer.currentTick = Math.min(CompPlayer.currentTick + dt * CompPlayer.speed * 2, CompPlayer.totalTime);
+function compAnimate(ts){
+  if(!CompPlayer.playing)return;
+  ts=ts||performance.now();
+  const dt=Math.min((ts-CompPlayer.lastFrame)/1000,0.1);
+  CompPlayer.lastFrame=ts;
+  CompPlayer.currentTick=Math.min(CompPlayer.currentTick+dt*CompPlayer.speed*2,CompPlayer.totalTime);
   CompPlayer.renderFn();
-  if (CompPlayer.currentTick >= CompPlayer.totalTime) {
-    CompPlayer.playing = false;
-    const btn = document.getElementById('comp-btn-play');
-    if (btn) btn.innerHTML = '<i class="ph ph-arrow-counter-clockwise"></i> Reiniciar';
-    // Dibujar gráficas finales
-    if (CompPlayer.results) drawAllBarCharts(CompPlayer.results, CompState.category === 'scheduling');
+  if(CompPlayer.currentTick>=CompPlayer.totalTime){
+    CompPlayer.playing=false;
+    const btn=document.getElementById('comp-btn-play');
+    if(btn)btn.innerHTML='<i class="ph ph-arrow-counter-clockwise"></i> Reiniciar';
     return;
   }
-  CompPlayer.rafId = requestAnimationFrame(compAnimate);
+  CompPlayer.rafId=requestAnimationFrame(compAnimate);
 }
 
-function stopCompPlayer() {
-  CompPlayer.playing = false;
+function stopCompPlayer(){
+  CompPlayer.playing=false;
   cancelAnimationFrame(CompPlayer.rafId);
-  const btn = document.getElementById('comp-btn-play');
-  if (btn) btn.innerHTML = '<i class="ph ph-play"></i> Reanudar';
+  cancelAnimationFrame(CompPlayer.barAnimId);
 }
 
-function compSeek(t) {
+function compSeek(t){
   stopCompPlayer();
-  CompPlayer.currentTick = Math.max(0, Math.min(Number(t), CompPlayer.totalTime));
-  if (CompPlayer.renderFn) CompPlayer.renderFn();
-  const btn = document.getElementById('comp-btn-play');
-  if (btn) btn.innerHTML = '<i class="ph ph-play"></i> Reanudar';
+  CompPlayer.currentTick=Math.max(0,Math.min(Number(t),CompPlayer.totalTime));
+  if(CompPlayer.renderFn)CompPlayer.renderFn();
+  const btn=document.getElementById('comp-btn-play');
+  if(btn)btn.innerHTML=CompPlayer.currentTick>=CompPlayer.totalTime
+    ?'<i class="ph ph-arrow-counter-clockwise"></i> Reiniciar'
+    :'<i class="ph ph-play"></i> Reanudar';
 }
 
-function compStep(dir) {
+function compStep(dir){
   stopCompPlayer();
-  CompPlayer.currentTick = Math.max(0, Math.min(CompPlayer.currentTick + dir, CompPlayer.totalTime));
-  if (CompPlayer.renderFn) CompPlayer.renderFn();
+  CompPlayer.currentTick=Math.max(0,Math.min(CompPlayer.currentTick+dir,CompPlayer.totalTime));
+  if(CompPlayer.renderFn)CompPlayer.renderFn();
 }
 
-function setCompSpeed(val) {
-  CompPlayer.speed = parseFloat(val);
-  const lbl = document.getElementById('comp-speed-label');
-  if (lbl) lbl.textContent = parseFloat(val).toFixed(2).replace(/\.?0+$/,'') + 'x';
+function setCompSpeed(val){
+  CompPlayer.speed=parseFloat(val);
+  const lbl=document.getElementById('comp-speed-label');
+  if(lbl)lbl.textContent=parseFloat(val).toFixed(2).replace(/\.?0+$/,'')+'x';
 }
 
-function clearCompResults() {
+function clearCompResults(){
   stopCompPlayer();
-  const r = document.getElementById('comp-results');
-  if (r) r.innerHTML = '';
+  const r=document.getElementById('comp-results');
+  if(r)r.innerHTML='';
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Exports + auto-init
-   ═══════════════════════════════════════════════════════════════════════ */
-window.runComparison   = runComparison;
-window.initComparison  = initComparison;
-window.setCompCategory = setCompCategory;
-window.setCompCores    = setCompCores;
-window.toggleCompPlay  = toggleCompPlay;
-window.stopCompPlayer  = stopCompPlayer;
-window.compSeek        = compSeek;
-window.compStep        = compStep;
-window.setCompSpeed    = setCompSpeed;
+/* ═══ Exports + auto-init ═════════════════════════════════════════════ */
+window.runComparison  =runComparison;
+window.initComparison =initComparison;
+window.setCompCategory=setCompCategory;
+window.setCompCores   =setCompCores;
+window.toggleCompPlay =toggleCompPlay;
+window.stopCompPlayer =stopCompPlayer;
+window.compSeek       =compSeek;
+window.compStep       =compStep;
+window.setCompSpeed   =setCompSpeed;
 
-(function () {
-  function tryInit() {
-    const grid = document.getElementById('comp-algo-grid');
-    if (grid && grid.children.length === 0) initComparison();
-  }
-  document.addEventListener('DOMContentLoaded', () => {
-    const navBtn = document.getElementById('nav-comparison');
-    if (navBtn) navBtn.addEventListener('click', tryInit);
-    const screen = document.getElementById('screen-comparison');
-    if (screen && screen.classList.contains('active')) tryInit();
+(function(){
+  function tryInit(){const g=document.getElementById('comp-algo-grid');if(g&&g.children.length===0)initComparison();}
+  document.addEventListener('DOMContentLoaded',()=>{
+    const nb=document.getElementById('nav-comparison');
+    if(nb)nb.addEventListener('click',tryInit);
+    const sc=document.getElementById('screen-comparison');
+    if(sc&&sc.classList.contains('active'))tryInit();
   });
 })();

@@ -254,13 +254,24 @@ def compare_page_algorithms():
             hit_rate = hits / len(ref_string) * 100 if ref_string else 0
             with lock:
                 results[name] = {
-                    "algorithm":   name,
+                    "algorithm":    name,
                     "total_faults": result.total_faults,
-                    "fault_rate":  round(result.fault_rate, 2),
-                    "hit_rate":    round(hit_rate, 2),
-                    "num_frames":  result.num_frames,
-                    "ref_length":  len(ref_string),
-                    "elapsed_ms":  round(elapsed, 2),
+                    "fault_rate":   round(result.fault_rate, 2),
+                    "hit_rate":     round(hit_rate, 2),
+                    "num_frames":   result.num_frames,
+                    "ref_length":   len(ref_string),
+                    "elapsed_ms":   round(elapsed, 2),
+                    "steps": [
+                        {
+                            "step_number":    s.step_number,
+                            "page_requested": s.page_requested,
+                            "fault":          s.fault,
+                            "page_evicted":   s.page_evicted,
+                            "frames_after":   s.frames_after,
+                            "fault_count":    s.fault_count,
+                        }
+                        for s in result.steps
+                    ],
                 }
         except Exception as e:
             with lock:
