@@ -749,7 +749,24 @@
             </button>
             <span class="step-counter" id="gantt-step-counter"
               style="margin: 0 12px; min-width: 60px; text-align: center">0 / 0</span>
-            <div class="playback-speed" style="margin-left: 8px">
+            <div style="display: flex; align-items: center; margin-left: 8px;">
+              <span style="font-size: 0.8rem; margin-right: 12px; color: var(--text-muted);">Animations</span>
+              <div class="toggle-container">
+                <input class="toggle-input" type="checkbox" id="gantt-animations-toggle" checked>
+                <div class="toggle-handle-wrapper">
+                  <div class="toggle-handle">
+                    <div class="toggle-handle-knob"></div>
+                    <div class="toggle-handle-bar-wrapper">
+                      <div class="toggle-handle-bar"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="toggle-base">
+                  <div class="toggle-base-inside"></div>
+                </div>
+              </div>
+            </div>
+            <div class="playback-speed" style="margin-left: 12px">
               <label for="gantt-speed" style="margin: 0; font-size: 0.8rem">Speed</label>
               <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
               <span id="gantt-speed-label" class="text-mono" style="
@@ -1093,6 +1110,7 @@
 
 
         <!-- ─── Screen 5: Comparison (v2) ──────────────────────────── -->
+        <!-- ─── Screen 5: Comparison ──────────────────────────────── -->
         <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
           <header class="screen-header">
             <h2 id="heading-comparison">Algorithm Comparison</h2>
@@ -1131,15 +1149,15 @@
           <!-- Grid de tarjetas de algoritmos -->
           <div id="comp-algo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px"></div>
 
-          <!-- Controles adicionales -->
+          <!-- Quantum: solo visible cuando RR o MLFQ están seleccionados -->
           <div id="comp-quantum-row" style="display:none;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
             <label style="font-size:12px;color:var(--text-secondary)">Quantum (RR/MLFQ):</label>
             <input id="comp-quantum" type="number" value="2" min="1" max="20"
               style="width:64px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
             <span style="font-size:10px;color:var(--text-muted)">Solo aplica para Round Robin y MLFQ</span>
           </div>
-          <div id="comp-sched-opts" style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-          </div>
+
+          <!-- Paginación options -->
           <div id="comp-page-opts" style="display:none;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
             <label style="font-size:12px;color:var(--text-secondary)">Cadena de referencia:</label>
             <input id="comp-ref-string" type="text" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1"
@@ -1149,10 +1167,13 @@
               style="width:56px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
           </div>
 
+          <!-- Placeholder para comp-sched-opts (requerido por JS) -->
+          <div id="comp-sched-opts" style="display:none"></div>
+
           <!-- Botón + log de threads -->
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
             <button class="btn btn-primary" id="btn-run-comparison" disabled onclick="runComparison()">
-              <i class="ph ph-play"></i> Comparar
+              <i class="ph ph-play"></i> ▶ Comparar
             </button>
             <span id="comp-thread-log" style="font-size:11px;color:var(--text-muted)"></span>
           </div>
@@ -1189,30 +1210,30 @@
         <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
           <header class="screen-header text-center"
             style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
-            <h2 id="heading-exec-modes">CPU Execution Modes</h2>
-            <p>Retro animations showing how processes are distributed across cores in each mode.</p>
+            <h2 id="heading-exec-modes">Mushroom Kingdom BBQ! 🔥</h2>
+            <p>How Mario and the crew share the grill — retro animations of the four execution modes.</p>
 
             <!-- Mode Tabs -->
             <div class="em-tabs mt-md" id="em-tabs">
               <button class="em-tab active" data-mode="concurrency">
                 <i class="ph ph-fire"></i>
                 <span>Concurrency</span>
-                <small>Mario alone · Alternating</small>
+                <small>Mario alone · jumping between tasks</small>
               </button>
               <button class="em-tab" data-mode="parallelism">
                 <i class="ph ph-users"></i>
                 <span>Parallelism</span>
-                <small>Mario &amp; Luigi simultaneous</small>
+                <small>Mario + Luigi at the same time</small>
               </button>
               <button class="em-tab" data-mode="multithreading">
                 <i class="ph ph-users-three"></i>
                 <span>Multithreading</span>
-                <small>Same table &amp; cooler</small>
+                <small>Whole crew · one table &amp; one cooler</small>
               </button>
               <button class="em-tab" data-mode="multiprocessing">
                 <i class="ph ph-house-line"></i>
                 <span>Multiprocessing</span>
-                <small>Separate yards</small>
+                <small>2 yards · 2 separate grills</small>
               </button>
             </div>
           </header>
@@ -1222,7 +1243,7 @@
             <div class="em-mushroom-icon">🍄</div>
             <div class="em-mushroom-bubble" id="em-mushroom-bubble">
               <strong id="em-tip-title">Concurrency</strong>
-              <p id="em-tip-text">Mario rapidly alternating tasks. Drops the tongs, mashes the avocado, runs back to check the meat.</p>
+              <p id="em-tip-text">Mario alone at the grill. Flips the meat, hops to the molcajete to mash avocado, runs back to the comal — looks simultaneous, but he only has two hands.</p>
             </div>
           </div>
 
@@ -1265,7 +1286,11 @@
                 <input type="range" id="em-speed" min="0.25" max="3" step="0.25" value="1" />
                 <span id="em-speed-label">1.0x</span>
               </div>
-              <button class="btn btn-secondary btn-sm em-sound-btn" id="em-btn-sound" title="Sonido">
+              <button class="btn btn-secondary btn-sm em-mt-only" id="em-btn-safe"
+                      title="Toggle safe mode (mutex prevents races)" style="display:none;">
+                <i class="ph ph-lock-open"></i> Safe Mode: OFF
+              </button>
+              <button class="btn btn-secondary btn-sm em-sound-btn" id="em-btn-sound" title="Sound">
                 <i class="ph ph-speaker-high"></i>
               </button>
             </div>
