@@ -1109,13 +1109,13 @@
 
 
 
-        <!-- ─── Screen 5: Comparison (v2) ──────────────────────────── -->
+          <!-- ─── Screen 5: Comparison (v2) ──────────────────────────── -->
         <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
           <header class="screen-header">
             <h2 id="heading-comparison">Algorithm Comparison</h2>
             <p>Cada algoritmo corre en su propio thread real del SO. Selecciona la categoría, los algoritmos y el número de cores.</p>
           </header>
-
+ 
           <!-- Tabs categoría -->
           <div class="flex gap-sm mb-md" style="flex-wrap:wrap;align-items:center;gap:8px">
             <button class="btn btn-secondary active" id="comp-tab-sched" onclick="setCompCategory('scheduling')">
@@ -1138,16 +1138,16 @@
               <span id="comp-cores-label" style="font-size:11px;color:var(--text-muted)">4 cores</span>
             </div>
           </div>
-
+ 
           <!-- Hint + contador -->
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span id="comp-algo-hint" style="font-size:12px;color:var(--text-secondary)">Selecciona 2–4 algoritmos de scheduling</span>
             <span id="comp-sel-count" style="font-size:11px;color:var(--text-muted)">0 / 4 seleccionados</span>
           </div>
-
+ 
           <!-- Grid de tarjetas de algoritmos -->
           <div id="comp-algo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px"></div>
-
+ 
           <!-- Controles adicionales -->
           <div id="comp-sched-opts" style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
             <label style="font-size:12px;color:var(--text-secondary)">Quantum (RR/MLFQ):</label>
@@ -1162,7 +1162,7 @@
             <input id="comp-frames" type="number" value="3" min="1" max="10"
               style="width:56px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
           </div>
-
+ 
           <!-- Botón + log de threads -->
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
             <button class="btn btn-primary" id="btn-run-comparison" disabled onclick="runComparison()">
@@ -1170,10 +1170,10 @@
             </button>
             <span id="comp-thread-log" style="font-size:11px;color:var(--text-muted)"></span>
           </div>
-
+ 
           <!-- Área de resultados dinámica -->
           <div id="comp-results"></div>
-
+ 
           <!-- Estilos locales para la pantalla -->
           <style>
             .comp-algo-card {
@@ -1199,47 +1199,47 @@
             }
           </style>
         </section>
-
+ 
         <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
           <header class="screen-header text-center"
             style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
-            <h2 id="heading-exec-modes">Mushroom Kingdom BBQ! 🔥</h2>
-            <p>How Mario and the crew share the grill — retro animations of the four execution modes.</p>
-
+            <h2 id="heading-exec-modes">CPU Execution Modes</h2>
+            <p>Retro animations showing how processes are distributed across cores in each mode.</p>
+ 
             <!-- Mode Tabs -->
             <div class="em-tabs mt-md" id="em-tabs">
               <button class="em-tab active" data-mode="concurrency">
                 <i class="ph ph-fire"></i>
                 <span>Concurrency</span>
-                <small>Mario alone · jumping between tasks</small>
+                <small>Mario alone · Alternating</small>
               </button>
               <button class="em-tab" data-mode="parallelism">
                 <i class="ph ph-users"></i>
                 <span>Parallelism</span>
-                <small>Mario + Luigi at the same time</small>
+                <small>Mario &amp; Luigi simultaneous</small>
               </button>
               <button class="em-tab" data-mode="multithreading">
                 <i class="ph ph-users-three"></i>
                 <span>Multithreading</span>
-                <small>Whole crew · one table &amp; one cooler</small>
+                <small>Same table &amp; cooler</small>
               </button>
               <button class="em-tab" data-mode="multiprocessing">
                 <i class="ph ph-house-line"></i>
                 <span>Multiprocessing</span>
-                <small>2 yards · 2 separate grills</small>
+                <small>Separate yards</small>
               </button>
             </div>
           </header>
-
+ 
           <!-- Tutorial mushroom popup -->
           <div class="em-mushroom-tip" id="em-mushroom-tip">
             <div class="em-mushroom-icon">🍄</div>
             <div class="em-mushroom-bubble" id="em-mushroom-bubble">
               <strong id="em-tip-title">Concurrency</strong>
-              <p id="em-tip-text">Mario alone at the grill. Flips the meat, hops to the molcajete to mash avocado, runs back to the comal — looks simultaneous, but he only has two hands.</p>
+              <p id="em-tip-text">Mario rapidly alternating tasks. Drops the tongs, mashes the avocado, runs back to check the meat.</p>
             </div>
           </div>
-
+ 
           <!-- Stage Card -->
           <div class="card em-stage-card">
             <div class="card-title flex-between">
@@ -1249,7 +1249,7 @@
               </div>
               <div class="em-tick" id="em-tick">t = 0 / 0</div>
             </div>
-
+ 
             <!-- Empty state -->
             <div class="em-empty" id="em-empty">
               <div class="em-empty-icon">🎮</div>
@@ -1259,13 +1259,13 @@
                 then come back here to see the animation.
               </p>
             </div>
-
+ 
             <!-- Stage canvas -->
             <div class="em-stage" id="em-stage" style="display:none;">
               <canvas id="em-canvas"></canvas>
               <div class="em-scanlines" aria-hidden="true"></div>
             </div>
-
+ 
             <!-- Playback controls -->
             <div class="em-controls" id="em-controls" style="display:none;">
               <button class="btn btn-secondary btn-sm" id="em-btn-reset" title="Reiniciar">
@@ -1284,7 +1284,7 @@
               </button>
             </div>
           </div>
-
+ 
           <!-- Stats Card -->
           <div class="card em-stats-card" id="em-stats-card" style="display:none;">
             <div class="card-title">

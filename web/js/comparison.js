@@ -1,59 +1,178 @@
 /**
- * comparison.js — Algorithm Comparison v2
+ * comparison.js — Algorithm Comparison v3
  *
- * Nuevas funciones:
- *  - Tabs: Scheduling vs Paginación (no se mezclan)
- *  - Selección de 2–4 algoritmos de scheduling ó 2–5 de paginación
- *  - Selector de cores (1/2/4/8) — enviado al backend para simular paralelismo
- *  - Mensaje de caso de uso real por algoritmo
- *  - Ganador resaltado con ★ en gráficas y tabla
- *  - Métricas extendidas (ctx switches, page faults, hit rate)
+ * Features:
+ *  - Tabs Scheduling vs Paginación (separados)
+ *  - Selección de 2–4 / 2–5 algoritmos con tarjetas
+ *  - Canvas animado en tiempo real (play/pause/stop/velocidad)
+ *  - Mario corre sobre las barras, salta en context switch
+ *  - Visualización de procesos, threads (Toad) y forks (Mario Clone)
+ *  - Tabla con fórmulas explicadas que se rellena en vivo
+ *  - Mensajes de caso de uso + explicación detallada por algoritmo
+ *  - Mismo estilo visual que la pantalla de Scheduling
  */
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Metadatos de algoritmos
+   Metadatos
    ═══════════════════════════════════════════════════════════════════════ */
 
 const SCHEDULING_META = {
-  'FCFS':                   { short: 'First-Come, First-Served',   useCase: 'Sistemas batch simples y colas de impresión. Sin starvation, pero penaliza procesos cortos que llegan tarde.' },
-  'SJF':                    { short: 'Shortest Job First',          useCase: 'Entornos de tiempo compartido donde se conocen los burst times. Minimiza el tiempo de espera promedio pero puede causar starvation.' },
-  'HRRN':                   { short: 'Highest Response Ratio Next', useCase: 'Sistemas mixtos batch/interactivo que necesitan prevenir starvation sin sacrificar eficiencia.' },
-  'Round Robin':            { short: 'Quantum configurable',        useCase: 'Sistemas interactivos y de tiempo real. Garantiza equidad. El quantum debe calibrarse según la carga.' },
-  'SRTF':                   { short: 'Shortest Remaining Time',     useCase: 'Minimiza el tiempo de espera total. Usada en servidores web. Alta complejidad y posible starvation en procesos largos.' },
-  'Priority (Preemptive)':  { short: 'Prioridad preemptiva',        useCase: 'Kernels de SO y sistemas de tiempo real. Requiere mecanismos de aging para evitar starvation de baja prioridad.' },
-  'Multilevel Queue':       { short: 'Colas por categoría fija',    useCase: 'Sistemas con clases de procesos bien definidas: sistema, interactivo, batch. Los procesos no cambian de cola.' },
-  'MLFQ':                   { short: 'Feedback dinámico',           useCase: 'Sistemas de propósito general modernos. Aprende el comportamiento de cada proceso sin necesitar burst times.' },
+  'FCFS': {
+    short: 'First-Come, First-Served',
+    formula: 'WT = CT − AT − BT   |   TAT = CT − AT   |   RT = Primera_CPU − AT',
+    explanation: 'No-preemptivo. Ejecuta los procesos en el orden exacto en que llegaron. Simple de implementar pero puede causar el efecto "convoy": un proceso largo bloquea a todos los cortos detrás de él.',
+    useCase: 'Colas de impresión, sistemas batch donde el orden de llegada es justo.',
+    complexity: 'O(n) — solo requiere una cola FIFO.',
+    starvation: '❌ No ocurre',
+    preemptive: '❌ No preemptivo',
+  },
+  'SJF': {
+    short: 'Shortest Job First',
+    formula: 'WT = CT − AT − BT   |   TAT = CT − AT   |   Selección: min(BT disponibles)',
+    explanation: 'Elige siempre el proceso con menor burst time entre los disponibles. Óptimo en términos de tiempo de espera promedio, pero requiere conocer el burst time de antemano.',
+    useCase: 'Compiladores batch, servidores donde el tamaño de las tareas es conocido.',
+    complexity: 'O(n log n) — requiere ordenar por burst time en cada tick.',
+    starvation: '⚠️ Sí puede ocurrir (procesos largos)',
+    preemptive: '❌ No preemptivo',
+  },
+  'HRRN': {
+    short: 'Highest Response Ratio Next',
+    formula: 'RR = (WT_actual + BT) / BT   |   Selección: max(RR)',
+    explanation: 'Calcula el Response Ratio de cada proceso listo. Combina la prioridad por burst corto (SJF) con la antigüedad del proceso (cuánto lleva esperando), eliminando el starvation.',
+    useCase: 'Sistemas mixtos batch/interactivo que necesitan justicia y eficiencia.',
+    complexity: 'O(n) por decisión — calcula RR de todos los procesos en cola.',
+    starvation: '✅ No ocurre (aging implícito)',
+    preemptive: '❌ No preemptivo',
+  },
+  'Round Robin': {
+    short: 'Quantum configurable',
+    formula: 'WT = TAT − BT   |   TAT = CT − AT   |   Quantum Q define duración máxima de cada slice',
+    explanation: 'Cada proceso recibe la CPU por un máximo de Q unidades (quantum). Si no termina, vuelve al final de la cola circular. Garantiza que ningún proceso espere más de (n-1)×Q unidades.',
+    useCase: 'Sistemas interactivos, terminales, shells — baja latencia de respuesta.',
+    complexity: 'O(1) por decisión — el siguiente proceso está al frente de la cola circular.',
+    starvation: '✅ No ocurre',
+    preemptive: '✅ Preemptivo',
+  },
+  'SRTF': {
+    short: 'Shortest Remaining Time First',
+    formula: 'WT = TAT − BT   |   Selección: min(remaining_burst) entre TODOS los listos',
+    explanation: 'Versión preemptiva de SJF. En cada tick, si llega un proceso con menor tiempo restante que el actual, se preempta. Minimiza el tiempo de espera total pero con mayor overhead de context switch.',
+    useCase: 'Servidores web de alto rendimiento donde el tamaño de cada request es conocido.',
+    complexity: 'O(n) por tick — compara remaining burst de todos los procesos listos.',
+    starvation: '⚠️ Sí puede ocurrir',
+    preemptive: '✅ Preemptivo',
+  },
+  'Priority (Preemptive)': {
+    short: 'Prioridad preemptiva',
+    formula: 'Selección: min(priority) disponible   |   Preempta si llega proceso con mayor prioridad',
+    explanation: 'Asigna a cada proceso un número de prioridad. Siempre corre el proceso listo de mayor prioridad. Si llega uno de mayor prioridad, preempta al actual. Requiere aging para evitar starvation.',
+    useCase: 'Kernels de SO (interrupciones > kernel > usuario > idle), sistemas de tiempo real.',
+    complexity: 'O(log n) con heap de prioridad.',
+    starvation: '⚠️ Sí puede ocurrir (procesos de baja prioridad)',
+    preemptive: '✅ Preemptivo',
+  },
+  'Multilevel Queue': {
+    short: 'Colas por categoría fija',
+    formula: 'Cola 0 (alta pri) → Cola 1 → Cola 2 (baja pri)   |   Cola superior vacía antes de bajar',
+    explanation: 'Divide los procesos en colas permanentes por tipo (sistema, interactivo, batch). Cada cola tiene su propio algoritmo interno. Un proceso nunca cambia de cola. Las colas superiores tienen prioridad absoluta.',
+    useCase: 'SO con clases bien definidas: procesos de sistema, usuario y batch.',
+    complexity: 'O(k×n) donde k = número de colas.',
+    starvation: '⚠️ Sí (colas inferiores bloqueadas si las superiores no se vacían)',
+    preemptive: '✅ Entre colas',
+  },
+  'MLFQ': {
+    short: 'Multilevel Feedback Queue',
+    formula: 'Nuevo proceso → Cola 0 (alta pri, quantum corto) → si agota quantum sube → Cola n (baja pri, quantum largo)',
+    explanation: 'Similar a MLQ pero los procesos SÍ cambian de cola según su comportamiento. Procesos CPU-bound bajan de prioridad al agotar su quantum; procesos I/O-bound se mantienen arriba. Aprende el patrón de uso sin necesitar burst times.',
+    useCase: 'Sistemas de propósito general modernos. El Linux CFS y Windows NT comparten estos principios.',
+    complexity: 'O(k) por decisión, k = colas activas.',
+    starvation: '✅ Controlado con aging periódico',
+    preemptive: '✅ Preemptivo',
+  },
 };
 
 const PAGING_META = {
-  'FIFO':          { short: 'First-In, First-Out',        useCase: 'Implementación más simple. Sufre la anomalía de Bélady: más frames pueden dar más fallos de página.' },
-  'LRU':           { short: 'Least Recently Used',         useCase: 'El más usado en la práctica (Linux, Windows). Aprovecha la localidad temporal. Se aproxima con bit de referencia.' },
-  'Optimal':       { short: 'Bélady (teórico)',            useCase: 'Referencia teórica imposible en tiempo real. Sirve como benchmark para medir otros algoritmos.' },
-  'Clock':         { short: 'Reloj circular',              useCase: 'Aproximación eficiente a LRU usada en Linux (page daemon). O(1) por sustitución, bajo overhead.' },
-  'Second Chance': { short: 'Enhanced Clock',              useCase: 'Variante del Clock con bit dirty. Reduce I/O de swap priorizando la expulsión de páginas limpias.' },
+  'FIFO': {
+    short: 'First-In, First-Out',
+    formula: 'Evictar la página que lleva MÁS tiempo en memoria (la más antigua)',
+    explanation: 'La página que llegó primero es la primera en salir. Simple de implementar con una cola FIFO. Sufre la paradoja de Bélady: aumentar el número de frames puede aumentar los page faults.',
+    useCase: 'Referencia base para comparar algoritmos. Sistemas embebidos con memoria muy limitada.',
+    complexity: 'O(1) por acceso.',
+    belady: '⚠️ Sí sufre la anomalía de Bélady',
+  },
+  'LRU': {
+    short: 'Least Recently Used',
+    formula: 'Evictar la página con el timestamp de acceso más antiguo → min(last_access_time)',
+    explanation: 'Evicta la página que NO fue usada hace más tiempo. Explota el principio de localidad temporal: si una página se usó recientemente, probablemente se usará de nuevo pronto. Costoso en hardware puro.',
+    useCase: 'Linux (aproximado con bit de referencia), Windows, la mayoría de SO modernos.',
+    complexity: 'O(1) con hashtable + lista doblemente enlazada.',
+    belady: '✅ No sufre la anomalía',
+  },
+  'Optimal': {
+    short: 'Algoritmo de Bélady (teórico)',
+    formula: 'Evictar la página que será usada MÁS TARDE en el futuro (o nunca)',
+    explanation: 'Requiere conocer el futuro de la cadena de referencias. Imposible de implementar online. Se usa como benchmark teórico para medir la distancia entre algoritmos reales y el óptimo.',
+    useCase: 'Evaluación teórica, análisis de traces de memoria, benchmarking académico.',
+    complexity: 'O(n×f) donde n = longitud cadena, f = frames.',
+    belady: '✅ No sufre la anomalía (es el óptimo)',
+  },
+  'Clock': {
+    short: 'Reloj circular (segunda oportunidad)',
+    formula: 'Avanzar puntero; si bit_ref=1 → limpiar y avanzar; si bit_ref=0 → evictar',
+    explanation: 'El puntero recorre un buffer circular de frames. Si el frame apuntado tiene bit de referencia=1, le da "segunda oportunidad" (limpia el bit y avanza). Si es 0, lo evicta. Aproxima LRU con O(1) overhead.',
+    useCase: 'Linux page daemon (kswapd), implementaciones reales de VM por eficiencia.',
+    complexity: 'O(n) amortizado, O(1) caso promedio.',
+    belady: '✅ No sufre la anomalía',
+  },
+  'Second Chance': {
+    short: 'Enhanced Clock (bit dirty)',
+    formula: '(ref=0, dirty=0) → evictar primero   |   (ref=0, dirty=1) → segunda oportunidad   |   (ref=1, *) → limpiar ref y avanzar',
+    explanation: 'Enhanced Clock con dos bits: referencia (R) y modificación (dirty D). Prioriza evictar páginas no referenciadas y limpias (no hay I/O de swap). Reduce el costo de escritura a disco al evictar páginas sucias solo cuando no queda otra opción.',
+    useCase: 'Sistemas con mucho I/O de swap donde el costo de escribir una página dirty es alto.',
+    complexity: 'O(n) amortizado.',
+    belady: '✅ No sufre la anomalía',
+  },
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Estado local de la pantalla
+   Player state
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const CompPlayer = {
+  results: null,        // array de { name, data, color }
+  totalTime: 0,
+  currentTick: 0,
+  playing: false,
+  speed: 1.0,
+  rafId: null,
+  lastFrame: 0,
+  category: 'scheduling',
+  marios: [],           // one Mario per algorithm
+  tableRows: [],        // DOM rows for live fill
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Selector state
    ═══════════════════════════════════════════════════════════════════════ */
 
 const CompState = {
-  category: 'scheduling',   // 'scheduling' | 'paging'
+  category: 'scheduling',
   selected: [],
   numCores: 4,
-  lastResults: null,
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Init — se llama cuando se muestra la pantalla de Comparison
+   Init
    ═══════════════════════════════════════════════════════════════════════ */
 
 function initComparison() {
-  buildAlgoCards('scheduling');
+  if (document.getElementById('comp-algo-grid').children.length === 0) {
+    buildAlgoCards('scheduling');
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Cambio de categoría
+   Navegación de categoría
    ═══════════════════════════════════════════════════════════════════════ */
 
 function setCompCategory(cat) {
@@ -64,12 +183,11 @@ function setCompCategory(cat) {
   document.getElementById('comp-tab-page').classList.toggle('active', cat === 'paging');
 
   const maxSel = cat === 'scheduling' ? 4 : 5;
-  // Mostrar/ocultar controles por categoría
-  document.getElementById('comp-sched-opts').style.display = cat === 'scheduling' ? 'flex' : 'none';
-  document.getElementById('comp-page-opts').style.display  = cat === 'paging'     ? 'flex' : 'none';
-
   document.getElementById('comp-algo-hint').textContent =
     `Selecciona 2–${maxSel} algoritmos de ${cat === 'scheduling' ? 'scheduling' : 'paginación'}`;
+
+  document.getElementById('comp-sched-opts').style.display = cat === 'scheduling' ? 'flex' : 'none';
+  document.getElementById('comp-page-opts').style.display  = cat === 'paging'     ? 'flex' : 'none';
 
   buildAlgoCards(cat);
   clearCompResults();
@@ -78,24 +196,23 @@ function setCompCategory(cat) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Construir tarjetas de algoritmos
+   Tarjetas de algoritmos
    ═══════════════════════════════════════════════════════════════════════ */
 
 function buildAlgoCards(cat) {
   const grid = document.getElementById('comp-algo-grid');
   grid.innerHTML = '';
   const meta = cat === 'scheduling' ? SCHEDULING_META : PAGING_META;
-  const colors = PID_COLORS;
 
   Object.entries(meta).forEach(([name, info], i) => {
-    const color = colors[i % colors.length];
+    const color = PID_COLORS[i % PID_COLORS.length];
     const card = document.createElement('div');
     card.className = 'comp-algo-card';
     card.dataset.name = name;
-    card.style.borderColor = 'var(--border)';
     card.innerHTML = `
-      <div class="comp-algo-name" style="color:var(--text-primary);font-weight:600;font-size:13px">${name}</div>
-      <div class="comp-algo-short" style="color:var(--text-muted);font-size:11px">${info.short}</div>
+      <div style="font-weight:700;font-size:12px;color:var(--text-primary);margin-bottom:2px">${name}</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${info.short}</div>
+      <div style="font-size:9px;color:var(--text-muted);line-height:1.4;opacity:0.7">${info.preemptive || info.belady || ''}</div>
     `;
     card.addEventListener('click', () => toggleAlgoCard(card, name, color));
     grid.appendChild(card);
@@ -105,10 +222,9 @@ function buildAlgoCards(cat) {
 function toggleAlgoCard(card, name, color) {
   const maxSel = CompState.category === 'scheduling' ? 4 : 5;
   const isSelected = CompState.selected.includes(name);
-
   if (isSelected) {
     CompState.selected = CompState.selected.filter(n => n !== name);
-    card.style.borderColor = 'var(--border)';
+    card.style.borderColor = '';
     card.style.background = '';
     card.style.boxShadow = '';
   } else {
@@ -116,22 +232,17 @@ function toggleAlgoCard(card, name, color) {
     CompState.selected.push(name);
     card.style.borderColor = color;
     card.style.background = color + '18';
-    card.style.boxShadow = `0 0 0 2px ${color}44`;
+    card.style.boxShadow = `0 0 0 2px ${color}55`;
   }
-
   updateSelCount();
   document.getElementById('btn-run-comparison').disabled = CompState.selected.length < 2;
 }
 
 function updateSelCount() {
-  const maxSel = CompState.category === 'scheduling' ? 4 : 5;
+  const max = CompState.category === 'scheduling' ? 4 : 5;
   document.getElementById('comp-sel-count').textContent =
-    `${CompState.selected.length} / ${maxSel} seleccionados`;
+    `${CompState.selected.length} / ${max} seleccionados`;
 }
-
-/* ═══════════════════════════════════════════════════════════════════════
-   Cores
-   ═══════════════════════════════════════════════════════════════════════ */
 
 function setCompCores(val) {
   CompState.numCores = parseInt(val);
@@ -139,12 +250,11 @@ function setCompCores(val) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Ejecutar comparación
+   Ejecutar comparación → fetch → iniciar animación
    ═══════════════════════════════════════════════════════════════════════ */
 
 async function runComparison() {
   if (CompState.selected.length < 2) return;
-
   if (CompState.category === 'scheduling' && AppState.processes.length === 0) {
     showToast('Agrega procesos primero en la pantalla de Processes', 'warning');
     return;
@@ -152,55 +262,45 @@ async function runComparison() {
 
   const btn = document.getElementById('btn-run-comparison');
   btn.disabled = true;
-  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px;"></div> Ejecutando threads...';
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></div> Ejecutando threads…';
 
-  const threadLog = document.getElementById('comp-thread-log');
-  const nParallel = Math.min(CompState.selected.length, CompState.numCores);
-  threadLog.textContent = `⚙  ${CompState.selected.length} threads lanzados | ${CompState.numCores} core(s) | ${nParallel} en paralelo…`;
+  const log = document.getElementById('comp-thread-log');
+  log.textContent = `⚙  ${CompState.selected.length} threads | ${CompState.numCores} core(s) | ${Math.min(CompState.selected.length, CompState.numCores)} en paralelo…`;
 
   clearCompResults();
+  stopCompPlayer();
 
   try {
-    let results;
-
+    let apiResults;
     if (CompState.category === 'scheduling') {
       const quantum = parseInt(document.getElementById('comp-quantum').value) || 2;
-      results = await apiCall('/api/schedule/compare-selected', {
-        algorithms:  CompState.selected,
-        quantum:     quantum,
-        num_cores:   CompState.numCores,
-        processes:   AppState.processes,
+      apiResults = await apiCall('/api/schedule/compare-selected', {
+        algorithms: CompState.selected,
+        quantum,
+        num_cores: CompState.numCores,
+        processes: AppState.processes,
       });
     } else {
-      const refStr = document.getElementById('comp-ref-string').value
-        .split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && n >= 0);
+      const refRaw = document.getElementById('comp-ref-string').value;
+      const refStr = refRaw.split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && n >= 0);
       const frames = parseInt(document.getElementById('comp-frames').value) || 3;
-      if (refStr.length === 0) {
-        showToast('Ingresa una cadena de referencia válida', 'warning');
-        return;
-      }
-      results = await apiCall('/api/page-replacement/compare', {
-        algorithms:       CompState.selected,
+      if (!refStr.length) { showToast('Cadena de referencia inválida', 'warning'); return; }
+      apiResults = await apiCall('/api/page-replacement/compare', {
+        algorithms: CompState.selected,
         reference_string: refStr,
-        num_frames:       frames,
-        num_cores:        CompState.numCores,
+        num_frames: frames,
+        num_cores: CompState.numCores,
       });
     }
 
-    CompState.lastResults = results;
-
-    if (CompState.category === 'scheduling') {
-      renderSchedResults(results);
-    } else {
-      renderPageResults(results);
-    }
-
-    const n = Object.keys(results).filter(k => !results[k].error).length;
-    threadLog.textContent = `✓  ${n} threads completados`;
+    const n = Object.values(apiResults).filter(d => !d.error).length;
+    log.textContent = `✓  ${n} threads completados`;
     showToast(`${n} algoritmos comparados`, 'success');
 
+    buildResultUI(apiResults);
+
   } catch (err) {
-    threadLog.textContent = `❌  Error: ${err.message}`;
+    log.textContent = `❌  ${err.message}`;
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="ph ph-play"></i> Comparar';
@@ -208,341 +308,609 @@ async function runComparison() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Render: Scheduling
+   Construir UI de resultados
    ═══════════════════════════════════════════════════════════════════════ */
 
-function renderSchedResults(results) {
+function buildResultUI(apiResults) {
   const container = document.getElementById('comp-results');
-  const entries   = Object.entries(results).filter(([,d]) => !d.error);
+  const entries = Object.entries(apiResults).filter(([, d]) => !d.error);
   if (!entries.length) return;
 
-  // Ganadores
-  const bestWT  = entries.reduce((b, [n,d]) => d.avg_waiting    < b[1].avg_waiting    ? [n,d] : b, entries[0]);
-  const bestTAT = entries.reduce((b, [n,d]) => d.avg_turnaround < b[1].avg_turnaround ? [n,d] : b, entries[0]);
-  const bestRT  = entries.reduce((b, [n,d]) => d.avg_response   < b[1].avg_response   ? [n,d] : b, entries[0]);
-  const bestCPU = entries.reduce((b, [n,d]) => d.cpu_utilization > b[1].cpu_utilization ? [n,d] : b, entries[0]);
+  const isSched = CompState.category === 'scheduling';
+  const meta    = isSched ? SCHEDULING_META : PAGING_META;
 
-  const algos   = entries.map(([n]) => n);
-  const colors  = entries.map(([,], i) => PID_COLORS[i % PID_COLORS.length]);
+  // ── Panel de procesos ───────────────────────────────────────────────
+  const vis = typeof getEffectiveVisibility === 'function' ? getEffectiveVisibility() : { threadsVisible: false, forksVisible: false };
 
-  container.innerHTML = `
-    <!-- Métricas resumen -->
-    <div class="comp-summary-grid">
-      ${metricCard('Mejor Waiting Time',    bestWT[0],  bestWT[1].avg_waiting.toFixed(2)   + ' ms')}
-      ${metricCard('Mejor Turnaround',      bestTAT[0], bestTAT[1].avg_turnaround.toFixed(2) + ' ms')}
-      ${metricCard('Mejor Response Time',   bestRT[0],  bestRT[1].avg_response.toFixed(2)  + ' ms')}
-      ${metricCard('Mayor CPU Utilization', bestCPU[0], bestCPU[1].cpu_utilization.toFixed(1) + '%')}
-    </div>
+  let processVis = '';
+  if (isSched && AppState.processes.length > 0) {
+    const pTiles = AppState.processes.map((p, i) => {
+      const color = PID_COLORS[i % PID_COLORS.length];
+      const threadBadges = (vis.threadsVisible && p.threads && p.threads.length)
+        ? p.threads.map(t => `<span style="font-size:9px;background:#2563eb33;color:#60a5fa;border:1px solid #3b82f666;border-radius:4px;padding:1px 5px;margin-left:3px">🧵 T${t.tid}</span>`).join('')
+        : '';
+      const forkBadges = (vis.forksVisible && p.forks && p.forks.length)
+        ? p.forks.map(f => `<span style="font-size:9px;background:#10b98133;color:#34d399;border:1px solid #10b98166;border-radius:4px;padding:1px 5px;margin-left:3px">⑂ F${f.fid}</span>`).join('')
+        : '';
+      return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:8px 10px;border-radius:8px;border:1px solid ${color}55;background:${color}11;min-width:70px">
+        <div style="font-weight:700;font-size:13px;color:${color}">P${p.pid}</div>
+        <div style="font-size:10px;color:var(--text-muted)">BT=${p.burst_time} AT=${p.arrival_time}</div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px">${threadBadges}${forkBadges}</div>
+      </div>`;
+    }).join('');
+    processVis = `<div class="card mb-md">
+      <div class="card-title"><span class="card-icon"><i class="ph ph-stack"></i></span>Procesos en comparación</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">${pTiles}</div>
+    </div>`;
+  }
 
-    <!-- Gráficas -->
-    <div class="chart-grid" style="margin-top:16px">
-      ${chartCard('comp-chart-wt',  'Avg Waiting Time (ms)')}
-      ${chartCard('comp-chart-tat', 'Avg Turnaround Time (ms)')}
-      ${chartCard('comp-chart-rt',  'Avg Response Time (ms)')}
-      ${chartCard('comp-chart-cpu', 'CPU Utilization (%)')}
-    </div>
+  // ── Canvas de comparación ───────────────────────────────────────────
+  const canvasSection = `
+    <div class="card mb-md">
+      <div class="card-title flex-between">
+        <div><span class="card-icon"><i class="ph ph-chart-bar"></i></span>Comparación en tiempo real</div>
+        <span id="comp-tick-label" style="font-size:11px;color:var(--text-muted)">t = 0</span>
+      </div>
+      <div id="comp-canvas-container" style="position:relative;width:100%;overflow:hidden;background:rgba(248,250,252,0.03);border-radius:8px;border:1px solid var(--border)">
+        <canvas id="comp-canvas" style="display:block;width:100%"></canvas>
+      </div>
 
-    <!-- Tabla -->
-    <div class="card mt-lg">
+      <!-- Controles de playback — mismo estilo que Scheduling -->
+      <div class="playback-controls" id="comp-playback" style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" id="comp-btn-reset" title="Reset" style="border-radius:50%" onclick="compSeek(0)">
+          <i class="ph ph-skip-back"></i>
+        </button>
+        <button class="btn btn-secondary btn-sm" id="comp-btn-step-back" title="Paso atrás" style="border-radius:50%" onclick="compStep(-1)">
+          <i class="ph ph-rewind"></i>
+        </button>
+        <button class="btn btn-primary" id="comp-btn-play" style="border-radius:24px;padding:8px 28px;font-size:1.05rem;font-weight:700" onclick="toggleCompPlay()">
+          <i class="ph ph-play"></i> Play
+        </button>
+        <button class="btn btn-secondary btn-sm" id="comp-btn-step-fwd" title="Paso adelante" style="border-radius:50%" onclick="compStep(1)">
+          <i class="ph ph-fast-forward"></i>
+        </button>
+        <button class="btn btn-secondary btn-sm" id="comp-btn-stop" title="Detener" style="border-radius:50%" onclick="stopCompPlayer()">
+          <i class="ph ph-stop"></i>
+        </button>
+        <span id="comp-step-counter" style="margin:0 8px;font-size:12px;color:var(--text-muted);min-width:60px">0 / 0</span>
+        <div class="playback-speed" style="margin-left:4px;display:flex;align-items:center;gap:6px">
+          <label for="comp-speed" style="margin:0;font-size:11px;color:var(--text-muted)">Velocidad</label>
+          <input type="range" id="comp-speed" min="0.25" max="4" step="0.25" value="1" style="width:80px" oninput="setCompSpeed(this.value)">
+          <span id="comp-speed-label" style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.12);padding:2px 7px;border-radius:6px;color:#fff;border:1px solid rgba(255,255,255,0.18)">1.0x</span>
+        </div>
+      </div>
+    </div>`;
+
+  // ── Tabla con fórmulas ──────────────────────────────────────────────
+  const isS = isSched;
+  const headers = isS
+    ? ['Algoritmo', 'Core', 'Avg WT', 'Avg TAT', 'Avg RT', 'CPU %', 'Ctx Sw.', 'Sim ms']
+    : ['Algoritmo', 'Core', 'Page Faults', 'Hit Rate %', 'Fault Rate %', 'Frames', 'Sim ms'];
+
+  const formulaHeader = isS
+    ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:6px;border-left:3px solid var(--accent)">
+        📐 <strong>Fórmulas:</strong>
+        WT = CT − AT − BT &nbsp;|&nbsp;
+        TAT = CT − AT &nbsp;|&nbsp;
+        RT = Primera_CPU − AT &nbsp;|&nbsp;
+        CPU% = (Tiempo_ocupado / Tiempo_total) × 100
+      </div>`
+    : `<div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:6px;border-left:3px solid var(--accent)">
+        📐 <strong>Fórmulas:</strong>
+        Page Fault Rate = (Fallos / Longitud_cadena) × 100 &nbsp;|&nbsp;
+        Hit Rate = 100 − Fault Rate
+      </div>`;
+
+  const tableRows = entries.map(([name, d], i) => {
+    const color = PID_COLORS[i % PID_COLORS.length];
+    const core  = i % CompState.numCores;
+    return isS
+      ? `<tr id="comp-row-${i}">
+          <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px"></span>${name}</td>
+          <td>Core ${core}</td>
+          <td id="comp-cell-wt-${i}" class="comp-live-cell">—</td>
+          <td id="comp-cell-tat-${i}" class="comp-live-cell">—</td>
+          <td id="comp-cell-rt-${i}" class="comp-live-cell">—</td>
+          <td id="comp-cell-cpu-${i}" class="comp-live-cell">—</td>
+          <td>${d.context_switches ?? '—'}</td>
+          <td>${d.elapsed_ms != null ? d.elapsed_ms.toFixed(1) + ' ms' : '—'}</td>
+        </tr>`
+      : `<tr id="comp-row-${i}">
+          <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px"></span>${name}</td>
+          <td>Core ${core}</td>
+          <td id="comp-cell-pf-${i}" class="comp-live-cell">—</td>
+          <td id="comp-cell-hr-${i}" class="comp-live-cell">—</td>
+          <td id="comp-cell-fr-${i}" class="comp-live-cell">—</td>
+          <td>${d.num_frames ?? '—'}</td>
+          <td>${d.elapsed_ms != null ? d.elapsed_ms.toFixed(1) + ' ms' : '—'}</td>
+        </tr>`;
+  }).join('');
+
+  const tableSection = `
+    <div class="card mb-md">
       <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span>Tabla de métricas</div>
+      ${formulaHeader}
       <div class="table-wrapper">
-        <table id="comp-table-sched">
-          <thead><tr>
-            <th>Algoritmo</th><th>Core</th>
-            <th>Avg WT</th><th>Avg TAT</th><th>Avg RT</th>
-            <th>CPU %</th><th>Ctx Switches</th><th>Tiempo sim.</th>
-          </tr></thead>
-          <tbody id="comp-tbody-sched"></tbody>
+        <table id="comp-metrics-table">
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>${tableRows}</tbody>
         </table>
       </div>
-    </div>
+    </div>`;
 
-    <!-- Casos de uso -->
-    <div class="card mt-lg">
-      <div class="card-title"><span class="card-icon"><i class="ph ph-lightbulb"></i></span>¿Cuándo usar cada algoritmo?</div>
-      <div id="comp-use-cases"></div>
-    </div>
-  `;
+  // ── Explicaciones detalladas ────────────────────────────────────────
+  const explanations = entries.map(([name], i) => {
+    const m = meta[name]; if (!m) return '';
+    const color = PID_COLORS[i % PID_COLORS.length];
+    const extra = isSched
+      ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+          <span style="font-size:10px;padding:2px 10px;border-radius:99px;background:${color}22;border:1px solid ${color}55;color:${color}">${m.preemptive}</span>
+          <span style="font-size:10px;padding:2px 10px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text-muted)">${m.starvation}</span>
+          <span style="font-size:10px;padding:2px 10px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text-muted)">📊 ${m.complexity}</span>
+        </div>`
+      : `<div style="margin-top:8px"><span style="font-size:10px;padding:2px 10px;border-radius:99px;background:${color}22;border:1px solid ${color}55;color:${color}">${m.belady}</span></div>`;
 
-  // Dibujar gráficas
-  drawBarChart('comp-chart-wt',  algos, entries.map(([,d]) => d.avg_waiting),     'Avg Waiting Time',    'ms',  bestWT[0]);
-  drawBarChart('comp-chart-tat', algos, entries.map(([,d]) => d.avg_turnaround),  'Avg Turnaround',      'ms',  bestTAT[0]);
-  drawBarChart('comp-chart-rt',  algos, entries.map(([,d]) => d.avg_response),    'Avg Response Time',   'ms',  bestRT[0]);
-  drawBarChart('comp-chart-cpu', algos, entries.map(([,d]) => d.cpu_utilization), 'CPU Utilization',     '%',   bestCPU[0]);
-
-  // Tabla
-  const tbody = document.getElementById('comp-tbody-sched');
-  tbody.innerHTML = entries.map(([name, d], i) => {
-    const c = PID_COLORS[i % PID_COLORS.length];
-    const core = i % CompState.numCores;
-    const wBest = name === bestWT[0]  ? 'font-weight:700;color:var(--success)' : '';
-    const tBest = name === bestTAT[0] ? 'font-weight:700;color:var(--success)' : '';
-    return `<tr>
-      <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:8px"></span>${name}</td>
-      <td>Core ${core}</td>
-      <td style="${wBest}">${d.avg_waiting.toFixed(2)}${name===bestWT[0]?' ★':''}</td>
-      <td style="${tBest}">${d.avg_turnaround.toFixed(2)}${name===bestTAT[0]?' ★':''}</td>
-      <td>${d.avg_response.toFixed(2)}</td>
-      <td>${d.cpu_utilization.toFixed(1)}</td>
-      <td>${d.context_switches}</td>
-      <td>${d.elapsed_ms != null ? d.elapsed_ms.toFixed(1)+' ms' : '—'}</td>
-    </tr>`;
-  }).join('');
-
-  // Casos de uso
-  const uc = document.getElementById('comp-use-cases');
-  uc.innerHTML = entries.map(([name], i) => {
-    const m = SCHEDULING_META[name];
-    if (!m) return '';
-    const c = PID_COLORS[i % PID_COLORS.length];
-    return `<div class="use-case-box" style="border-left:3px solid ${c};padding:8px 12px;margin-bottom:8px;background:var(--bg-card);border-radius:0 6px 6px 0">
-      <div style="font-weight:600;font-size:13px;color:${c};margin-bottom:3px">${name} — <span style="font-weight:400">${m.short}</span></div>
-      <div style="font-size:12px;color:var(--text-secondary)">${m.useCase}</div>
+    return `<div style="border-left:3px solid ${color};padding:10px 14px;margin-bottom:10px;background:var(--bg-card);border-radius:0 8px 8px 0">
+      <div style="font-weight:700;font-size:13px;color:${color};margin-bottom:3px">${name} — ${m.short}</div>
+      <div style="font-size:11px;color:var(--text-muted);font-family:monospace;margin-bottom:6px;padding:4px 8px;background:rgba(255,255,255,0.04);border-radius:4px">${m.formula}</div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">${m.explanation}</div>
+      ${extra}
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">💡 <em>${m.useCase}</em></div>
     </div>`;
   }).join('');
+
+  const explSection = `
+    <div class="card mb-md">
+      <div class="card-title"><span class="card-icon"><i class="ph ph-lightbulb"></i></span>Algoritmos: explicación detallada</div>
+      ${explanations}
+    </div>`;
+
+  container.innerHTML = processVis + canvasSection + tableSection + explSection;
+
+  // ── Agregar estilo de celdas live ───────────────────────────────────
+  if (!document.getElementById('comp-live-style')) {
+    const s = document.createElement('style');
+    s.id = 'comp-live-style';
+    s.textContent = `
+      .comp-live-cell { transition: color .3s, background .3s; }
+      .comp-live-cell.updated { color: #6EEB83 !important; background: rgba(110,235,131,0.12) !important; }
+      .comp-algo-card { padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);cursor:pointer;transition:all .15s;user-select:none; }
+      .comp-algo-card:hover { border-color: var(--accent); }
+      #comp-tab-sched.active, #comp-tab-page.active { background:rgba(110,235,131,0.15);color:var(--accent);border-color:var(--accent); }
+      .comp-summary-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  // ── Iniciar canvas con todos los datos ─────────────────────────────
+  initCompCanvas(entries);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Render: Paginación
+   Canvas de comparación animado
    ═══════════════════════════════════════════════════════════════════════ */
 
-function renderPageResults(results) {
-  const container = document.getElementById('comp-results');
-  const entries   = Object.entries(results).filter(([,d]) => !d.error);
-  if (!entries.length) return;
+const COMP_MARIO_SCALE = 2;   // 32×32 sprites — más pequeños para caber varios
+const COMP_MARIO_W = 16 * COMP_MARIO_SCALE;
+const COMP_MARIO_H = 16 * COMP_MARIO_SCALE;
+const COMP_BAR_H   = 28;
+const COMP_ROW_GAP = 14;
+const COMP_LEFT    = 120;
+const COMP_TOP     = 20;
+const COMP_BOTTOM  = 30;
 
-  const bestFaults = entries.reduce((b,[n,d]) => d.total_faults < b[1].total_faults ? [n,d] : b, entries[0]);
-  const bestRate   = entries.reduce((b,[n,d]) => d.fault_rate   < b[1].fault_rate   ? [n,d] : b, entries[0]);
-  const algos = entries.map(([n]) => n);
+function initCompCanvas(entries) {
+  const isSched = CompState.category === 'scheduling';
+  const canvas  = document.getElementById('comp-canvas');
+  const container = document.getElementById('comp-canvas-container');
+  if (!canvas) return;
 
-  container.innerHTML = `
-    <div class="comp-summary-grid">
-      ${metricCard('Menos Page Faults', bestFaults[0], String(bestFaults[1].total_faults))}
-      ${metricCard('Menor Fault Rate',  bestRate[0],  bestRate[1].fault_rate.toFixed(1) + '%')}
-      ${metricCard('Frames usados',     '—',          String(entries[0][1].num_frames))}
-      ${metricCard('Longitud ref str',  '—',          String(entries[0][1].ref_length))}
-    </div>
-    <div class="chart-grid" style="margin-top:16px">
-      ${chartCard('comp-chart-pf',  'Page Faults totales')}
-      ${chartCard('comp-chart-fr',  'Fault Rate (%)')}
-    </div>
-    <div class="card mt-lg">
-      <div class="card-title"><span class="card-icon"><i class="ph ph-clipboard-text"></i></span>Tabla de métricas</div>
-      <div class="table-wrapper">
-        <table>
-          <thead><tr>
-            <th>Algoritmo</th><th>Core</th>
-            <th>Page Faults</th><th>Hit Rate %</th><th>Fault Rate %</th>
-            <th>Frames</th><th>Tiempo sim.</th>
-          </tr></thead>
-          <tbody id="comp-tbody-page"></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card mt-lg">
-      <div class="card-title"><span class="card-icon"><i class="ph ph-lightbulb"></i></span>¿Cuándo usar cada algoritmo?</div>
-      <div id="comp-use-cases-page"></div>
-    </div>
-  `;
+  // Calcular dimensiones
+  const nAlgos  = entries.length;
+  const height  = COMP_TOP + nAlgos * (COMP_BAR_H + COMP_ROW_GAP) + COMP_BOTTOM + 20;
+  const dpr     = window.devicePixelRatio || 1;
+  const cw      = container.clientWidth || 800;
 
-  drawBarChart('comp-chart-pf', algos, entries.map(([,d]) => d.total_faults), 'Page Faults', '', bestFaults[0]);
-  drawBarChart('comp-chart-fr', algos, entries.map(([,d]) => d.fault_rate),   'Fault Rate',  '%', bestRate[0]);
+  canvas.width  = cw * dpr;
+  canvas.height = height * dpr;
+  canvas.style.height = height + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
 
-  const tbody = document.getElementById('comp-tbody-page');
-  tbody.innerHTML = entries.map(([name, d], i) => {
-    const c = PID_COLORS[i % PID_COLORS.length];
-    const core = i % CompState.numCores;
-    const best = name === bestFaults[0] ? 'font-weight:700;color:var(--success)' : '';
-    return `<tr>
-      <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:8px"></span>${name}</td>
-      <td>Core ${core}</td>
-      <td style="${best}">${d.total_faults}${name===bestFaults[0]?' ★':''}</td>
-      <td>${d.hit_rate.toFixed(1)}</td>
-      <td>${d.fault_rate.toFixed(1)}</td>
-      <td>${d.num_frames}</td>
-      <td>${d.elapsed_ms != null ? d.elapsed_ms.toFixed(1)+' ms' : '—'}</td>
-    </tr>`;
-  }).join('');
+  // Calcular total time
+  let totalTime = 1;
+  if (isSched) {
+    entries.forEach(([, d]) => {
+      if (d.gantt && d.gantt.length) {
+        const t = Math.max(...d.gantt.map(e => e.end));
+        if (t > totalTime) totalTime = t;
+      }
+    });
+  } else {
+    entries.forEach(([, d]) => {
+      if (d.ref_length && d.ref_length > totalTime) totalTime = d.ref_length;
+    });
+  }
 
-  const uc = document.getElementById('comp-use-cases-page');
-  uc.innerHTML = entries.map(([name], i) => {
-    const m = PAGING_META[name]; if (!m) return '';
-    const c = PID_COLORS[i % PID_COLORS.length];
-    return `<div style="border-left:3px solid ${c};padding:8px 12px;margin-bottom:8px;background:var(--bg-card);border-radius:0 6px 6px 0">
-      <div style="font-weight:600;font-size:13px;color:${c};margin-bottom:3px">${name} — <span style="font-weight:400">${m.short}</span></div>
-      <div style="font-size:12px;color:var(--text-secondary)">${m.useCase}</div>
-    </div>`;
-  }).join('');
+  // Init Mario states (one per algo)
+  CompPlayer.marios = entries.map(([name, d], i) => ({
+    name, x: COMP_LEFT, y: 0, frame: 0, frameTimer: 0,
+    jumping: false, jumpVel: 0, baseY: 0,
+    lastBlock: null, visible: false,
+    color: PID_COLORS[i % PID_COLORS.length],
+  }));
+
+  // Guardar state
+  CompPlayer.results  = entries;
+  CompPlayer.totalTime = totalTime;
+  CompPlayer.currentTick = 0;
+  CompPlayer.category = CompState.category;
+
+  const scale = (cw - COMP_LEFT - 20) / totalTime;
+
+  document.getElementById('comp-step-counter').textContent = `0 / ${totalTime}`;
+
+  // Función de render
+  function render() {
+    const tick = CompPlayer.currentTick;
+    const w    = cw;
+
+    ctx.clearRect(0, 0, w, height);
+    ctx.fillStyle = 'rgba(8,8,24,0.97)';
+    ctx.fillRect(0, 0, w, height);
+
+    // Eje X — línea de tiempo
+    const axisY = COMP_TOP + nAlgos * (COMP_BAR_H + COMP_ROW_GAP);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(COMP_LEFT, axisY); ctx.lineTo(w - 10, axisY); ctx.stroke();
+
+    // Ticks de tiempo
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '9px monospace'; ctx.textAlign = 'center';
+    for (let t = 0; t <= totalTime; t++) {
+      const x = COMP_LEFT + t * scale;
+      ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + 4); ctx.stroke();
+      if (t % Math.max(1, Math.round(totalTime / 10)) === 0) ctx.fillText(t, x, axisY + 14);
+    }
+
+    entries.forEach(([name, d], idx) => {
+      const color = PID_COLORS[idx % PID_COLORS.length];
+      const rowY  = COMP_TOP + idx * (COMP_BAR_H + COMP_ROW_GAP);
+      const mario = CompPlayer.marios[idx];
+
+      // Etiqueta del algoritmo
+      ctx.fillStyle = color;
+      ctx.font = `bold 11px "Inter", sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.fillText(name.length > 12 ? name.slice(0, 11) + '…' : name, COMP_LEFT - 6, rowY + COMP_BAR_H / 2 + 4);
+
+      if (isSched) {
+        // ── Barras de Gantt por algoritmo ──────────────────────────
+        const gantt = d.gantt || [];
+        gantt.forEach(entry => {
+          if (entry.end <= tick) {
+            // Bloque completamente revelado
+            const x  = COMP_LEFT + entry.start * scale;
+            const bw = (entry.end - entry.start) * scale;
+            if (entry.pid < 0) {
+              ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            } else {
+              const pidColor = PID_COLORS[entry.pid % PID_COLORS.length];
+              const grad = ctx.createLinearGradient(x, rowY, x, rowY + COMP_BAR_H);
+              grad.addColorStop(0, pidColor + 'EE');
+              grad.addColorStop(1, pidColor + '88');
+              ctx.fillStyle = grad;
+            }
+            roundRect(ctx, x, rowY, bw, COMP_BAR_H, 4);
+            ctx.fill();
+
+            // PID label
+            if (entry.pid >= 0 && bw > 16) {
+              ctx.fillStyle = '#fff';
+              ctx.font = 'bold 9px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText(`P${entry.pid}`, x + bw / 2, rowY + COMP_BAR_H / 2 + 3);
+            }
+          } else if (entry.start < tick) {
+            // Bloque parcialmente revelado
+            const x   = COMP_LEFT + entry.start * scale;
+            const bw  = (tick - entry.start) * scale;
+            const pidC = entry.pid >= 0 ? PID_COLORS[entry.pid % PID_COLORS.length] : 'rgba(255,255,255,0.05)';
+            ctx.fillStyle = pidC + '99';
+            roundRect(ctx, x, rowY, bw, COMP_BAR_H, 4);
+            ctx.fill();
+          }
+        });
+
+        // Línea de revelado
+        const revealX = COMP_LEFT + tick * scale;
+        ctx.strokeStyle = color + 'BB';
+        ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(revealX, rowY - 2); ctx.lineTo(revealX, rowY + COMP_BAR_H + 2); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Actualizar Mario para este algoritmo
+        updateCompMario(mario, idx, d.gantt, tick, scale, rowY);
+        if (mario.visible) {
+          drawCompMarioSprite(ctx, mario.x, mario.y, mario.jumping, mario.frame);
+        }
+
+        // Actualizar celdas de tabla en vivo
+        updateLiveCellsSched(idx, d, tick, totalTime);
+
+      } else {
+        // ── Barras de paginación ─────────────────────────────────────
+        const steps = d.steps || [];
+        const visibleSteps = Math.min(Math.floor(tick), steps.length);
+        const barMaxW = w - COMP_LEFT - 20;
+        const stepW   = barMaxW / (steps.length || 1);
+
+        for (let s = 0; s < visibleSteps; s++) {
+          const step  = steps[s];
+          const x     = COMP_LEFT + s * stepW;
+          const isFault = step.fault;
+          ctx.fillStyle = isFault ? '#EF444488' : '#10B98155';
+          roundRect(ctx, x, rowY, stepW - 2, COMP_BAR_H, 3);
+          ctx.fill();
+          if (stepW > 14) {
+            ctx.fillStyle = isFault ? '#fca5a5' : '#6ee7b7';
+            ctx.font = '8px monospace'; ctx.textAlign = 'center';
+            ctx.fillText(step.page_requested, x + stepW / 2 - 1, rowY + COMP_BAR_H / 2 + 3);
+          }
+        }
+
+        // Mini Mario corriendo sobre los steps
+        if (visibleSteps > 0) {
+          const mX = COMP_LEFT + (visibleSteps - 0.5) * stepW - COMP_MARIO_W / 2;
+          const mY = rowY - COMP_MARIO_H;
+          mario.frame = Math.floor(tick * 4) % 4;
+          drawCompMarioSprite(ctx, mX, mY, false, mario.frame);
+        }
+
+        updateLiveCellsPage(idx, d, Math.floor(tick), steps.length);
+      }
+    });
+
+    // Cursor de tiempo global
+    const cursorX = COMP_LEFT + tick * scale;
+    ctx.strokeStyle = 'rgba(110,235,131,0.8)';
+    ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(cursorX, 0); ctx.lineTo(cursorX, axisY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    document.getElementById('comp-tick-label').textContent = `t = ${tick.toFixed(1)}`;
+    document.getElementById('comp-step-counter').textContent = `${Math.round(tick)} / ${totalTime}`;
+  }
+
+  CompPlayer.renderFn = render;
+  render();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Helpers de render
+   Mario por algoritmo (versión compacta)
    ═══════════════════════════════════════════════════════════════════════ */
 
-function metricCard(label, algo, value) {
-  return `<div class="card" style="text-align:center;padding:12px">
-    <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${label}</div>
-    <div style="font-size:20px;font-weight:700;color:var(--accent)">${value}</div>
-    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${algo}</div>
-  </div>`;
+function updateCompMario(mario, idx, gantt, tick, scale, rowY) {
+  const ganttReal = (gantt || []).filter(e => e.pid >= 0);
+  if (!ganttReal.length || tick <= 0) { mario.visible = false; return; }
+  mario.visible = true;
+
+  let running = null;
+  for (const e of ganttReal) {
+    if (tick > e.start && tick <= e.end) { running = e; break; }
+  }
+
+  const targetX = running
+    ? COMP_LEFT + Math.min(running.end, tick) * scale - COMP_MARIO_W / 2
+    : COMP_LEFT + tick * scale - COMP_MARIO_W / 2;
+  mario.x += (targetX - mario.x) * 0.18;
+
+  mario.baseY = rowY - COMP_MARIO_H - 2;
+
+  if (running && running.pid !== mario.lastBlock && mario.lastBlock !== null && !mario.jumping) {
+    mario.jumping = true; mario.jumpVel = -90;
+  }
+  if (running) mario.lastBlock = running.pid;
+
+  const dt = 1 / 60;
+  if (mario.jumping) {
+    mario.y += mario.jumpVel * dt;
+    mario.jumpVel += 280 * dt;
+    if (mario.y >= mario.baseY) { mario.y = mario.baseY; mario.jumping = false; mario.jumpVel = 0; }
+  } else {
+    mario.y = mario.baseY;
+    mario.frameTimer = (mario.frameTimer || 0) + dt;
+    if (mario.frameTimer >= 0.125) { mario.frameTimer = 0; mario.frame = (mario.frame + 1) % 4; }
+  }
 }
 
-function chartCard(canvasId, title) {
-  return `<div class="card">
-    <div class="card-title"><span class="card-icon"><i class="ph ph-chart-bar"></i></span>${title}</div>
-    <div class="chart-container"><canvas id="${canvasId}" height="260"></canvas></div>
-  </div>`;
+function drawCompMarioSprite(ctx, mx, my, jumping, frame) {
+  // MARIO_SPRITE_FRAMES es una const global de gantt.js (carga antes que comparison.js)
+  if (typeof MARIO_SPRITE_FRAMES === 'undefined') return;
+  const runKeys = typeof MARIO_RUN_KEYS !== 'undefined' ? MARIO_RUN_KEYS : ['stand','run1','run2','run1'];
+  const frameKey = jumping ? 'jump' : runKeys[frame % 4];
+  const grid = MARIO_SPRITE_FRAMES[frameKey] || MARIO_SPRITE_FRAMES.stand;
+  const s = COMP_MARIO_SCALE;
+  for (let row = 0; row < 16; row++) {
+    for (let col = 0; col < 16; col++) {
+      const c = grid[row][col];
+      if (c === null) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.round(mx + col * s), Math.round(my + row * s), s, s);
+    }
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Actualización de celdas de tabla en vivo
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function updateLiveCellsSched(idx, d, tick, totalTime) {
+  const frac = Math.min(tick / totalTime, 1);
+  const flash = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const newVal = val;
+    if (el.textContent !== newVal) {
+      el.textContent = newVal;
+      el.classList.remove('updated');
+      void el.offsetWidth;
+      el.classList.add('updated');
+    }
+  };
+  if (frac > 0.05) {
+    flash(`comp-cell-wt-${idx}`,  (d.avg_waiting    * frac).toFixed(2));
+    flash(`comp-cell-tat-${idx}`, (d.avg_turnaround * frac).toFixed(2));
+    flash(`comp-cell-rt-${idx}`,  (d.avg_response   * frac).toFixed(2));
+    flash(`comp-cell-cpu-${idx}`, (d.cpu_utilization * frac).toFixed(1) + '%');
+  }
+  if (frac >= 0.99) {
+    flash(`comp-cell-wt-${idx}`,  d.avg_waiting.toFixed(2));
+    flash(`comp-cell-tat-${idx}`, d.avg_turnaround.toFixed(2));
+    flash(`comp-cell-rt-${idx}`,  d.avg_response.toFixed(2));
+    flash(`comp-cell-cpu-${idx}`, d.cpu_utilization.toFixed(1) + '%');
+  }
+}
+
+function updateLiveCellsPage(idx, d, step, total) {
+  const frac = total > 0 ? Math.min(step / total, 1) : 0;
+  const flash = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.textContent !== val) {
+      el.textContent = val;
+      el.classList.remove('updated');
+      void el.offsetWidth;
+      el.classList.add('updated');
+    }
+  };
+  if (d.steps && step > 0) {
+    const stepsNow  = d.steps.slice(0, step);
+    const faults    = stepsNow.filter(s => s.fault).length;
+    const hitRate   = ((step - faults) / step * 100).toFixed(1);
+    const faultRate = (faults / step * 100).toFixed(1);
+    flash(`comp-cell-pf-${idx}`, String(faults));
+    flash(`comp-cell-hr-${idx}`, hitRate);
+    flash(`comp-cell-fr-${idx}`, faultRate + '%');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Controles de playback
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function toggleCompPlay() {
+  if (!CompPlayer.renderFn) return;
+  CompPlayer.playing = !CompPlayer.playing;
+  const btn = document.getElementById('comp-btn-play');
+  if (CompPlayer.playing) {
+    btn.innerHTML = '<i class="ph ph-pause"></i> Pause';
+    CompPlayer.lastFrame = performance.now();
+    compAnimate();
+  } else {
+    btn.innerHTML = '<i class="ph ph-play"></i> Play';
+    cancelAnimationFrame(CompPlayer.rafId);
+  }
+}
+
+function compAnimate(ts) {
+  if (!CompPlayer.playing) return;
+  ts = ts || performance.now();
+  const dt = Math.min((ts - CompPlayer.lastFrame) / 1000, 0.1);
+  CompPlayer.lastFrame = ts;
+  CompPlayer.currentTick = Math.min(
+    CompPlayer.currentTick + dt * CompPlayer.speed * 2,
+    CompPlayer.totalTime
+  );
+  CompPlayer.renderFn();
+  if (CompPlayer.currentTick >= CompPlayer.totalTime) {
+    CompPlayer.playing = false;
+    const btn = document.getElementById('comp-btn-play');
+    if (btn) btn.innerHTML = '<i class="ph ph-arrow-counter-clockwise"></i> Reiniciar';
+    return;
+  }
+  CompPlayer.rafId = requestAnimationFrame(compAnimate);
+}
+
+function stopCompPlayer() {
+  CompPlayer.playing = false;
+  cancelAnimationFrame(CompPlayer.rafId);
+  const btn = document.getElementById('comp-btn-play');
+  if (btn) btn.innerHTML = '<i class="ph ph-play"></i> Play';
+}
+
+function compSeek(t) {
+  stopCompPlayer();
+  CompPlayer.currentTick = Math.max(0, Math.min(t, CompPlayer.totalTime));
+  if (CompPlayer.renderFn) CompPlayer.renderFn();
+  const btn = document.getElementById('comp-btn-play');
+  if (btn) btn.innerHTML = '<i class="ph ph-play"></i> Play';
+}
+
+function compStep(dir) {
+  stopCompPlayer();
+  CompPlayer.currentTick = Math.max(0, Math.min(
+    CompPlayer.currentTick + dir,
+    CompPlayer.totalTime
+  ));
+  if (CompPlayer.renderFn) CompPlayer.renderFn();
+}
+
+function setCompSpeed(val) {
+  CompPlayer.speed = parseFloat(val);
+  const lbl = document.getElementById('comp-speed-label');
+  if (lbl) lbl.textContent = parseFloat(val).toFixed(2).replace(/\.?0+$/, '') + 'x';
 }
 
 function clearCompResults() {
+  stopCompPlayer();
   document.getElementById('comp-results').innerHTML = '';
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   Bar Chart (actualizado con soporte winner)
-   ═══════════════════════════════════════════════════════════════════════ */
-
-function drawBarChart(canvasId, labels, values, title, unit, winnerLabel) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  const dpr = window.devicePixelRatio || 1;
-  const container = canvas.parentElement;
-  const width = container.clientWidth;
-  const height = container.clientHeight > 0 ? container.clientHeight : 260;
-
-  canvas.width  = width * dpr;
-  canvas.height = height * dpr;
-  canvas.style.height = height + 'px';
-  ctx.scale(dpr, dpr);
-
-  const LEFT = 60, RIGHT = 24, TOP = 20, BOTTOM = 56;
-  const chartW = width - LEFT - RIGHT;
-  const chartH = height - TOP - BOTTOM;
-  const maxVal = Math.max(...values, 0.01);
-  const niceMax = Math.ceil(maxVal * 1.15);
-
-  const barCount = values.length;
-  const barGap = 12;
-  const totalGap = barGap * (barCount + 1);
-  const barWidth = Math.min((chartW - totalGap) / barCount, 70);
-  const totalBarsW = barCount * barWidth + totalGap;
-  const startX = LEFT + (chartW - totalBarsW) / 2 + barGap;
-
-  let progress = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
-  let animId, hoveredIndex = -1;
-
-  let tooltip = document.getElementById(canvasId + '-tip');
-  if (!tooltip) {
-    tooltip = document.createElement('div');
-    tooltip.id = canvasId + '-tip';
-    tooltip.className = 'tooltip';
-    document.body.appendChild(tooltip);
-  }
-
-  canvas.onmousemove = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    hoveredIndex = -1;
-    for (let i = 0; i < barCount; i++) {
-      const x = startX + i * (barWidth + barGap);
-      const barH = (values[i] / niceMax) * chartH * progress;
-      const y = TOP + chartH - barH;
-      if (mx >= x && mx <= x + barWidth && my >= y && my <= TOP + chartH) {
-        hoveredIndex = i;
-        const isWinner = labels[i] === winnerLabel;
-        const color = PID_COLORS[i % PID_COLORS.length];
-        tooltip.innerHTML = `<strong style="color:${color}">${labels[i]}${isWinner ? ' ★' : ''}</strong><br>${title}: ${values[i].toFixed(2)} ${unit}`;
-        tooltip.style.left = (e.clientX + 12) + 'px';
-        tooltip.style.top  = (e.clientY - 10) + 'px';
-        tooltip.classList.add('visible');
-        canvas.style.cursor = 'pointer';
-        render(); return;
-      }
-    }
-    tooltip.classList.remove('visible');
-    canvas.style.cursor = 'default';
-    render();
-  };
-  canvas.onmouseleave = () => { hoveredIndex = -1; tooltip.classList.remove('visible'); render(); };
-
-  function render() {
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = 'rgba(248, 250, 252, 0.9)';
-    ctx.fillRect(0, 0, width, height);
-
-    // Grid
-    ctx.strokeStyle = 'rgba(148,163,184,0.35)';
-    ctx.lineWidth = 1; ctx.setLineDash([3,3]);
-    for (let i = 0; i <= 5; i++) {
-      const y = TOP + (chartH / 5) * i;
-      ctx.beginPath(); ctx.moveTo(LEFT, y); ctx.lineTo(width - RIGHT, y); ctx.stroke();
-      ctx.fillStyle = '#475569'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
-      ctx.fillText((niceMax * (1 - i/5)).toFixed(1), LEFT - 6, y + 4);
-    }
-    ctx.setLineDash([]);
-
-    // Barras
-    for (let i = 0; i < barCount; i++) {
-      const x = startX + i * (barWidth + barGap);
-      const barH = (values[i] / niceMax) * chartH * progress;
-      const y = TOP + chartH - barH;
-      const color = PID_COLORS[i % PID_COLORS.length];
-      const isWinner = labels[i] === winnerLabel;
-      const isHovered = i === hoveredIndex;
-
-      const grad = ctx.createLinearGradient(x, y, x, y + barH);
-      grad.addColorStop(0, color);
-      grad.addColorStop(1, color + '88');
-
-      const r = Math.min(6, barWidth / 2);
-      ctx.beginPath();
-      ctx.moveTo(x + r, y); ctx.lineTo(x + barWidth - r, y);
-      ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + r);
-      ctx.lineTo(x + barWidth, y + barH); ctx.lineTo(x, y + barH);
-      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath(); ctx.fillStyle = grad;
-
-      if (isHovered || isWinner) {
-        ctx.shadowColor = color; ctx.shadowBlur = isWinner ? 16 : 10;
-      } else {
-        ctx.shadowColor = 'rgba(15,23,42,0.12)'; ctx.shadowBlur = 4;
-      }
-      ctx.shadowOffsetY = 2; ctx.fill(); ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-
-      // Valor + estrella ganador
-      if (progress > 0.5) {
-        ctx.fillStyle = isWinner ? '#059669' : '#0F172A';
-        ctx.font = `${isWinner ? 'bold' : ''} 10px monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillText(values[i].toFixed(1) + (isWinner ? ' ★' : ''), x + barWidth / 2, y - 6);
-      }
-
-      // Etiqueta eje X
-      ctx.fillStyle = isWinner ? '#059669' : '#475569';
-      ctx.font = `${isWinner ? 'bold' : ''} 9px sans-serif`;
-      ctx.textAlign = 'center';
-      const lbl = labels[i].length > 11 ? labels[i].slice(0, 10) + '…' : labels[i];
-      ctx.fillText(lbl, x + barWidth / 2, TOP + chartH + 16);
-    }
-
-    // Título eje Y
-    ctx.fillStyle = '#64748B'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-    ctx.save(); ctx.translate(18, TOP + chartH / 2); ctx.rotate(-Math.PI / 2);
-    ctx.fillText(`${title}${unit ? ' ('+unit+')' : ''}`, 0, 0); ctx.restore();
-
-    if (progress < 1) { progress = Math.min(progress + 0.025, 1); animId = requestAnimationFrame(render); }
-  }
-
-  if (animId) cancelAnimationFrame(animId);
-  render();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    Exports
    ═══════════════════════════════════════════════════════════════════════ */
-window.runComparison  = runComparison;
-window.initComparison = initComparison;
+window.runComparison   = runComparison;
+window.initComparison  = initComparison;
 window.setCompCategory = setCompCategory;
-window.setCompCores   = setCompCores;
+window.setCompCores    = setCompCores;
+window.toggleCompPlay  = toggleCompPlay;
+window.stopCompPlayer  = stopCompPlayer;
+window.compSeek        = compSeek;
+window.compStep        = compStep;
+window.setCompSpeed    = setCompSpeed;
+
+/* Auto-inicializar cuando se navega a Comparison
+   Funciona tanto si app.js tiene el hook como si no */
+(function () {
+  function tryInit() {
+    const grid = document.getElementById('comp-algo-grid');
+    if (grid && grid.children.length === 0) initComparison();
+  }
+
+  // Hook en el botón de nav si existe
+  document.addEventListener('DOMContentLoaded', () => {
+    const navBtn = document.getElementById('nav-comparison');
+    if (navBtn) navBtn.addEventListener('click', tryInit);
+
+    // También inicializar si la pantalla ya está activa al cargar
+    const screen = document.getElementById('screen-comparison');
+    if (screen && screen.classList.contains('active')) tryInit();
+  });
+})();
