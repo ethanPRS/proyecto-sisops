@@ -273,8 +273,8 @@ function buildResultUI(apiResults) {
         ${bcDefs.map(bc=>`
           <div>
             <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-align:center">${bc.title}</div>
-            <div style="position:relative;height:240px">
-              <canvas id="${bc.id}" style="width:100%;height:240px"></canvas>
+            <div style="position:relative;height:312px">
+              <canvas id="${bc.id}" style="width:100%;height:312px"></canvas>
             </div>
           </div>`).join('')}
       </div>
@@ -798,148 +798,176 @@ function startBarChartAnimation(entries, isSched){
 }
 
 /**
- * drawBarChart — dibuja una gráfica de barras estilo Mario.
+ * drawBarChart — gráfica de barras con eje Y, números grandes y nombres claros.
  *
- * FIX #3: nombres completos en dos líneas si son largos
- * FIX #4: nMax fijo (recibido como parámetro)
- * FIX #7: valor numérico siempre visible encima de la barra
+ * Layout vertical (px, total H=340):
+ *   T=44   → espacio para número encima de barra
+ *   ch=196 → área de barras
+ *   LBL=60 → zona de nombres (2 líneas + ★ MEJOR)
+ *   YAXIS=44 → margen izquierdo para etiquetas del eje Y
  */
 function drawBarChart(canvasId, labels, values, higherIsBetter, nMax){
   const canvas=document.getElementById(canvasId); if(!canvas)return;
   const ctx=canvas.getContext('2d');
   const dpr=window.devicePixelRatio||1;
   const cont=canvas.parentElement;
-  const W=cont.clientWidth||260;
-  const H=260;
+  const W=cont.clientWidth||280;
+
+  // Zonas fijas
+  const YAXIS=44;  // ancho del eje Y izquierdo
+  const R=10;      // margen derecho
+  const T=44;      // espacio superior (número encima de barra)
+  const LBL=68;    // zona inferior para nombres + ★ MEJOR
+  const H=T+196+LBL; // altura total = 308
+
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.height=H+'px';
   ctx.scale(dpr,dpr);
 
-  // Layout
-  const L=10, R=10, T=36, B=64; // B más grande para nombres de 2 líneas
-  const cw=W-L-R, ch=H-T-B;
-  const safMax = Math.max(nMax, 0.001);
+  const ch=H-T-LBL;          // altura efectiva de barras = 196
+  const plotW=W-YAXIS-R;     // ancho disponible para barras
+  const safMax=Math.max(nMax,0.001);
 
   ctx.clearRect(0,0,W,H);
 
+  /* ── Fondo oscuro ── */
+  ctx.fillStyle='rgba(10,8,28,0.0)'; // transparente, hereda el card
+  ctx.fillRect(0,0,W,H);
+
+  /* ── Eje Y: 5 líneas + etiquetas ── */
+  const yTicks = 5;
+  for(let ti=0; ti<=yTicks; ti++){
+    const pct = ti/yTicks;
+    const gy  = T + ch*(1-pct);
+    const yVal = safMax*pct;
+
+    // Línea de cuadrícula
+    ctx.strokeStyle = ti===0
+      ? 'rgba(255,255,255,0.25)'   // línea base más visible
+      : 'rgba(255,255,255,0.07)';
+    ctx.lineWidth=ti===0?1.5:1;
+    ctx.setLineDash(ti===0?[]:[3,4]);
+    ctx.beginPath(); ctx.moveTo(YAXIS,gy); ctx.lineTo(W-R,gy); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Etiqueta numérica del eje Y
+    const label = yVal>=100 ? yVal.toFixed(0)
+                : yVal>=10  ? yVal.toFixed(1)
+                :             yVal.toFixed(2);
+    ctx.save();
+    ctx.font='10px "JetBrains Mono",monospace';
+    ctx.fillStyle='rgba(255,255,255,0.45)';
+    ctx.textAlign='right';
+    ctx.textBaseline='middle';
+    ctx.fillText(label, YAXIS-5, gy);
+    ctx.restore();
+  }
+
+  /* ── Línea vertical del eje Y ── */
+  ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(YAXIS,T); ctx.lineTo(YAXIS,T+ch); ctx.stroke();
+
+  /* ── Barras ── */
   const n=values.length;
-  const gap=Math.max(6, cw*0.05);
-  const bw=Math.max(18, (cw - gap*(n+1)) / n);
-  const totalW=n*bw + gap*(n+1);
-  const sx=L + (cw-totalW)/2 + gap;
-
-  // Línea base Y=0
-  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(L,T+ch); ctx.lineTo(W-R,T+ch); ctx.stroke();
-
-  // Líneas guía horizontales sutiles
-  [0.25, 0.5, 0.75].forEach(pct=>{
-    const gy=T+ch*(1-pct);
-    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(L,gy); ctx.lineTo(W-R,gy); ctx.stroke();
-  });
+  const gap=Math.max(8, plotW*0.06);
+  const bw=Math.max(24, (plotW - gap*(n+1)) / n);
+  const totalBarsW = n*bw + gap*(n+1);
+  // Centrar barras dentro del área de plot
+  const sx = YAXIS + (plotW-totalBarsW)/2 + gap;
 
   const isWinner=(v)=> higherIsBetter ? v===Math.max(...values) : v===Math.min(...values);
 
   values.forEach((v,i)=>{
-    const x   = sx + i*(bw+gap);
-    // FIX #4 + #5: altura basada en safMax fijo
-    const bh  = Math.max((v/safMax)*ch, v>0?3:0);
-    const y   = T+ch-bh;
-    const c   = marioBlockColor(i);
-    const win = isWinner(v);
-    const cx  = x + bw/2;
+    const x  = sx + i*(bw+gap);
+    const bh = Math.max((v/safMax)*ch, v>0?3:0);
+    const y  = T+ch-bh;
+    const c  = marioBlockColor(i);
+    const win= isWinner(v);
+    const cx = x + bw/2;
 
-    // Sombra
-    ctx.fillStyle='rgba(0,0,0,0.2)';
+    /* Sombra */
+    ctx.fillStyle='rgba(0,0,0,0.22)';
     roundRect(ctx,x+2,y+3,bw,bh,5); ctx.fill();
 
-    // Gradiente 3D
+    /* Gradiente 3D */
     const g=ctx.createLinearGradient(x,y,x,y+bh);
     g.addColorStop(0,c.top); g.addColorStop(0.5,c.mid); g.addColorStop(1,c.dark);
     ctx.fillStyle=g; roundRect(ctx,x,y,bw,bh,5); ctx.fill();
 
-    // Brillo
-    if(bh>8){
-      ctx.fillStyle='rgba(255,255,255,0.2)';
-      roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.28,10),3); ctx.fill();
+    /* Brillo superior */
+    if(bh>10){
+      ctx.fillStyle='rgba(255,255,255,0.22)';
+      roundRect(ctx,x+2,y+2,bw-4,Math.min(bh*0.28,12),3); ctx.fill();
     }
 
-    // Contorno ganador
+    /* Contorno ganador con glow */
     if(win){
       ctx.save();
       ctx.strokeStyle=c.top; ctx.lineWidth=2.5;
-      ctx.shadowColor=c.top; ctx.shadowBlur=12;
+      ctx.shadowColor=c.top; ctx.shadowBlur=14;
       roundRect(ctx,x-1,y-1,bw+2,bh+2,6); ctx.stroke();
       ctx.restore();
     }
 
-    // ── FIX #7: Valor numérico encima de la barra — SIEMPRE visible ──
+    /* ── Número grande encima de la barra ── */
     const numStr = v.toFixed(1);
     ctx.save();
     ctx.textAlign='center';
     ctx.textBaseline='bottom';
-
-    const numY = y - 4; // justo encima de la barra
+    const numY = y - 6;
 
     if(win){
-      ctx.font='bold 12px "JetBrains Mono",monospace';
+      // Pill de fondo para el ganador
+      ctx.font='bold 15px "JetBrains Mono",monospace';
       const tw=ctx.measureText(numStr).width;
-      // Pill de fondo
-      ctx.fillStyle=c.mid+'66';
-      roundRect(ctx, cx-tw/2-5, numY-18, tw+10, 20, 4); ctx.fill();
+      ctx.fillStyle=c.mid+'77';
+      roundRect(ctx, cx-tw/2-7, numY-22, tw+14, 24, 5); ctx.fill();
       ctx.fillStyle=c.top;
     } else {
-      ctx.font='11px "JetBrains Mono",monospace';
-      ctx.fillStyle='rgba(255,255,255,0.9)';
+      ctx.font='bold 13px "JetBrains Mono",monospace';
+      ctx.fillStyle='rgba(255,255,255,0.92)';
     }
     ctx.fillText(numStr, cx, numY);
     ctx.restore();
 
-    // ── FIX #3: Nombre del algoritmo — 2 líneas si es necesario ──────
+    /* ── Nombre del algoritmo debajo — hasta 3 líneas ── */
     ctx.save();
     ctx.textAlign='center';
     ctx.textBaseline='top';
 
-    const lineY1 = T+ch+8;
-    const lineY2 = T+ch+22;
-    const lineY3 = T+ch+36; // ★ MEJOR
+    // Dividir el nombre en palabras y construir líneas que quepan en bw+gap*1.5
+    const maxPxPerLine = bw + gap * 1.4;
+    ctx.font='11px "Inter",sans-serif';
+    const words = labels[i].split(/[\s\/\-\(]+/); // dividir por espacio, /, -, (
+    const lines=[];
+    let cur='';
+    for(const w of words){
+      const test = cur ? cur+' '+w : w;
+      if(ctx.measureText(test).width <= maxPxPerLine){ cur=test; }
+      else { if(cur) lines.push(cur); cur=w; }
+    }
+    if(cur) lines.push(cur);
+    // Máximo 2 líneas de nombre
+    const nameLines = lines.slice(0,2);
 
-    const words = labels[i].split(' ');
-    let line1='', line2='';
+    const baseY = T+ch+10;
+    const lineH = 14;
 
-    if(labels[i].length <= 10){
-      line1 = labels[i];
-    } else {
-      // Intentar dividir en 2 líneas por espacio
-      let best = 0;
-      for(let w=1; w<words.length; w++){
-        const candidate = words.slice(0,w).join(' ');
-        if(candidate.length <= 11){ best=w; } else break;
-      }
-      if(best>0 && best<words.length){
-        line1 = words.slice(0,best).join(' ');
-        line2 = words.slice(best).join(' ');
+    nameLines.forEach((ln,li)=>{
+      if(win){
+        ctx.font=`bold 11px "Inter",sans-serif`;
+        ctx.fillStyle=c.top;
       } else {
-        // Cortar con –
-        line1 = labels[i].slice(0,10);
-        line2 = labels[i].slice(10);
+        ctx.font=`11px "Inter",sans-serif`;
+        ctx.fillStyle='rgba(255,255,255,0.75)';
       }
-    }
+      ctx.fillText(ln, cx, baseY + li*lineH);
+    });
 
+    /* ★ MEJOR badge */
     if(win){
-      ctx.font='bold 9px "Inter",sans-serif';
-      ctx.fillStyle=c.top;
-    } else {
-      ctx.font='9px "Inter",sans-serif';
-      ctx.fillStyle='rgba(255,255,255,0.7)';
-    }
-    ctx.fillText(line1, cx, lineY1);
-    if(line2) ctx.fillText(line2, cx, lineY2);
-
-    if(win){
-      const starY = line2 ? lineY3 : lineY2;
-      ctx.font='bold 9px sans-serif';
+      const starY = baseY + nameLines.length*lineH + 2;
+      ctx.font='bold 10px sans-serif';
       ctx.fillStyle=c.top;
       ctx.fillText('★ MEJOR', cx, starY);
     }
