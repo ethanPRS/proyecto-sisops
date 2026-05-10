@@ -70,6 +70,7 @@
     lastFrame: 0,
     speed: 1,
     soundEnabled: true,
+    safeMode: false,            // Multithreading: true = mutex, no races
     canvas: null,
     ctx: null,
 
@@ -259,68 +260,84 @@
     };
   }
 
-  // Molcajete with guacamole — 10w × 8h.
+  // Molcajete with guacamole — 14w × 12h. Stone bowl with chunky legs and
+  // visible guacamole texture (avocado bits + tomato + seeds).
   const SPRITE_MOLCAJETE = parseSprite(`
-    ..........
-    .KKKKKKKK.
-    KGGGgGGGGK
-    KGgGGGggGK
-    KGGGGgggGK
-    .KGGggggK.
-    .KKKKKKKK.
-    .KK....KK.
+    ..............
+    ..KKKKKKKKKK..
+    .KbbbbbbbbbbK.
+    KbGGGGGGGGGGbK
+    KbGgGGGGgGGGbK
+    KbGGGGtGGGgGbK
+    KbGgGGGGGGGGbK
+    KbGGGGgGGGGGbK
+    .KbGGGGGGGGbK.
+    ..KKKKKKKKKK..
+    ..KK......KK..
+    .KKK......KKK.
   `);
 
   const MOLCAJETE_PALETTE = {
-    K: '#1C1917',         // dark stone
-    G: '#22C55E',         // guacamole green
-    g: '#16A34A',         // darker green clusters
+    K: '#0F172A',         // dark outline
+    b: '#57534E',         // stone bowl rim
+    G: '#22C55E',         // guacamole bright green
+    g: '#16A34A',         // darker chunks
+    t: '#EF4444',         // red tomato bit
   };
 
-  // Hielera (red ice cooler) — 14w × 12h.
+  // Hielera (red ice cooler) — 18w × 14h. Bigger with clear "ICE" stenciled
+  // on a white panel, a visible lid handle and side handles.
   const SPRITE_HIELERA = parseSprite(`
-    KKKKKKKKKKKKKK
-    KhhhhhhhhhhhhK
-    KhhhhhhhhhhhhK
-    KKKKKKKKKKKKKK
-    KrrrrrrrrrrrrK
-    KrwwwwwIwwwwrK
-    KrwwIwCwwEwwrK
-    KrwwwwwwwwwwrK
-    KrrrrrrrrrrrrK
-    KKKKKKKKKKKKKK
-    .K..........K.
-    .K..........K.
+    ..KKKKKKKKKKKKKK..
+    .KhhhhhhhhhhhhhhK.
+    .KhhhhhKKKKhhhhhK.
+    .KhhhhhKKKKhhhhhK.
+    KKKKKKKKKKKKKKKKKK
+    KrrrrrrrrrrrrrrrrK
+    KrwwwwwwwwwwwwwwrK
+    KrwIIIwCCCwEEEwrrK
+    KrwIwIwCwwwEwwwrrK
+    KrwIIIwCCCwEEwwwrK
+    KrwwwwwwwwwwwwwwrK
+    KrrrrrrrrrrrrrrrrK
+    KKKKKKKKKKKKKKKKKK
+    .KK............KK.
   `);
 
   const HIELERA_PALETTE = {
-    K: '#0F172A',
-    h: '#FECACA',         // light red lid
-    r: '#EF4444',         // red body
-    w: '#FFFFFF',         // white "ICE" panel
-    I: '#0F172A',         // letters
-    C: '#0F172A',
-    E: '#0F172A',
+    K: '#0F172A',         // outline
+    h: '#FCA5A5',         // lid (lighter red)
+    r: '#DC2626',         // body (deep red)
+    w: '#FFFFFF',         // white label panel
+    I: '#0F172A',         // "I" stencil
+    C: '#0F172A',         // "C" stencil
+    E: '#0F172A',         // "E" stencil
   };
 
-  // BBQ tongs — 8w × 12h. Vertical pair of metal arms.
+  // BBQ tongs — 14w × 16h. Vertical pair of metallic arms with red grip.
   const SPRITE_TONGS = parseSprite(`
-    KK....KK
-    KKK..KKK
-    .KK..KK.
-    .KK..KK.
-    .KK..KK.
-    ..K..K..
-    ..K..K..
-    ..KKKK..
-    ...KK...
-    ...KK...
-    ...KK...
-    ..KKKK..
+    .KKK......KKK.
+    .KMMK....KMMK.
+    ..KMMK..KMMK..
+    ..KMMK..KMMK..
+    ..KMMK..KMMK..
+    ...KMMK.KMMK..
+    ...KMMKKMMK...
+    ....KMMMMK....
+    .....KMMK.....
+    .....KMMK.....
+    .....KRMK.....
+    .....KRRK.....
+    .....KRRK.....
+    .....KRRK.....
+    .....KRRK.....
+    ......KK......
   `);
 
   const TONGS_PALETTE = {
-    K: '#1F2937',
+    K: '#0F172A',         // outline / dark
+    M: '#9CA3AF',         // metal shine
+    R: '#DC2626',         // red rubber grip
   };
 
   // House (casa) — 22w × 18h. Simple Mexican-style with red tile roof.
@@ -929,12 +946,15 @@
     return { timeline, totalTime: timeline.length, total, remaining: { ...total } };
   }
 
-  // Multiprocessing — top-N processes by burst, each on its own simulated CPU.
-  // Each "castle" runs independently in parallel from t=0.
-  // Returns { castles: [{pid, burst, forks: [{fid, t, burst}]}], totalTime }
-  function buildMultiprocessingSchedule(processes) {
-    const top = processes.slice().sort((a, b) => b.burst_time - a.burst_time).slice(0, 4);
-    const castles = top.map(p => ({
+  // Multiprocessing — one house per CPU core. The number of houses equals
+  // numCores (capped at 4 for the layout). Each core takes the next process
+  // in arrival order; if more processes than cores, the first N are shown.
+  // Returns { castles: [{pid, burst, forks}], totalTime }
+  function buildMultiprocessingSchedule(processes, numCores) {
+    const numHouses = Math.max(1, Math.min(4, numCores || 1, processes.length));
+    const sorted = processes.slice().sort((a, b) =>
+      (a.arrival_time || 0) - (b.arrival_time || 0));
+    const castles = sorted.slice(0, numHouses).map(p => ({
       pid: p.pid,
       burst: p.burst_time,
       forks: (p.forks || []).map(f => ({
@@ -1006,6 +1026,91 @@
      Renderers
      ═════════════════════════════════════════════════════════════════ */
 
+  // ── Forest / garden background — shared across modes ────────────────
+  // Pixel-art forest scene: dark-teal sky, tree trunks/foliage at edges,
+  // mid-ground bushes with flowers, bright grass with daisies in the front.
+  function drawGardenBackground(ctx) {
+    // Sky / forest depth gradient
+    const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+    sky.addColorStop(0, '#0E3B43');
+    sky.addColorStop(0.25, '#1F574F');
+    sky.addColorStop(0.55, '#3A8166');
+    sky.addColorStop(0.65, '#5BA46F');
+    sky.addColorStop(1, '#3F6212');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Distant tree trunks (dark silhouettes at the top corners)
+    const trunkColor = '#4A2C1A';
+    const trunkShade = '#2E1810';
+    const trunkPositions = [-10, 70, 200, 380, 540, 700, 780];
+    trunkPositions.forEach(tx => {
+      ctx.fillStyle = trunkShade;
+      ctx.fillRect(tx, 0, 38, 110);
+      ctx.fillStyle = trunkColor;
+      ctx.fillRect(tx + 4, 0, 30, 110);
+      // bark detail
+      ctx.fillStyle = trunkShade;
+      ctx.fillRect(tx + 8, 20, 4, 16);
+      ctx.fillRect(tx + 22, 50, 4, 22);
+    });
+
+    // Forest canopy (dark green clusters)
+    ctx.fillStyle = '#1B3F2A';
+    for (let i = 0; i < 14; i++) {
+      const cx = -20 + i * 60;
+      ctx.fillRect(cx, 0, 80, 30);
+      ctx.fillRect(cx + 8, 24, 64, 14);
+    }
+    ctx.fillStyle = '#2A5A3D';
+    for (let i = 0; i < 14; i++) {
+      const cx = -20 + i * 60;
+      ctx.fillRect(cx + 12, 4, 48, 14);
+    }
+
+    // Mid-ground bush row with yellow flowers
+    const bushY = 110;
+    ctx.fillStyle = '#1B3F2A';
+    for (let bx = 0; bx < CANVAS_W; bx += 70) {
+      ctx.fillRect(bx, bushY, 64, 26);
+    }
+    ctx.fillStyle = '#2A5A3D';
+    for (let bx = 0; bx < CANVAS_W; bx += 70) {
+      ctx.fillRect(bx + 4, bushY + 4, 56, 18);
+    }
+    // Yellow flowers on bushes (4-petal cross pattern)
+    for (let bx = 6; bx < CANVAS_W; bx += 26) {
+      const fy = bushY + 6 + ((bx * 7) % 14);
+      ctx.fillStyle = '#FBBF24';
+      ctx.fillRect(bx, fy, 6, 2);
+      ctx.fillRect(bx + 2, fy - 2, 2, 6);
+      ctx.fillStyle = '#F59E0B';
+      ctx.fillRect(bx + 2, fy + 1, 2, 1);
+    }
+
+    // Meadow / grass foreground (clear playable area)
+    const grassY = 250;
+    ctx.fillStyle = '#65A30D';
+    ctx.fillRect(0, grassY, CANVAS_W, CANVAS_H - grassY);
+    // Light grass tufts
+    ctx.fillStyle = '#84CC16';
+    for (let gy = grassY + 4; gy < CANVAS_H; gy += 14) {
+      for (let gx = (gy / 14) % 2 === 0 ? 0 : 22; gx < CANVAS_W; gx += 44) {
+        ctx.fillRect(gx, gy, 12, 3);
+      }
+    }
+    // Daisies (white petal + yellow center)
+    for (let dy = grassY + 12; dy < CANVAS_H - 8; dy += 22) {
+      for (let dx = 16 + ((dy * 3) % 30); dx < CANVAS_W; dx += 70) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(dx, dy + 1, 5, 1);
+        ctx.fillRect(dx + 2, dy - 1, 1, 5);
+        ctx.fillStyle = '#FBBF24';
+        ctx.fillRect(dx + 2, dy + 1, 1, 1);
+      }
+    }
+  }
+
   function clearStage(ctx, bgGradient) {
     ctx.fillStyle = bgGradient || '#1E293B';
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
@@ -1025,57 +1130,15 @@
     const sched = State.schedule;
     if (!sched) return;
 
-    // ── Sunset Escobedo backyard ──────────────────────────────────────
-    const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    sky.addColorStop(0, '#7C2D12');
-    sky.addColorStop(0.35, '#DC2626');
-    sky.addColorStop(0.5, '#F97316');
-    sky.addColorStop(0.55, '#FCD34D');
-    sky.addColorStop(0.56, '#7C3F00');
-    sky.addColorStop(1, '#1C1917');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // Distant neighborhood silhouette
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    [[20, 130, 70, 30], [110, 120, 50, 40], [180, 135, 60, 25],
-     [610, 128, 60, 32], [690, 122, 70, 38]].forEach(([x, y, w, h]) => {
-      // Simple house: triangle roof + body
-      ctx.fillRect(x, y, w, h);
-      for (let i = 0; i < w / 2; i++) ctx.fillRect(x + i, y - i, w - i * 2, 1);
-    });
-
-    // Papel picado bunting along the top
-    const buntingColors = ['#EF4444', '#22C55E', '#FCD34D', '#3B82F6', '#EC4899'];
-    for (let i = 0; i < 14; i++) {
-      const bx = 30 + i * 55;
-      const cIdx = i % buntingColors.length;
-      ctx.fillStyle = buntingColors[cIdx];
-      // small flag shape
-      ctx.fillRect(bx, 2, 36, 18);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(bx + 2, 18, 32, 2);
-    }
-    // String of the bunting
-    ctx.fillStyle = '#1C1917';
-    for (let xx = 0; xx < CANVAS_W; xx += 4) ctx.fillRect(xx, 1, 2, 1);
-
-    // Ground (patio tiles)
-    const floorY = 270;
-    ctx.fillStyle = '#451A03';
-    ctx.fillRect(0, floorY, CANVAS_W, CANVAS_H - floorY);
-    ctx.fillStyle = '#7C2D12';
-    for (let yy = floorY; yy < CANVAS_H; yy += 16) {
-      for (let xx = (yy / 16) % 2 === 0 ? 0 : 32; xx < CANVAS_W; xx += 64) {
-        ctx.fillRect(xx, yy, 60, 14);
-      }
-    }
+    // ── Forest / garden backdrop (shared across all modes) ───────────
+    drawGardenBackground(ctx);
+    const floorY = 250;
 
     const tick = State.currentTick;
     const tIdx = Math.min(Math.floor(tick), sched.timeline.length - 1);
     const activePid = sched.timeline[tIdx];
 
-    const PLATILLOS = ['Agujas', 'Salchicha', 'Empalme', 'Carne', 'Costillas', 'Arrachera'];
+    const PLATILLOS = ['Skewers', 'Sausage', 'Tortilla', 'Beef', 'Ribs', 'Steak'];
     const FOOD_SPRITES = [SPRITE_MEAT_AGUJAS, SPRITE_MEAT_SALCHICHA, SPRITE_MEAT_EMPALME];
 
     const procs = State.processes;
@@ -1172,10 +1235,30 @@
       else if (cookedPct > 0.3) meatPalette.r = '#92400E';
       drawPixelSprite(ctx, cx - meatW / 2, grillY - 18, meatScale, sprite, meatPalette);
 
-      // Platillo label below
+      // ── Platillo label card (process ↔ ingredient) ────────────────
       const platillo = PLATILLOS[(p.pid - 1) % PLATILLOS.length];
-      drawHUDText(ctx, platillo, cx - 22, grillY + 50, pidColor(p.pid), 10);
-      drawHUDText(ctx, `${remaining[p.pid]}/${p.burst_time}t`, cx - 18, grillY + 64, '#FED7AA', 10);
+      const cardX = cx - 42;
+      const cardY = grillY + 44;
+      // PID strip on the left (filled with PID color)
+      ctx.fillStyle = pidColor(p.pid);
+      ctx.fillRect(cardX, cardY, 28, 16);
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`P${p.pid}`, cardX + 14, cardY + 12);
+      // Ingredient label on the right (white card)
+      ctx.fillStyle = '#0F172A';
+      ctx.fillRect(cardX + 28, cardY, 56, 16);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(cardX + 30, cardY + 2, 52, 12);
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.fillText(platillo, cardX + 56, cardY + 11);
+      // Remaining time below
+      ctx.fillStyle = '#F8FAFC';
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillText(`${remaining[p.pid]}/${p.burst_time}t`, cx, grillY + 76);
+      ctx.textAlign = 'left';
 
       // "se quema!" warning if not visited too long
       let lastSeen = -1;
@@ -1243,37 +1326,9 @@
     const sched = State.schedule;
     if (!sched) return;
 
-    // Sunset patio (same as Concurrency for visual consistency)
-    const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    sky.addColorStop(0, '#7C2D12');
-    sky.addColorStop(0.35, '#DC2626');
-    sky.addColorStop(0.5, '#F97316');
-    sky.addColorStop(0.55, '#FCD34D');
-    sky.addColorStop(0.56, '#7C3F00');
-    sky.addColorStop(1, '#1C1917');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // Bunting
-    const buntingColors = ['#EF4444', '#22C55E', '#FCD34D', '#3B82F6', '#EC4899'];
-    for (let i = 0; i < 14; i++) {
-      const bx = 30 + i * 55;
-      ctx.fillStyle = buntingColors[i % buntingColors.length];
-      ctx.fillRect(bx, 2, 36, 18);
-    }
-    ctx.fillStyle = '#1C1917';
-    for (let xx = 0; xx < CANVAS_W; xx += 4) ctx.fillRect(xx, 1, 2, 1);
-
-    // Patio floor
-    const floorY = 270;
-    ctx.fillStyle = '#451A03';
-    ctx.fillRect(0, floorY, CANVAS_W, CANVAS_H - floorY);
-    ctx.fillStyle = '#7C2D12';
-    for (let yy = floorY; yy < CANVAS_H; yy += 16) {
-      for (let xx = (yy / 16) % 2 === 0 ? 0 : 32; xx < CANVAS_W; xx += 64) {
-        ctx.fillRect(xx, yy, 60, 14);
-      }
-    }
+    // Forest / garden backdrop
+    drawGardenBackground(ctx);
+    const floorY = 250;
 
     const lanes = sched.lanes;
     const numLanes = lanes.length;
@@ -1385,7 +1440,7 @@
     const speedup = sched.totalTime > 0 ? (totalSeq / sched.totalTime) : 1;
     drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 36, '#FBBF24', 13);
     drawHUDText(ctx, `${numLanes} chefs working at once · ${State.processes.length} processes`, 14, 54, '#FED7AA', 11);
-    drawHUDText(ctx, `⚡ Speedup ×${speedup.toFixed(2)} vs Mario alone (${totalSeq}t)`, 14, 72, '#FEF3C7', 11);
+    drawHUDText(ctx, `⚡ Speedup ×${speedup.toFixed(1)} vs Mario alone (${totalSeq}t)`, 14, 72, '#FEF3C7', 11);
     drawHUDText(ctx, '🌮 Luigi joined: 2+ pairs of hands working at the exact same second',
                 14, CANVAS_H - 14, '#FED7AA', 11);
   }
@@ -1396,16 +1451,8 @@
     const sched = State.schedule;
     if (!sched || !sched.castles) return;
 
-    // ── Sunset patio sky ─────────────────────────────────────────────
-    const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    sky.addColorStop(0, '#7C2D12');
-    sky.addColorStop(0.35, '#DC2626');
-    sky.addColorStop(0.5, '#F97316');
-    sky.addColorStop(0.55, '#FCD34D');
-    sky.addColorStop(0.56, '#7C3F00');
-    sky.addColorStop(1, '#1C1917');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    // Forest / garden backdrop (same as other modes for consistency)
+    drawGardenBackground(ctx);
 
     const tick = State.currentTick;
     const houses = sched.castles;   // schedule data shape: {pid, burst, forks}
@@ -1413,35 +1460,8 @@
     const padX = 30;
     const slotW = (CANVAS_W - padX * 2) / Math.max(1, N);
 
-    // Street running across the middle (the shared road between casas)
-    const streetY = 234;
-    const streetH = 22;
-    ctx.fillStyle = '#1F2937';
-    ctx.fillRect(0, streetY, CANVAS_W, streetH);
-    // Street dashes
-    ctx.fillStyle = '#FCD34D';
-    for (let xx = 12; xx < CANVAS_W; xx += 36) {
-      ctx.fillRect(xx, streetY + streetH / 2 - 2, 22, 3);
-    }
-
-    // Sidewalks (top + bottom of street)
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(0, streetY - 4, CANVAS_W, 4);
-    ctx.fillRect(0, streetY + streetH, CANVAS_W, 4);
-
-    // Grass / yard ground (above street)
-    ctx.fillStyle = '#365314';
-    ctx.fillRect(0, 180, CANVAS_W, streetY - 184);
-    ctx.fillStyle = '#3F6212';
-    for (let xx = 0; xx < CANVAS_W; xx += 8) {
-      ctx.fillRect(xx + (xx % 16 === 0 ? 0 : 4), 180 + Math.floor((xx % 24) / 8), 2, 2);
-    }
-
     const CHEF_NAMES = ['Mario', 'Luigi', 'Peach', 'Toad'];
     const CHEF_ACCENTS = ['#E63946', '#22C55E', '#F472B6', '#3B82F6'];
-
-    // Track Toad messengers (forks crossing the street)
-    if (!State.toads) State.toads = [];
 
     houses.forEach((h, i) => {
       const left = padX + slotW * i + 4;
@@ -1464,9 +1484,9 @@
       drawHUDText(ctx, `${CHEF_NAMES[i % CHEF_NAMES.length]} (P${h.pid})`,
                   cx - 36, houseY - 8, accent, 11);
 
-      // ── Yard fence (between house and street) ───────────────────────
+      // ── Yard fence (between house and meadow) ───────────────────────
       const yardY = houseY + houseH + 4;
-      const yardH = streetY - 4 - yardY;
+      const yardH = CANVAS_H - 36 - yardY;
 
       // Picket fence sides (left + right separators)
       ctx.fillStyle = '#92400E';
@@ -1574,47 +1594,13 @@
       ctx.textAlign = 'left';
       ctx.restore();
 
-      // ── Forks → Toad messenger crosses the street to next house ───
-      h.forks.forEach((f) => {
-        if (tick < f.spawnAt) return;
-        // Spawn a Toad if not yet tracked
-        const key = `${h.pid}-${f.fid}`;
-        let toad = State.toads.find(t => t.key === key);
-        if (!toad) {
-          toad = {
-            key,
-            srcX: cx,
-            dstX: i + 1 < N ? padX + slotW * (i + 1) + slotW / 2 : cx + 200,
-            spawnedAt: f.spawnAt,
-            duration: 2.5,    // 2.5 ticks to cross
-          };
-          State.toads.push(toad);
-        }
-        const elapsed = tick - toad.spawnedAt;
-        if (elapsed < 0) return;
-        const progress = Math.min(1, elapsed / toad.duration);
-        const tx = toad.srcX + (toad.dstX - toad.srcX) * progress;
-        const ty = streetY + streetH / 2 - 18 + Math.abs(Math.sin(elapsed * 6)) * 4;
-        drawPixelSprite(ctx, Math.round(tx - 12), Math.round(ty), 3,
-                        SPRITE_TOAD, TOAD_PALETTE);
-        // Speech bubble: "¡salsa!"
-        if (progress < 0.9) {
-          ctx.save();
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(tx - 4, ty - 12, 36, 10);
-          ctx.fillStyle = '#0F172A';
-          ctx.font = '7px "JetBrains Mono", monospace';
-          ctx.fillText('salsa!', tx - 1, ty - 4);
-          ctx.restore();
-        }
-      });
     });
 
     // ── Top HUD ────────────────────────────────────────────────────
     drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 22, '#FBBF24', 13);
     drawHUDText(ctx, `${N} houses · ${N} isolated grills · each with its own cooler and meat`,
                 14, CANVAS_H - 28, '#FED7AA', 10);
-    drawHUDText(ctx, '🏠 If Bowser burns his meat, Mario keeps eating. To talk: send a Toad.',
+    drawHUDText(ctx, '🏠 Each yard is fully isolated — no shared resources between processes.',
                 14, CANVAS_H - 12, '#FED7AA', 10);
   }
 
@@ -1624,36 +1610,9 @@
     const sched = State.schedule;
     if (!sched || !sched.threads) return;
 
-    // ── Sunset patio (one shared space, no walls!) ───────────────────
-    const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    sky.addColorStop(0, '#7C2D12');
-    sky.addColorStop(0.35, '#DC2626');
-    sky.addColorStop(0.5, '#F97316');
-    sky.addColorStop(0.55, '#FCD34D');
-    sky.addColorStop(0.56, '#7C3F00');
-    sky.addColorStop(1, '#1C1917');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-    // Papel picado bunting
-    const bunting = ['#EF4444', '#22C55E', '#FCD34D', '#3B82F6', '#EC4899'];
-    for (let i = 0; i < 14; i++) {
-      ctx.fillStyle = bunting[i % bunting.length];
-      ctx.fillRect(30 + i * 55, 2, 36, 18);
-    }
-    ctx.fillStyle = '#1C1917';
-    for (let xx = 0; xx < CANVAS_W; xx += 4) ctx.fillRect(xx, 1, 2, 1);
-
-    // Patio floor
-    const floorY = 290;
-    ctx.fillStyle = '#451A03';
-    ctx.fillRect(0, floorY, CANVAS_W, CANVAS_H - floorY);
-    ctx.fillStyle = '#7C2D12';
-    for (let yy = floorY; yy < CANVAS_H; yy += 16) {
-      for (let xx = (yy / 16) % 2 === 0 ? 0 : 32; xx < CANVAS_W; xx += 64) {
-        ctx.fillRect(xx, yy, 60, 14);
-      }
-    }
+    // Forest / garden backdrop
+    drawGardenBackground(ctx);
+    const floorY = 280;
 
     const tick = State.currentTick;
     const tIdx = Math.min(Math.floor(tick), sched.timeline.length - 1);
@@ -1672,10 +1631,17 @@
     const activeIdx = (tIdx >= 0 && sched.timeline[tIdx]) ? sched.timeline[tIdx].idx : -1;
     const prevIdx = (tIdx >= 1 && sched.timeline[tIdx - 1]) ? sched.timeline[tIdx - 1].idx : -1;
 
-    // Race when active changed AND we're in walk_in window
-    const raceActive = (tickFrac < PHASE_WALK_IN_END) &&
+    // Race condition: previous chef hasn't returned yet when new one walks in.
+    // SAFE MODE = mutex acquired, so the previous chef finished before the next
+    // one starts → no overlap, no race possible.
+    const raceActive = !State.safeMode &&
+                       (tickFrac < PHASE_WALK_IN_END) &&
                        (prevIdx >= 0) &&
                        (prevIdx !== activeIdx);
+
+    // For safe mode: previous chef stays at home (their slot finished cleanly
+    // in the previous tick), so chefPos() will skip the "returning" path.
+    const skipPrevReturn = !!State.safeMode;
 
     // ── Layout constants ─────────────────────────────────────────────
     const grillY = 170;
@@ -1698,7 +1664,10 @@
       // For the "previous chef returning home" case, give them a slight side offset
       // so they don't perfectly overlap with the new chef during race
       const isActive = (idx === activeIdx);
-      const isReturning = (idx === prevIdx) && (prevIdx !== activeIdx) &&
+      // In safe mode, previous chef stays home (mutex released cleanly before
+      // next thread acquires) — no return-walk overlap.
+      const isReturning = !skipPrevReturn &&
+                         (idx === prevIdx) && (prevIdx !== activeIdx) &&
                          (tickFrac < PHASE_WALK_IN_END);
 
       if (isActive) {
@@ -1925,11 +1894,70 @@
 
     ctx.restore();   // shake
 
+    // ── Scheduler Reasoning Panel ───────────────────────────────────
+    // Shows WHY the current thread was chosen and what the others are doing.
+    if (activeIdx >= 0 && threads[activeIdx]) {
+      const cur = threads[activeIdx];
+      const curLabel = (cur.tid > 0) ? `P${cur.pid}.T${cur.tid}` : `P${cur.pid}`;
+      const queueOrder = threads
+        .map((t, i) => ({ i, label: (t.tid > 0) ? `P${t.pid}.T${t.tid}` : `P${t.pid}` }))
+        .filter(x => x.i !== activeIdx)
+        .map(x => x.label)
+        .slice(0, 4);
+
+      const panelW = 460;
+      const panelH = 50;
+      const panelX = CANVAS_W / 2 - panelW / 2;
+      const panelY = CANVAS_H - 86;
+
+      ctx.save();
+      // Panel background
+      ctx.fillStyle = State.safeMode ? 'rgba(16,185,129,0.92)' : 'rgba(15,23,42,0.92)';
+      ctx.fillRect(panelX, panelY, panelW, panelH);
+      ctx.strokeStyle = State.safeMode ? '#A7F3D0' : '#FBBF24';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(panelX, panelY, panelW, panelH);
+      ctx.lineWidth = 1;
+
+      // Header
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 9px "Press Start 2P", "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      const headerText = State.safeMode
+        ? `🔒 MUTEX HELD — ${curLabel}`
+        : `🎯 SELECTED — ${curLabel}`;
+      ctx.fillText(headerText, panelX + 10, panelY + 14);
+
+      // Reasoning
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = State.safeMode ? '#ECFDF5' : '#FEF3C7';
+      const prevLabel = (prevIdx >= 0 && threads[prevIdx])
+        ? ((threads[prevIdx].tid > 0) ? `P${threads[prevIdx].pid}.T${threads[prevIdx].tid}` : `P${threads[prevIdx].pid}`)
+        : '—';
+      const reason = State.safeMode
+        ? `Mutex acquired before entering critical section. Others must wait.`
+        : (prevIdx === activeIdx)
+          ? `Same thread continuing (more burst remaining).`
+          : `Round-Robin: came right after ${prevLabel} in the ready queue.`;
+      ctx.fillText(reason, panelX + 10, panelY + 28);
+
+      // Waiting / blocked threads list
+      ctx.fillStyle = State.safeMode ? '#A7F3D0' : '#94A3B8';
+      ctx.font = '8px "JetBrains Mono", monospace';
+      const queueText = State.safeMode
+        ? `BLOCKED: ${queueOrder.join(', ') || '—'}`
+        : `READY:  ${queueOrder.join(', ') || '—'}`;
+      ctx.fillText(queueText, panelX + 10, panelY + 42);
+      ctx.restore();
+    }
+
     // HUD
     drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 36, '#34D399', 13);
     drawHUDText(ctx, `${threads.length} chefs · 1 grill · tongs/cooler/molcajete SHARED`, 14, 54, '#A7F3D0', 11);
-    drawHUDText(ctx, '🤝 Everybody shares everything. If two grab the tongs at once → race!',
-                14, CANVAS_H - 14, '#A7F3D0', 11);
+    const safeHint = State.safeMode
+      ? '🔒 Safe mode: mutex serializes access — no race possible.'
+      : '🤝 Without mutex: if two grab the tongs at once → race condition!';
+    drawHUDText(ctx, safeHint, 14, CANVAS_H - 14, State.safeMode ? '#86EFAC' : '#A7F3D0', 11);
   }
 
   /* ═════════════════════════════════════════════════════════════════
@@ -1966,7 +1994,36 @@
     if (tipTitle) tipTitle.textContent = info.label;
     if (tipText) tipText.textContent = info.tip;
 
+    // Multithreading default speed = 0.5x so users can clearly see the
+    // walk-in / cook / walk-out phases and the race-condition collisions.
+    if (mode === 'multithreading') {
+      setSpeed(0.5);
+      const slider = document.getElementById('em-speed');
+      if (slider) slider.value = '0.5';
+    } else if (State.speed < 1) {
+      setSpeed(1);
+      const slider = document.getElementById('em-speed');
+      if (slider) slider.value = '1';
+    }
+
+    // Show / hide MT-only controls (Safe Mode toggle)
+    document.querySelectorAll('.em-mt-only').forEach(el => {
+      el.style.display = (mode === 'multithreading') ? '' : 'none';
+    });
+
     rebuildSchedule();
+    render(0);
+  }
+
+  function setSafeMode(enabled) {
+    State.safeMode = !!enabled;
+    const btn = document.getElementById('em-btn-safe');
+    if (btn) {
+      btn.innerHTML = State.safeMode
+        ? '<i class="ph ph-lock"></i> Safe Mode: ON'
+        : '<i class="ph ph-lock-open"></i> Safe Mode: OFF';
+      btn.classList.toggle('em-safe-on', State.safeMode);
+    }
     render(0);
   }
 
@@ -1982,7 +2039,8 @@
       State.schedule = buildParallelismSchedule(procs, numCores);
       State.totalTime = State.schedule.totalTime;
     } else if (State.mode === 'multiprocessing') {
-      State.schedule = buildMultiprocessingSchedule(procs);
+      const mpCores = (window.AppState && window.AppState.numCores) || 1;
+      State.schedule = buildMultiprocessingSchedule(procs, mpCores);
       State.totalTime = State.schedule.totalTime;
     } else if (State.mode === 'multithreading') {
       State.schedule = buildMultithreadingSchedule(procs);
@@ -2002,8 +2060,8 @@
 
     const totalSeq = State.processes.reduce((a, p) => a + p.burst_time, 0);
     const totalTime = State.totalTime || totalSeq;
-    const throughput = totalTime > 0 ? (State.processes.length / totalTime).toFixed(2) : '—';
-    const speedup = totalTime > 0 ? (totalSeq / totalTime).toFixed(2) : '1.00';
+    const throughput = totalTime > 0 ? (State.processes.length / totalTime).toFixed(1) : '—';
+    const speedup = totalTime > 0 ? (totalSeq / totalTime).toFixed(1) : '1.0';
 
     const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     setVal('em-stat-time', totalTime + 't');
@@ -2146,6 +2204,12 @@
         : '<i class="ph ph-speaker-slash"></i>';
       if (State.soundEnabled) Sound.init();
     });
+
+    // Safe mode toggle (multithreading only)
+    const safeBtn = document.getElementById('em-btn-safe');
+    if (safeBtn) {
+      safeBtn.addEventListener('click', () => setSafeMode(!State.safeMode));
+    }
 
     // Refresh whenever user navigates here
     document.querySelectorAll('[data-screen="exec-modes"]').forEach(btn => {
