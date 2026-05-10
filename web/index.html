@@ -1109,108 +1109,97 @@
 
 
 
-        <!-- ─── Screen 5: Comparison ─────────────────────────────── -->
+        <!-- ─── Screen 5: Comparison (v2) ──────────────────────────── -->
         <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
           <header class="screen-header">
             <h2 id="heading-comparison">Algorithm Comparison</h2>
-            <p>
-              Compare all scheduling algorithms with the same processes.
-            </p>
+            <p>Cada algoritmo corre en su propio thread real del SO. Selecciona la categoría, los algoritmos y el número de cores.</p>
           </header>
 
-          <div class="flex gap-md mb-lg">
-            <button class="btn btn-primary" id="btn-run-comparison">
-              <i class="ph ph-chart-bar"></i> Compare All Algorithms
+          <!-- Tabs categoría -->
+          <div class="flex gap-sm mb-md" style="flex-wrap:wrap;align-items:center;gap:8px">
+            <button class="btn btn-secondary active" id="comp-tab-sched" onclick="setCompCategory('scheduling')">
+              <i class="ph ph-chart-line-up"></i> Scheduling
             </button>
-          </div>
-
-          <div class="chart-grid" id="comparison-charts">
-            <div class="card" id="card-tat">
-              <div class="card-title flex-between">
-                <div>
-                  <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
-                  Avg Turnaround Time
-                </div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-tat', 'chart-tat')"
-                  title="Expandir">
-                  <i class="ph ph-arrows-out"></i>
-                </button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-tat" height="280"></canvas>
-              </div>
-            </div>
-            <div class="card" id="card-wt">
-              <div class="card-title flex-between">
-                <div>
-                  <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
-                  Avg Waiting Time
-                </div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-wt', 'chart-wt')"
-                  title="Expandir">
-                  <i class="ph ph-arrows-out"></i>
-                </button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-wt" height="280"></canvas>
-              </div>
-            </div>
-            <div class="card" id="card-rt">
-              <div class="card-title flex-between">
-                <div>
-                  <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
-                  Avg Response Time
-                </div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-rt', 'chart-rt')"
-                  title="Expandir">
-                  <i class="ph ph-arrows-out"></i>
-                </button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-rt" height="280"></canvas>
-              </div>
-            </div>
-            <div class="card" id="card-cpu">
-              <div class="card-title flex-between">
-                <div>
-                  <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
-                  CPU Utilization (%)
-                </div>
-                <button class="btn-icon btn-expand" onclick="toggleChartExpanded('card-cpu', 'chart-cpu')"
-                  title="Expandir">
-                  <i class="ph ph-arrows-out"></i>
-                </button>
-              </div>
-              <div class="chart-container">
-                <canvas id="chart-cpu" height="280"></canvas>
-              </div>
+            <button class="btn btn-secondary" id="comp-tab-page" onclick="setCompCategory('paging')">
+              <i class="ph ph-stack"></i> Paginación
+            </button>
+            <div style="flex:1"></div>
+            <!-- Cores -->
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
+              <i class="ph ph-cpu"></i>
+              <label for="comp-cores">Cores:</label>
+              <select id="comp-cores" style="padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)" onchange="setCompCores(this.value)">
+                <option value="1">1 core</option>
+                <option value="2">2 cores</option>
+                <option value="4" selected>4 cores</option>
+                <option value="8">8 cores</option>
+              </select>
+              <span id="comp-cores-label" style="font-size:11px;color:var(--text-muted)">4 cores</span>
             </div>
           </div>
 
-          <div class="card mt-lg">
-            <div class="card-title">
-              <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
-              Comparison Table
-            </div>
-            <div class="table-wrapper">
-              <table id="comparison-table">
-                <thead>
-                  <tr>
-                    <th>Algorithm</th>
-                    <th>Avg TAT</th>
-                    <th>Avg WT</th>
-                    <th>Avg RT</th>
-                    <th>CPU %</th>
-                    <th>Context Switches</th>
-                  </tr>
-                </thead>
-                <tbody id="comparison-tbody"></tbody>
-              </table>
-            </div>
+          <!-- Hint + contador -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span id="comp-algo-hint" style="font-size:12px;color:var(--text-secondary)">Selecciona 2–4 algoritmos de scheduling</span>
+            <span id="comp-sel-count" style="font-size:11px;color:var(--text-muted)">0 / 4 seleccionados</span>
           </div>
+
+          <!-- Grid de tarjetas de algoritmos -->
+          <div id="comp-algo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px"></div>
+
+          <!-- Controles adicionales -->
+          <div id="comp-sched-opts" style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+            <label style="font-size:12px;color:var(--text-secondary)">Quantum (RR/MLFQ):</label>
+            <input id="comp-quantum" type="number" value="2" min="1" max="20"
+              style="width:64px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
+          </div>
+          <div id="comp-page-opts" style="display:none;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+            <label style="font-size:12px;color:var(--text-secondary)">Cadena de referencia:</label>
+            <input id="comp-ref-string" type="text" value="7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1"
+              style="flex:1;min-width:200px;padding:4px 10px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
+            <label style="font-size:12px;color:var(--text-secondary)">Frames:</label>
+            <input id="comp-frames" type="number" value="3" min="1" max="10"
+              style="width:56px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
+          </div>
+
+          <!-- Botón + log de threads -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="btn-run-comparison" disabled onclick="runComparison()">
+              <i class="ph ph-play"></i> Comparar
+            </button>
+            <span id="comp-thread-log" style="font-size:11px;color:var(--text-muted)"></span>
+          </div>
+
+          <!-- Área de resultados dinámica -->
+          <div id="comp-results"></div>
+
+          <!-- Estilos locales para la pantalla -->
+          <style>
+            .comp-algo-card {
+              padding: 10px 12px;
+              border: 1px solid var(--border);
+              border-radius: 8px;
+              background: var(--bg-card);
+              cursor: pointer;
+              transition: border-color .15s, background .15s, box-shadow .15s;
+              user-select: none;
+            }
+            .comp-algo-card:hover { border-color: var(--accent); }
+            .comp-summary-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+              gap: 10px;
+              margin-bottom: 4px;
+            }
+            #comp-tab-sched.active, #comp-tab-page.active {
+              background: rgba(110,235,131,0.15);
+              color: var(--accent);
+              border-color: var(--accent);
+            }
+          </style>
         </section>
 
-        <!-- ─── Screen: Execution Modes (Retro CPU Visualizer) ────── -->
         <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
           <header class="screen-header text-center"
             style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
@@ -1492,7 +1481,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
   <script src="js/gantt.js?v=6"></script>
   <script src="js/memory.js?v=4"></script>
   <script src="js/pageReplace.js?v=5"></script>
-  <script src="js/comparison.js?v=4"></script>
+  <script src="js/comparison.js?v=5"></script>
 
   <script src="js/exec_modes.js?v=4"></script>
   <script src="js/regex.js?v=4"></script>
