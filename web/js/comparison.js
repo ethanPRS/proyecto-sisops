@@ -69,7 +69,7 @@ function setCompCategory(cat) {
     `Selecciona 2–${max} algoritmos de ${cat==='scheduling'?'scheduling':'paginación'}`;
   document.getElementById('comp-sched-opts').style.display = cat==='scheduling'?'flex':'none';
   document.getElementById('comp-page-opts').style.display  = cat==='paging'    ?'flex':'none';
-  buildAlgoCards(cat); clearCompResults(); updateSelCount();
+  buildAlgoCards(cat); clearCompResults(); updateSelCount(); updateQuantumVisibility();
   document.getElementById('btn-run-comparison').disabled = true;
 }
 
@@ -107,6 +107,7 @@ function toggleAlgoCard(card, name, color) {
     card.style.boxShadow   = `0 0 0 2px ${color}55`;
   }
   updateSelCount();
+  if(CompState.category==='scheduling') updateQuantumVisibility();
   document.getElementById('btn-run-comparison').disabled = CompState.selected.length < 2;
 }
 
@@ -114,6 +115,14 @@ function updateSelCount() {
   const max = CompState.category==='scheduling' ? 4 : 5;
   document.getElementById('comp-sel-count').textContent = `${CompState.selected.length} / ${max} seleccionados`;
 }
+
+/* ═══ Quantum visibility — solo para Round Robin y MLFQ ══════════════ */
+function updateQuantumVisibility(){
+  const needsQuantum = CompState.selected.some(n => n==='Round Robin' || n==='MLFQ');
+  const el = document.getElementById('comp-quantum-row');
+  if(el) el.style.display = needsQuantum ? 'flex' : 'none';
+}
+
 function setCompCores(val) {
   CompState.numCores = parseInt(val);
   document.getElementById('comp-cores-label').textContent = `${val} core${val>1?'s':''}`;
@@ -206,14 +215,14 @@ function buildResultUI(apiResults) {
         ? p.threads.map(t=>`<span style="font-size:9px;background:#2563eb33;color:#60a5fa;border:1px solid #3b82f666;border-radius:4px;padding:1px 5px;margin-right:2px">🧵T${t.tid}</span>`).join('') : '';
       const fb = (vis.forksVisible&&p.forks&&p.forks.length)
         ? p.forks.map(f=>`<span style="font-size:9px;background:#10b98133;color:#34d399;border:1px solid #10b98166;border-radius:4px;padding:1px 5px;margin-right:2px">⑂F${f.fid}</span>`).join('') : '';
-      return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:8px 10px;border-radius:8px;border:1.5px solid ${c}55;background:${c}11;min-width:68px">
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 8px;border-radius:8px;border:1.5px solid ${c}55;background:${c}11;width:100%">
         <div style="font-weight:800;font-size:14px;color:${c}">P${p.pid}</div>
         <div style="font-size:9px;color:var(--text-muted)">BT=${p.burst_time} AT=${p.arrival_time}</div>
         <div>${tb}${fb}</div></div>`;
     }).join('');
     procPanel = `<div class="card" style="margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="ph ph-stack"></i> Procesos en comparación</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">${tiles}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px">${tiles}</div>
     </div>`;
   }
 
@@ -243,96 +252,102 @@ function buildResultUI(apiResults) {
         </div>
       </div>
     </div>`;
-
-  // Tiles de métricas vivas
-  const tileRowHTML = `
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px"><i class="ph ph-activity"></i> Métricas en vivo</div>
-      <div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:5px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent)">
-        📐 ${isSched
-          ? 'WT = CT−AT−BT &nbsp;|&nbsp; TAT = CT−AT &nbsp;|&nbsp; RT = 1ª CPU−AT &nbsp;|&nbsp; CPU% = Tiempo_ocupado / Tiempo_total × 100'
-          : 'Page Fault Rate = Fallos / Longitud_cadena × 100 &nbsp;|&nbsp; Hit Rate = 100 − Fault Rate &nbsp;|&nbsp; Hit = página ya en memoria = NO fault'}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
-        ${entries.map(([name,d],i)=>{
-          const c = PID_COLORS[i%PID_COLORS.length];
-          return `<div class="comp-mtile" id="comp-mtile-${i}" style="border-color:${c}33">
-            <div class="comp-mtile-name" style="color:${c}">${name}</div>
-            ${isSched
-              ? `<div class="comp-mtile-grid">
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Waiting Time</span><span id="cv-wt-${i}" class="comp-live-cell">—</span></div>
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Turnaround</span><span id="cv-tat-${i}" class="comp-live-cell">—</span></div>
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Response</span><span id="cv-rt-${i}" class="comp-live-cell">—</span></div>
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">CPU Util</span><span id="cv-cpu-${i}" class="comp-live-cell">—</span></div>
-                </div>`
-              : `<div class="comp-mtile-grid">
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Page Faults</span><span id="cv-pf-${i}" class="comp-live-cell">—</span></div>
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Hit Rate</span><span id="cv-hr-${i}" class="comp-live-cell">—</span></div>
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Fault Rate</span><span id="cv-fr-${i}" class="comp-live-cell">—</span></div>
-                  <div class="comp-mtile-kv"><span class="comp-mtile-k">Frames</span><span class="comp-live-cell">${d.num_frames}</span></div>
-                </div>`}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-
-  // Gráficas de barras (animadas en tiempo real)
-  const bcIDs = isSched
-    ? ['comp-bc-wt','comp-bc-tat','comp-bc-rt','comp-bc-cpu','comp-bc-ctx','comp-bc-sim']
-    : ['comp-bc-pf','comp-bc-fr','comp-bc-hr','comp-bc-sim'];
-  const bcTitles = isSched
-    ? ['Avg Waiting Time','Avg Turnaround Time','Avg Response Time','CPU Utilization (%)','Context Switches','Simulation Time (ms)']
-    : ['Page Faults','Fault Rate (%)','Hit Rate (%)','Simulation Time (ms)'];
-
-  const barChartsHTML = `
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="ph ph-chart-bar"></i> Comparación de métricas</div>
-      <div class="comp-bar-charts">
-        ${bcIDs.map((id,i)=>`
-          <div class="comp-bc-card">
-            <div class="comp-bc-title">${bcTitles[i]}</div>
-            <div style="height:150px;position:relative"><canvas id="${id}"></canvas></div>
-          </div>`).join('')}
-      </div>
-    </div>`;
-
   // Análisis comparativo (generado dinámicamente al final)
   const analysisHTML = `<div id="comp-analysis-section" style="margin-bottom:12px"></div>`;
 
-  // Tabla
-  const hdrs = isSched
-    ? ['Algoritmo','Core','Avg WT','Avg TAT','Avg RT','CPU %','Ctx Sw','Sim ms']
-    : ['Algoritmo','Core','Page Faults','Hit Rate %','Fault Rate %','Frames','Sim ms'];
+  // ── Tabla mejorada con fórmulas, live-fill, fila de avg y ganador ─────────
+  const formulaBar = isSched
+    ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:6px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent);line-height:1.8">
+        📐 <strong>Fórmulas:</strong>
+        WT = CT − AT − BT &nbsp;|&nbsp;
+        TAT = CT − AT &nbsp;|&nbsp;
+        RT = 1ª CPU − AT &nbsp;|&nbsp;
+        CPU% = Tiempo_ocupado / Tiempo_total × 100 &nbsp;|&nbsp;
+        Ctx Sw = cambios de proceso en CPU
+      </div>`
+    : `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:6px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent);line-height:1.8">
+        📐 <strong>Fórmulas:</strong>
+        Page Fault Rate = Fallos / Longitud_cadena × 100 &nbsp;|&nbsp;
+        Hit Rate = (Hits / Longitud_cadena) × 100 &nbsp;|&nbsp;
+        Hit = página ya en memoria, evita acceso a disco
+      </div>`;
+
+  const schedHdrs = [
+    `Algoritmo`,
+    `Core`,
+    `Avg WT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(CT−AT−BT)</span>`,
+    `Avg TAT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(CT−AT)</span>`,
+    `Avg RT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(1ªCPU−AT)</span>`,
+    `CPU %<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(ocupado/total)</span>`,
+    `Ctx Sw`,
+    `Sim ms`,
+  ];
+  const pageHdrs = [
+    `Algoritmo`, `Core`,
+    `Page Faults<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(accesos a disco)</span>`,
+    `Hit Rate %<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(100−FaultRate)</span>`,
+    `Fault Rate %<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(fallos/total×100)</span>`,
+    `Frames`, `Sim ms`,
+  ];
+  const hdrs = isSched ? schedHdrs : pageHdrs;
+
   const tableRows = entries.map(([name,d],i)=>{
     const c = PID_COLORS[i%PID_COLORS.length];
     return isSched
       ? `<tr>
           <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px"></span>${name}</td>
-          <td>Core ${i%CompState.numCores}</td>
-          <td id="ct-wt-${i}" class="comp-live-cell" style="font-size:13px">—</td>
-          <td id="ct-tat-${i}" class="comp-live-cell" style="font-size:13px">—</td>
-          <td id="ct-rt-${i}" class="comp-live-cell" style="font-size:13px">—</td>
-          <td id="ct-cpu-${i}" class="comp-live-cell" style="font-size:13px">—</td>
-          <td>${d.context_switches??'—'}</td>
-          <td>${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
+          <td style="color:var(--text-muted);font-size:11px">Core ${i%CompState.numCores}</td>
+          <td id="ct-wt-${i}"  class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
+          <td id="ct-tat-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
+          <td id="ct-rt-${i}"  class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
+          <td id="ct-cpu-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
+          <td style="text-align:center;color:var(--text-muted)">${d.context_switches??'—'}</td>
+          <td style="text-align:center;color:var(--text-muted);font-size:11px">${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
         </tr>`
       : `<tr>
           <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px"></span>${name}</td>
-          <td>Core ${i%CompState.numCores}</td>
-          <td id="ct-pf-${i}" class="comp-live-cell" style="font-size:13px">—</td>
-          <td id="ct-hr-${i}" class="comp-live-cell" style="font-size:13px">—</td>
-          <td id="ct-fr-${i}" class="comp-live-cell" style="font-size:13px">—</td>
-          <td>${d.num_frames??'—'}</td>
-          <td>${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
+          <td style="color:var(--text-muted);font-size:11px">Core ${i%CompState.numCores}</td>
+          <td id="ct-pf-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
+          <td id="ct-hr-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
+          <td id="ct-fr-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
+          <td style="text-align:center;color:var(--text-muted)">${d.num_frames??'—'}</td>
+          <td style="text-align:center;color:var(--text-muted);font-size:11px">${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
         </tr>`;
   }).join('');
 
+  // Filas de promedio y ganador (se rellenan cuando termina la animación)
+  const avgRow = isSched
+    ? `<tr id="comp-avg-row" style="background:rgba(110,235,131,.06);font-style:italic;display:none">
+        <td style="color:#6EEB83;font-size:11px;font-weight:600">Promedio</td>
+        <td>—</td>
+        <td id="avg-wt"  style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td id="avg-tat" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td id="avg-rt"  style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td id="avg-cpu" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td>—</td><td>—</td>
+      </tr>
+      <tr id="comp-winner-row" style="display:none">
+        <td colspan="8" id="comp-winner-cell" style="text-align:center;padding:8px;font-size:12px;border-top:1px solid var(--border)"></td>
+      </tr>`
+    : `<tr id="comp-avg-row" style="background:rgba(110,235,131,.06);font-style:italic;display:none">
+        <td style="color:#6EEB83;font-size:11px;font-weight:600">Promedio</td>
+        <td>—</td>
+        <td id="avg-pf" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td id="avg-hr" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td id="avg-fr" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td>—</td><td>—</td>
+      </tr>
+      <tr id="comp-winner-row" style="display:none">
+        <td colspan="7" id="comp-winner-cell" style="text-align:center;padding:8px;font-size:12px;border-top:1px solid var(--border)"></td>
+      </tr>`;
+
   const tableHTML = `
     <div class="card" style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px"><i class="ph ph-clipboard-text"></i> Tabla de métricas</div>
+      <div style="font-size:11px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px"><i class="ph ph-clipboard-text"></i> Tabla de métricas</div>
+      ${formulaBar}
       <div class="table-wrapper"><table>
-        <thead><tr>${hdrs.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${tableRows}</tbody>
+        <thead><tr>${hdrs.map(h=>`<th style="font-size:11px">${h}</th>`).join('')}</tr></thead>
+        <tbody id="comp-tbody">${tableRows}${avgRow}</tbody>
       </table></div>
     </div>`;
 
@@ -357,19 +372,17 @@ function buildResultUI(apiResults) {
       }).join('')}
     </div>`;
 
-  container.innerHTML = procPanel + ganttHTML + tileRowHTML + barChartsHTML + analysisHTML + tableHTML + explHTML;
+  container.innerHTML = procPanel + ganttHTML + tableHTML + analysisHTML + explHTML;
 
   initCompCanvas(entries);
-  // Arrancar animación de gráficas de barras (en tiempo real)
-  startBarChartAnimation(entries, isSched);
 }
 
 /* ═══ Canvas Gantt (estilo Mario) ════════════════════════════════════ */
-const COMP_BAR_H   = 56;
-const COMP_ROW_GAP = 20;
+const COMP_BAR_H   = 70;
+const COMP_ROW_GAP = 28;
 const COMP_LEFT    = 148;
-const COMP_TOP     = 20;
-const COMP_BOTTOM  = 40;
+const COMP_TOP     = 28;
+const COMP_BOTTOM  = 52;
 const CMS = 2; // Mario sprite scale
 const CMW = 16*CMS, CMH = 16*CMS;
 
@@ -380,7 +393,7 @@ function initCompCanvas(entries) {
   if (!canvas||!cont) return;
 
   const n = entries.length;
-  const height = COMP_TOP + n*(COMP_BAR_H+COMP_ROW_GAP) + COMP_BOTTOM + 30;
+  const height = COMP_TOP + n*(COMP_BAR_H+COMP_ROW_GAP) + COMP_BOTTOM + 44;
   const dpr = window.devicePixelRatio||1;
   const cw  = cont.clientWidth||900;
 
@@ -918,6 +931,84 @@ function generateAnalysis(entries, isSched){
   }
 }
 
+
+/* ═══ Rellenar fila de promedio y ganador al terminar ════════════════ */
+function fillTableFinal(entries, isSched){
+  if(!entries||!entries.length)return;
+
+  const avgRow    = document.getElementById('comp-avg-row');
+  const winnerRow = document.getElementById('comp-winner-row');
+  const winnerCell= document.getElementById('comp-winner-cell');
+  if(!avgRow||!winnerRow)return;
+
+  if(isSched){
+    const vals_wt  = entries.map(([,d])=>d.avg_waiting);
+    const vals_tat = entries.map(([,d])=>d.avg_turnaround);
+    const vals_rt  = entries.map(([,d])=>d.avg_response);
+    const vals_cpu = entries.map(([,d])=>d.cpu_utilization);
+    const avg = (arr)=>(arr.reduce((s,v)=>s+v,0)/arr.length);
+    document.getElementById('avg-wt') .textContent = avg(vals_wt).toFixed(2);
+    document.getElementById('avg-tat').textContent = avg(vals_tat).toFixed(2);
+    document.getElementById('avg-rt') .textContent = avg(vals_rt).toFixed(2);
+    document.getElementById('avg-cpu').textContent = avg(vals_cpu).toFixed(1)+'%';
+    avgRow.style.display='';
+
+    // Destacar ganadores en negrita
+    const minWT = Math.min(...vals_wt);
+    const maxCPU= Math.max(...vals_cpu);
+    entries.forEach(([,d],i)=>{
+      if(d.avg_waiting===minWT){
+        const el=document.getElementById(`ct-wt-${i}`);
+        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+      }
+      if(d.cpu_utilization===maxCPU){
+        const el=document.getElementById(`ct-cpu-${i}`);
+        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+      }
+    });
+
+    const winIdx = vals_wt.indexOf(minWT);
+    const winName= entries[winIdx][0];
+    const winColor=PID_COLORS[winIdx%PID_COLORS.length];
+    winnerCell.innerHTML = `🏆 <strong>Mejor rendimiento general:</strong>
+      <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
+      con el menor Waiting Time promedio (${minWT.toFixed(2)} ms).
+      También registró CPU: ${entries[winIdx][1].cpu_utilization.toFixed(1)}% y ${entries[winIdx][1].context_switches||0} context switches.`;
+    winnerRow.style.display='';
+
+  } else {
+    const vals_pf = entries.map(([,d])=>d.total_faults||0);
+    const vals_hr = entries.map(([,d])=>d.hit_rate||0);
+    const vals_fr = entries.map(([,d])=>d.fault_rate||0);
+    const avg=(arr)=>(arr.reduce((s,v)=>s+v,0)/arr.length);
+    document.getElementById('avg-pf').textContent=avg(vals_pf).toFixed(1);
+    document.getElementById('avg-hr').textContent=avg(vals_hr).toFixed(1)+'%';
+    document.getElementById('avg-fr').textContent=avg(vals_fr).toFixed(1)+'%';
+    avgRow.style.display='';
+
+    const minPF=Math.min(...vals_pf);
+    const maxHR=Math.max(...vals_hr);
+    entries.forEach(([,d],i)=>{
+      if((d.total_faults||0)===minPF){
+        const el=document.getElementById(`ct-pf-${i}`);
+        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+      }
+      if((d.hit_rate||0)===maxHR){
+        const el=document.getElementById(`ct-hr-${i}`);
+        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+      }
+    });
+
+    const winIdx=vals_pf.indexOf(minPF);
+    const winName=entries[winIdx][0];
+    const winColor=PID_COLORS[winIdx%PID_COLORS.length];
+    winnerCell.innerHTML=`🏆 <strong>Mejor rendimiento:</strong>
+      <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
+      con solo ${minPF} page faults y Hit Rate de ${entries[winIdx][1].hit_rate.toFixed(1)}%.`;
+    winnerRow.style.display='';
+  }
+}
+
 /* ═══ Controles playback ══════════════════════════════════════════════ */
 function startCompPlay(){
   if(!CompPlayer.renderFn||CompPlayer.playing)return;
@@ -952,6 +1043,7 @@ function compAnimate(ts){
     CompPlayer.playing=false;
     const btn=document.getElementById('comp-btn-play');
     if(btn)btn.innerHTML='<i class="ph ph-arrow-counter-clockwise"></i> Reiniciar';
+    fillTableFinal(CompPlayer.results, CompState.category==='scheduling');
     return;
   }
   CompPlayer.rafId=requestAnimationFrame(compAnimate);
@@ -996,6 +1088,7 @@ window.runComparison  =runComparison;
 window.initComparison =initComparison;
 window.setCompCategory=setCompCategory;
 window.setCompCores   =setCompCores;
+window.updateQuantumVisibility=updateQuantumVisibility;
 window.toggleCompPlay =toggleCompPlay;
 window.stopCompPlayer =stopCompPlayer;
 window.compSeek       =compSeek;
