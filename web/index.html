@@ -749,24 +749,7 @@
             </button>
             <span class="step-counter" id="gantt-step-counter"
               style="margin: 0 12px; min-width: 60px; text-align: center">0 / 0</span>
-            <div style="display: flex; align-items: center; margin-left: 8px;">
-              <span style="font-size: 0.8rem; margin-right: 12px; color: var(--text-muted);">Animations</span>
-              <div class="toggle-container">
-                <input class="toggle-input" type="checkbox" id="gantt-animations-toggle" checked>
-                <div class="toggle-handle-wrapper">
-                  <div class="toggle-handle">
-                    <div class="toggle-handle-knob"></div>
-                    <div class="toggle-handle-bar-wrapper">
-                      <div class="toggle-handle-bar"></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="toggle-base">
-                  <div class="toggle-base-inside"></div>
-                </div>
-              </div>
-            </div>
-            <div class="playback-speed" style="margin-left: 12px">
+            <div class="playback-speed" style="margin-left: 8px">
               <label for="gantt-speed" style="margin: 0; font-size: 0.8rem">Speed</label>
               <input type="range" id="gantt-speed" min="0.25" max="4" step="0.25" value="1" style="width: 80px" />
               <span id="gantt-speed-label" class="text-mono" style="
@@ -1109,13 +1092,13 @@
 
 
 
-          <!-- ─── Screen 5: Comparison (v2) ──────────────────────────── -->
+        <!-- ─── Screen 5: Comparison (v2) ──────────────────────────── -->
         <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
           <header class="screen-header">
             <h2 id="heading-comparison">Algorithm Comparison</h2>
             <p>Cada algoritmo corre en su propio thread real del SO. Selecciona la categoría, los algoritmos y el número de cores.</p>
           </header>
- 
+
           <!-- Tabs categoría -->
           <div class="flex gap-sm mb-md" style="flex-wrap:wrap;align-items:center;gap:8px">
             <button class="btn btn-secondary active" id="comp-tab-sched" onclick="setCompCategory('scheduling')">
@@ -1138,16 +1121,16 @@
               <span id="comp-cores-label" style="font-size:11px;color:var(--text-muted)">4 cores</span>
             </div>
           </div>
- 
+
           <!-- Hint + contador -->
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span id="comp-algo-hint" style="font-size:12px;color:var(--text-secondary)">Selecciona 2–4 algoritmos de scheduling</span>
             <span id="comp-sel-count" style="font-size:11px;color:var(--text-muted)">0 / 4 seleccionados</span>
           </div>
- 
+
           <!-- Grid de tarjetas de algoritmos -->
           <div id="comp-algo-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px"></div>
- 
+
           <!-- Controles adicionales -->
           <div id="comp-sched-opts" style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
             <label style="font-size:12px;color:var(--text-secondary)">Quantum (RR/MLFQ):</label>
@@ -1162,7 +1145,7 @@
             <input id="comp-frames" type="number" value="3" min="1" max="10"
               style="width:56px;padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
           </div>
- 
+
           <!-- Botón + log de threads -->
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
             <button class="btn btn-primary" id="btn-run-comparison" disabled onclick="runComparison()">
@@ -1170,10 +1153,10 @@
             </button>
             <span id="comp-thread-log" style="font-size:11px;color:var(--text-muted)"></span>
           </div>
- 
+
           <!-- Área de resultados dinámica -->
           <div id="comp-results"></div>
- 
+
           <!-- Estilos locales para la pantalla -->
           <style>
             .comp-algo-card {
@@ -1199,13 +1182,13 @@
             }
           </style>
         </section>
- 
+
         <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
           <header class="screen-header text-center"
             style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
             <h2 id="heading-exec-modes">CPU Execution Modes</h2>
             <p>Retro animations showing how processes are distributed across cores in each mode.</p>
- 
+
             <!-- Mode Tabs -->
             <div class="em-tabs mt-md" id="em-tabs">
               <button class="em-tab active" data-mode="concurrency">
@@ -1230,7 +1213,7 @@
               </button>
             </div>
           </header>
- 
+
           <!-- Tutorial mushroom popup -->
           <div class="em-mushroom-tip" id="em-mushroom-tip">
             <div class="em-mushroom-icon">🍄</div>
@@ -1239,7 +1222,7 @@
               <p id="em-tip-text">Mario rapidly alternating tasks. Drops the tongs, mashes the avocado, runs back to check the meat.</p>
             </div>
           </div>
- 
+
           <!-- Stage Card -->
           <div class="card em-stage-card">
             <div class="card-title flex-between">
@@ -1249,7 +1232,7 @@
               </div>
               <div class="em-tick" id="em-tick">t = 0 / 0</div>
             </div>
- 
+
             <!-- Empty state -->
             <div class="em-empty" id="em-empty">
               <div class="em-empty-icon">🎮</div>
@@ -1259,13 +1242,13 @@
                 then come back here to see the animation.
               </p>
             </div>
- 
+
             <!-- Stage canvas -->
             <div class="em-stage" id="em-stage" style="display:none;">
               <canvas id="em-canvas"></canvas>
               <div class="em-scanlines" aria-hidden="true"></div>
             </div>
- 
+
             <!-- Playback controls -->
             <div class="em-controls" id="em-controls" style="display:none;">
               <button class="btn btn-secondary btn-sm" id="em-btn-reset" title="Reiniciar">
@@ -1284,7 +1267,7 @@
               </button>
             </div>
           </div>
- 
+
           <!-- Stats Card -->
           <div class="card em-stats-card" id="em-stats-card" style="display:none;">
             <div class="card-title">
@@ -1481,7 +1464,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
   <script src="js/gantt.js?v=6"></script>
   <script src="js/memory.js?v=4"></script>
   <script src="js/pageReplace.js?v=5"></script>
-  <script src="js/comparison.js?v=5"></script>
+  <script src="js/comparison.js?v=6"></script>
 
   <script src="js/exec_modes.js?v=4"></script>
   <script src="js/regex.js?v=4"></script>
