@@ -318,23 +318,23 @@ function buildResultUI(apiResults) {
   // Filas de promedio y ganador (se rellenan cuando termina la animación)
   const avgRow = isSched
     ? `<tr id="comp-avg-row" style="background:rgba(110,235,131,.06);font-style:italic;display:none">
-        <td style="color:#6EEB83;font-size:11px;font-weight:600">Promedio</td>
+        <td style="font-size:11px;font-weight:700;color:var(--text-secondary)">Promedio</td>
         <td>—</td>
-        <td id="avg-wt"  style="text-align:center;color:#6EEB83;font-size:12px">—</td>
-        <td id="avg-tat" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
-        <td id="avg-rt"  style="text-align:center;color:#6EEB83;font-size:12px">—</td>
-        <td id="avg-cpu" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td id="avg-wt"  style="text-align:center;font-size:12px;font-weight:600">—</td>
+        <td id="avg-tat" style="text-align:center;font-size:12px;font-weight:600">—</td>
+        <td id="avg-rt"  style="text-align:center;font-size:12px;font-weight:600">—</td>
+        <td id="avg-cpu" style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td>—</td><td>—</td>
       </tr>
       <tr id="comp-winner-row" style="display:none">
         <td colspan="8" id="comp-winner-cell" style="text-align:center;padding:8px;font-size:12px;border-top:1px solid var(--border)"></td>
       </tr>`
     : `<tr id="comp-avg-row" style="background:rgba(110,235,131,.06);font-style:italic;display:none">
-        <td style="color:#6EEB83;font-size:11px;font-weight:600">Promedio</td>
+        <td style="font-size:11px;font-weight:700;color:var(--text-secondary)">Promedio</td>
         <td>—</td>
-        <td id="avg-pf" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
-        <td id="avg-hr" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
-        <td id="avg-fr" style="text-align:center;color:#6EEB83;font-size:12px">—</td>
+        <td id="avg-pf" style="text-align:center;font-size:12px;font-weight:600">—</td>
+        <td id="avg-hr" style="text-align:center;font-size:12px;font-weight:600">—</td>
+        <td id="avg-fr" style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td>—</td><td>—</td>
       </tr>
       <tr id="comp-winner-row" style="display:none">
@@ -349,6 +349,7 @@ function buildResultUI(apiResults) {
         <thead><tr>${hdrs.map(h=>`<th style="font-size:11px">${h}</th>`).join('')}</tr></thead>
         <tbody id="comp-tbody">${tableRows}${avgRow}</tbody>
       </table></div>
+      <div id="comp-process-subtables" style="margin-top:16px"></div>
     </div>`;
 
   // Explicaciones
@@ -381,7 +382,7 @@ function buildResultUI(apiResults) {
 const COMP_BAR_H   = 70;
 const COMP_ROW_GAP = 28;
 const COMP_LEFT    = 148;
-const COMP_TOP     = 28;
+const COMP_TOP     = 46;
 const COMP_BOTTOM  = 52;
 const CMS = 2; // Mario sprite scale
 const CMW = 16*CMS, CMH = 16*CMS;
@@ -663,7 +664,7 @@ function lockCell(id, val){
   el.textContent=val;
   el.dataset.finalVal=val;
   el.dataset.locked='1';
-  el.style.color='#6EEB83'; // verde permanente al terminar
+  // color normal al terminar (no verde)
 }
 
 function updateLiveCellsSched(idx,d,tick,totalTime){
@@ -964,6 +965,99 @@ function generateAnalysis(entries, isSched){
 }
 
 
+
+/* ═══ Subtablas por proceso (cálculo individual) ═════════════════════ */
+function buildProcessSubtables(entries, isSched){
+  const container = document.getElementById('comp-process-subtables');
+  if(!container) return;
+
+  if(!isSched){
+    // Para paginación no hacemos subtablas por proceso
+    container.innerHTML='';
+    return;
+  }
+
+  const html = entries.map(([name, d], ei) => {
+    const color = PID_COLORS[ei % PID_COLORS.length];
+    const metrics = d.metrics || [];
+    if(!metrics.length) return '';
+
+    // Calcular totales para el average
+    const avgTAT = (metrics.reduce((s,m)=>s+(m.turnaround_time||0),0)/metrics.length).toFixed(2);
+    const avgWT  = (metrics.reduce((s,m)=>s+(m.waiting_time||0),0) /metrics.length).toFixed(2);
+    const avgRT  = (metrics.reduce((s,m)=>s+(m.response_time||0),0)/metrics.length).toFixed(2);
+
+    const rows = metrics.map(m => {
+      const ct  = m.completion_time;
+      const at  = m.arrival_time;
+      const bt  = m.burst_time;
+      const tat = m.turnaround_time; // CT - AT
+      const wt  = m.waiting_time;    // TAT - BT
+      const rt  = m.response_time;   // 1ª CPU - AT
+      return `<tr>
+        <td style="font-weight:600;text-align:center">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${PID_COLORS[m.pid%PID_COLORS.length]};margin-right:4px;vertical-align:middle"></span>
+          P${m.pid}
+        </td>
+        <td style="text-align:center;color:var(--text-muted)">${at}</td>
+        <td style="text-align:center;color:var(--text-muted)">${bt}</td>
+        <td style="text-align:center">${ct ?? '—'}</td>
+        <td style="text-align:center">
+          <span style="color:var(--text-muted);font-size:9px">${ct}−${at} = </span>
+          <strong>${tat ?? '—'}</strong>
+        </td>
+        <td style="text-align:center">
+          <span style="color:var(--text-muted);font-size:9px">${tat}−${bt} = </span>
+          <strong>${wt ?? '—'}</strong>
+        </td>
+        <td style="text-align:center">
+          <span style="color:var(--text-muted);font-size:9px">1ªCPU−${at} = </span>
+          <strong>${rt ?? '—'}</strong>
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `<div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:${color};margin-bottom:5px;display:flex;align-items:center;gap:6px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color}"></span>
+        ${name}
+      </div>
+      <div class="table-wrapper">
+        <table style="font-size:11px">
+          <thead>
+            <tr style="background:${color}18">
+              <th style="text-align:center">PID</th>
+              <th style="text-align:center">AT</th>
+              <th style="text-align:center">BT</th>
+              <th style="text-align:center">CT</th>
+              <th style="text-align:center">TAT<br><span style="font-size:8px;font-weight:400;color:var(--text-muted)">(CT−AT)</span></th>
+              <th style="text-align:center">WT<br><span style="font-size:8px;font-weight:400;color:var(--text-muted)">(TAT−BT)</span></th>
+              <th style="text-align:center">RT<br><span style="font-size:8px;font-weight:400;color:var(--text-muted)">(1ªCPU−AT)</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+            <tr style="background:rgba(255,255,255,0.04);font-style:italic">
+              <td colspan="4" style="text-align:right;font-size:10px;color:var(--text-muted);padding-right:8px">Promedio:</td>
+              <td style="text-align:center;font-weight:700">${avgTAT}</td>
+              <td style="text-align:center;font-weight:700">${avgWT}</td>
+              <td style="text-align:center;font-weight:700">${avgRT}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <i class="ph ph-function"></i> Cálculo por proceso
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">
+      ${html}
+    </div>`;
+}
+
 /* ═══ Rellenar fila de promedio y ganador al terminar ════════════════ */
 function fillTableFinal(entries, isSched){
   if(!entries||!entries.length)return;
@@ -972,6 +1066,8 @@ function fillTableFinal(entries, isSched){
   const winnerRow = document.getElementById('comp-winner-row');
   const winnerCell= document.getElementById('comp-winner-cell');
   if(!avgRow||!winnerRow)return;
+  // Estilo fila promedio: texto normal, no verde
+  avgRow.style.background='rgba(255,255,255,0.04)';
 
   if(isSched){
     const vals_wt  = entries.map(([,d])=>d.avg_waiting);
@@ -991,11 +1087,11 @@ function fillTableFinal(entries, isSched){
     entries.forEach(([,d],i)=>{
       if(d.avg_waiting===minWT){
         const el=document.getElementById(`ct-wt-${i}`);
-        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
       }
       if(d.cpu_utilization===maxCPU){
         const el=document.getElementById(`ct-cpu-${i}`);
-        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
       }
     });
 
@@ -1023,11 +1119,11 @@ function fillTableFinal(entries, isSched){
     entries.forEach(([,d],i)=>{
       if((d.total_faults||0)===minPF){
         const el=document.getElementById(`ct-pf-${i}`);
-        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
       }
       if((d.hit_rate||0)===maxHR){
         const el=document.getElementById(`ct-hr-${i}`);
-        if(el){el.style.fontWeight='800';el.style.color='#6EEB83';}
+        if(el){el.style.fontWeight='900';el.style.color=PID_COLORS[i%PID_COLORS.length];}
       }
     });
 
@@ -1038,6 +1134,7 @@ function fillTableFinal(entries, isSched){
       <span style="padding:2px 12px;border-radius:99px;background:${winColor}22;border:1px solid ${winColor}55;color:${winColor};font-weight:700;margin:0 6px">${winName}</span>
       con solo ${minPF} page faults y Hit Rate de ${entries[winIdx][1].hit_rate.toFixed(1)}%.`;
     winnerRow.style.display='';
+    buildProcessSubtables(entries, false);
   }
 }
 
