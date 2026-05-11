@@ -1089,30 +1089,44 @@ function buildProcessSubtables(entries, isSched){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">${tablesHtml}</div>`;
 }
 
-function updateSubtablesLive(entries,tick,totalTime){
-  if(!entries)return;
-  entries.forEach(([name,d],ei)=>{
-    const metrics=d.metrics||[];
-    const frac=Math.min(tick/totalTime,1);
-    const fin=frac>=0.99;
-    let sumTAT=0,sumWT=0,sumRT=0,cnt=0;
-    metrics.forEach((m,mi)=>{
-      const ctFrac=totalTime>0?(m.completion_time/totalTime):1;
-      if(frac<ctFrac*0.98&&!fin)return;
-      const ct=m.completion_time,at=m.arrival_time,bt=m.burst_time;
-      const tat=m.turnaround_time,wt=m.waiting_time,rt=m.response_time;
-      const setCell=(id,val)=>{const el=document.getElementById(id);if(el&&el.textContent!==String(val))el.textContent=val;};
-      setCell(`stct-${ei}-${mi}`,ct??'—');
-      setCell(`sttat-${ei}-${mi}`,fin?`${ct}−${at} = ${tat}`:tat??'—');
-      setCell(`stwt-${ei}-${mi}`,fin?`${tat}−${bt} = ${wt}`:wt??'—');
-      setCell(`strt-${ei}-${mi}`,fin?`1ªCPU−${at} = ${rt}`:rt??'—');
-      sumTAT+=tat||0;sumWT+=wt||0;sumRT+=rt||0;cnt++;
+function updateSubtablesLive(entries, tick, totalTime, force){
+  if(!entries) return;
+  entries.forEach(([name, d], ei) => {
+    const metrics = d.metrics || [];
+    const frac = Math.min(tick / totalTime, 1);
+    const fin  = frac >= 0.99 || force;
+    let sumTAT=0, sumWT=0, sumRT=0, cnt=0;
+
+    metrics.forEach((m, mi) => {
+      const ctFrac = totalTime > 0 ? (m.completion_time / totalTime) : 1;
+      if (frac < ctFrac * 0.98 && !fin) return;
+
+      const ct  = m.completion_time;
+      const at  = m.arrival_time;
+      const bt  = m.burst_time;
+      const tat = m.turnaround_time;
+      const wt  = m.waiting_time;
+      const rt  = m.response_time;
+
+      // force=true: siempre escribir aunque el contenido sea igual (tras regenerar DOM)
+      const setCell = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && (force || el.textContent !== String(val))) el.textContent = val;
+      };
+
+      setCell(`stct-${ei}-${mi}`,  ct ?? '—');
+      setCell(`sttat-${ei}-${mi}`, fin ? `${ct}−${at} = ${tat}`  : tat ?? '—');
+      setCell(`stwt-${ei}-${mi}`,  fin ? `${tat}−${bt} = ${wt}`  : wt  ?? '—');
+      setCell(`strt-${ei}-${mi}`,  fin ? `1ªCPU−${at} = ${rt}`  : rt  ?? '—');
+
+      sumTAT += tat||0; sumWT += wt||0; sumRT += rt||0; cnt++;
     });
-    if(cnt>0){
-      const setAvg=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-      setAvg(`stavgtat-${ei}`,(sumTAT/cnt).toFixed(2));
-      setAvg(`stavgwt-${ei}`,(sumWT/cnt).toFixed(2));
-      setAvg(`stavgrt-${ei}`,(sumRT/cnt).toFixed(2));
+
+    if (cnt > 0) {
+      const setAvg = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+      setAvg(`stavgtat-${ei}`, (sumTAT/cnt).toFixed(2));
+      setAvg(`stavgwt-${ei}`,  (sumWT /cnt).toFixed(2));
+      setAvg(`stavgrt-${ei}`,  (sumRT /cnt).toFixed(2));
     }
   });
 }
@@ -1150,6 +1164,8 @@ function fillTableFinal(entries,isSched){
       con el menor Waiting Time promedio (${minWT.toFixed(2)} ms). CPU: ${entries[winIdx][1].cpu_utilization.toFixed(1)}% — ${entries[winIdx][1].context_switches||0} context switches.`;
     winnerRow.style.display='';
     buildProcessSubtables(entries,true);
+    // Forzar llenado final de subtablas con frac=1
+    updateSubtablesLive(entries, CompPlayer.totalTime, CompPlayer.totalTime, true);
   } else {
     const vals_pf=entries.map(([,d])=>d.total_faults||0);
     const vals_hr=entries.map(([,d])=>d.hit_rate||0);
@@ -1172,6 +1188,7 @@ function fillTableFinal(entries,isSched){
       con solo ${minPF} page faults y Hit Rate de ${entries[winIdx][1].hit_rate.toFixed(1)}%.`;
     winnerRow.style.display='';
     buildProcessSubtables(entries,false);
+    updateSubtablesLive(entries, CompPlayer.totalTime, CompPlayer.totalTime, true);
   }
 }
 
