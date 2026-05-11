@@ -255,7 +255,6 @@ function buildResultUI(apiResults) {
   // Análisis comparativo (generado dinámicamente al final)
   const analysisHTML = `<div id="comp-analysis-section" style="margin-bottom:12px"></div>`;
 
-
   // ── 3 gráficas de barras debajo de la tabla ─────────────────────────────
   const bcDefs = isSched
     ? [
@@ -290,9 +289,7 @@ function buildResultUI(apiResults) {
     ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:6px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent);line-height:1.8">
         📐 <strong>Fórmulas:</strong>
         WT = CT − AT − BT &nbsp;|&nbsp;
-        TAT = CT − AT &nbsp;|&nbsp;
-        RT = 1ª CPU − AT &nbsp;|&nbsp;
-        CPU% = Tiempo_ocupado / Tiempo_total × 100 &nbsp;|&nbsp;
+        TAT = CT − AT &nbsp;|&nbsp;CPU% = Tiempo_ocupado / Tiempo_total × 100 &nbsp;|&nbsp;
         Ctx Sw = cambios de proceso en CPU
       </div>`
     : `<div style="font-size:10px;color:var(--text-muted);margin-bottom:10px;padding:6px 10px;background:rgba(110,235,131,.06);border-radius:6px;border-left:3px solid var(--accent);line-height:1.8">
@@ -307,7 +304,7 @@ function buildResultUI(apiResults) {
     `Core`,
     `Avg WT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(CT−AT−BT)</span>`,
     `Avg TAT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(CT−AT)</span>`,
-    `Avg RT<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(1ªCPU−AT)</span>`,
+    
     `CPU %<br><span style="font-size:9px;font-weight:400;color:var(--text-muted)">(ocupado/total)</span>`,
     `Ctx Sw`,
     `Sim ms`,
@@ -329,7 +326,6 @@ function buildResultUI(apiResults) {
           <td style="color:var(--text-muted);font-size:11px">Core ${i%CompState.numCores}</td>
           <td id="ct-wt-${i}"  class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
           <td id="ct-tat-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
-          <td id="ct-rt-${i}"  class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
           <td id="ct-cpu-${i}" class="comp-live-cell" style="font-size:13px;text-align:center">—</td>
           <td style="text-align:center;color:var(--text-muted)">${d.context_switches??'—'}</td>
           <td style="text-align:center;color:var(--text-muted);font-size:11px">${d.elapsed_ms!=null?d.elapsed_ms.toFixed(1):'—'}</td>
@@ -352,7 +348,6 @@ function buildResultUI(apiResults) {
         <td>—</td>
         <td id="avg-wt"  style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td id="avg-tat" style="text-align:center;font-size:12px;font-weight:600">—</td>
-        <td id="avg-rt"  style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td id="avg-cpu" style="text-align:center;font-size:12px;font-weight:600">—</td>
         <td>—</td><td>—</td>
       </tr>
@@ -705,14 +700,13 @@ function updateLiveCellsSched(idx,d,tick,totalTime){
   const fin=f>=0.99;
   const wt =fin?d.avg_waiting.toFixed(2)   :(d.avg_waiting   *f).toFixed(2);
   const tat=fin?d.avg_turnaround.toFixed(2):(d.avg_turnaround*f).toFixed(2);
-  const rt =fin?d.avg_response.toFixed(2)  :(d.avg_response  *f).toFixed(2);
   const cpu=fin?d.cpu_utilization.toFixed(1)+'%':(d.cpu_utilization*f).toFixed(1)+'%';
   if(fin){
     lockCell(`ct-wt-${idx}`, wt); lockCell(`ct-tat-${idx}`, tat);
-    lockCell(`ct-rt-${idx}`, rt); lockCell(`ct-cpu-${idx}`, cpu);
+    lockCell(`ct-cpu-${idx}`, cpu);
   } else {
     flashCell(`ct-wt-${idx}`, wt); flashCell(`ct-tat-${idx}`, tat);
-    flashCell(`ct-rt-${idx}`, rt); flashCell(`ct-cpu-${idx}`, cpu);
+    flashCell(`ct-cpu-${idx}`, cpu);
     // Negrita en vivo: el que lleva menor WT hasta ahora
     highlightLiveWinner(idx, parseFloat(wt));
   }
@@ -1051,7 +1045,6 @@ function buildProcessSubtables(entries, isSched){
         <td id="stct-${ei}-${mi}" style="text-align:center;color:#222">—</td>
         <td id="sttat-${ei}-${mi}" style="text-align:center;color:#222">—</td>
         <td id="stwt-${ei}-${mi}" style="text-align:center;color:#222">—</td>
-        <td id="strt-${ei}-${mi}" style="text-align:center;color:#222">—</td>
       </tr>`;
     }).join('');
     return`<div style="margin-bottom:12px">
@@ -1067,14 +1060,13 @@ function buildProcessSubtables(entries, isSched){
             <th style="text-align:center;color:#333">CT</th>
             <th style="text-align:center;color:#333">TAT<br><span style="font-size:8px;font-weight:400;color:#666">(CT−AT)</span></th>
             <th style="text-align:center;color:#333">WT<br><span style="font-size:8px;font-weight:400;color:#666">(TAT−BT)</span></th>
-            <th style="text-align:center;color:#333">RT<br><span style="font-size:8px;font-weight:400;color:#666">(1ªCPU−AT)</span></th>
+
           </tr></thead>
           <tbody>${rows}
             <tr style="background:#f5f5f5;font-style:italic">
               <td colspan="4" style="text-align:right;font-size:10px;color:#666;padding-right:8px">Promedio:</td>
               <td id="stavgtat-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
               <td id="stavgwt-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
-              <td id="stavgrt-${ei}" style="text-align:center;font-weight:700;color:#111">—</td>
             </tr>
           </tbody>
         </table>
@@ -1095,7 +1087,7 @@ function updateSubtablesLive(entries, tick, totalTime, force){
     const metrics = d.metrics || [];
     const frac = Math.min(tick / totalTime, 1);
     const fin  = frac >= 0.99 || force;
-    let sumTAT=0, sumWT=0, sumRT=0, cnt=0;
+    let sumTAT=0, sumWT=0, cnt=0;
 
     metrics.forEach((m, mi) => {
       const ctFrac = totalTime > 0 ? (m.completion_time / totalTime) : 1;
@@ -1117,16 +1109,14 @@ function updateSubtablesLive(entries, tick, totalTime, force){
       setCell(`stct-${ei}-${mi}`,  ct ?? '—');
       setCell(`sttat-${ei}-${mi}`, fin ? `${ct}−${at} = ${tat}`  : tat ?? '—');
       setCell(`stwt-${ei}-${mi}`,  fin ? `${tat}−${bt} = ${wt}`  : wt  ?? '—');
-      setCell(`strt-${ei}-${mi}`,  fin ? `1ªCPU−${at} = ${rt}`  : rt  ?? '—');
 
-      sumTAT += tat||0; sumWT += wt||0; sumRT += rt||0; cnt++;
+      sumTAT += tat||0; sumWT += wt||0; cnt++;
     });
 
     if (cnt > 0) {
       const setAvg = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
       setAvg(`stavgtat-${ei}`, (sumTAT/cnt).toFixed(2));
       setAvg(`stavgwt-${ei}`,  (sumWT /cnt).toFixed(2));
-      setAvg(`stavgrt-${ei}`,  (sumRT /cnt).toFixed(2));
     }
   });
 }
@@ -1143,12 +1133,10 @@ function fillTableFinal(entries,isSched){
   if(isSched){
     const vals_wt =entries.map(([,d])=>d.avg_waiting);
     const vals_tat=entries.map(([,d])=>d.avg_turnaround);
-    const vals_rt =entries.map(([,d])=>d.avg_response);
     const vals_cpu=entries.map(([,d])=>d.cpu_utilization);
     const avg=(arr)=>(arr.reduce((s,v)=>s+v,0)/arr.length);
     document.getElementById('avg-wt') .textContent=avg(vals_wt).toFixed(2);
     document.getElementById('avg-tat').textContent=avg(vals_tat).toFixed(2);
-    document.getElementById('avg-rt') .textContent=avg(vals_rt).toFixed(2);
     document.getElementById('avg-cpu').textContent=avg(vals_cpu).toFixed(1)+'%';
     avgRow.style.display='';
     const minWT=Math.min(...vals_wt),maxCPU=Math.max(...vals_cpu);
