@@ -396,62 +396,50 @@
     h: '#3E1F0A',         // shoes
   };
 
-  // Chef Mario — 16w × 24h. Friendly chibi style: poofy hat, clear eyes,
-  // brown handlebar mustache, red scarf, white coat with buttons,
-  // blue overalls, red shoes.
+  // Toad-style chef — 16w × 18h. Compact, friendly: white mushroom cap with
+  // accent-colored spots (matches chef's team color), tan face with clear
+  // pixel eyes, orange collar accent, blue overalls.
   const SPRITE_CHEF_STAND = parseSprite(`
-    ....wwwwwwww....
-    ..wwwwwwwwwwww..
-    .wwwwwwwwwwwwww.
-    .wwwwwwwwwwwwww.
-    .wwwwwwwwwwwwww.
-    ..wwwwwwwwwwww..
-    ...wwwwwwwwww...
-    aaaaaaaaaaaaaaaa
-    .bssssssssssssb.
-    .bssssssssssssb.
-    .bsssEssssEsssb.
-    .bssssssssssssb.
-    ..sbbbbbbbbbbs..
-    ...ssssssssss...
-    ...rrrrrrrrrr...
-    ..wrwwwwwwwwrw..
-    .wwwwwwwwwwwwww.
-    wwwwwwwwwwwwwwww
-    wwbwwwwwwwwwwbww
-    wwwwwwwwwwwwwwww
-    .wwwwwwwwwwwwww.
-    ...pppppppppp...
-    ...pppp..pppp...
-    ..rrrr....rrrr..
+    ....kkkkkkkk....
+    ..kkwwwwwwwwkk..
+    .kwwwrrrrrrwwwk.
+    .kwrrrwwwwrrrwk.
+    kwwrrwwwwwwrrwwk
+    kwwwwwwwwwwwwwwk
+    kwwrrwwwwwwrrwwk
+    .kwwwwwwwwwwwwk.
+    ..kkkkkkkkkkkk..
+    ...kssssssssk...
+    ...ksEEssEEsk...
+    ...ksEEssEEsk...
+    ...kssssssssk...
+    ....kkkkkkkk....
+    .....korrok.....
+    ...kkkkkkkkkk...
+    .ksppppooppppsk.
+    .ksspppppppppssk
   `);
 
-  // Chef stir frame — slight arm raise (subtle body shift)
+  // Toad-style chef — stir frame (subtle arm raise variation)
   const SPRITE_CHEF_STIR = parseSprite(`
-    ....wwwwwwww....
-    ..wwwwwwwwwwww..
-    .wwwwwwwwwwwwww.
-    .wwwwwwwwwwwwww.
-    .wwwwwwwwwwwwww.
-    ..wwwwwwwwwwww..
-    ...wwwwwwwwww...
-    aaaaaaaaaaaaaaaa
-    .bssssssssssssb.
-    .bssssssssssssb.
-    .bsssEssssEsssb.
-    .bssssssssssssb.
-    ..sbbbbbbbbbbs..
-    ...ssssssssss...
-    ...rrrrrrrrrr...
-    .wwrwwwwwwwwrww.
-    wwwwwwwwwwwwwwww
-    wwwwwwwwwwwwwwww
-    wwbwwwwwwwwwwbww
-    wwwwwwwwwwwwwwww
-    .wwwwwwwwwwwwww.
-    ...pppppppppp...
-    ...pppp..pppp...
-    ..rrrr....rrrr..
+    ....kkkkkkkk....
+    ..kkwwwwwwwwkk..
+    .kwwwrrrrrrwwwk.
+    .kwrrrwwwwrrrwk.
+    kwwrrwwwwwwrrwwk
+    kwwwwwwwwwwwwwwk
+    kwwrrwwwwwwrrwwk
+    .kwwwwwwwwwwwwk.
+    ..kkkkkkkkkkkk..
+    ...kssssssssk...
+    ...ksEEssEEsk...
+    ...kssssssssk...
+    ...kssssssssk...
+    ....kkkkkkkk....
+    ....skorroks....
+    ...kkkkkkkkkk...
+    .ksppppooppppsk.
+    .ksppppppppppsk.
   `);
 
   // Mario Kart — 24w × 22h. Inspired by classic SNES MK pixel art.
@@ -527,13 +515,17 @@
 
   function chefPalette(accentColor) {
     return {
-      w: '#FFFFFF',                  // hat / coat (white)
-      a: '#374151',                  // hat band (dark gray)
-      b: '#5C2C0D',                  // mustache / hair edge (brown)
-      s: '#FCD8B5',                  // skin
-      r: accentColor || '#E63946',   // scarf / shoes (accent — red default)
-      E: '#0F172A',                  // eyes
-      p: '#1E3A8A',                  // pants (dark blue overalls)
+      k: '#0F172A',                  // black pixel-art outline
+      w: '#FFFFFF',                  // mushroom cap white / face highlights
+      s: '#FCD8B5',                  // skin (tan face + arms)
+      r: accentColor || '#E63946',   // hat spots (team accent color)
+      E: '#1E1B4B',                  // eye dots
+      p: '#1E3A8A',                  // overalls (dark blue)
+      o: '#F97316',                  // collar / center accent (orange)
+      // Legacy keys (still in palette for backward compatibility,
+      // unused by the new Toad-style sprite):
+      a: '#374151',
+      b: '#5C2C0D',
     };
   }
 
@@ -1297,7 +1289,7 @@
     if (activePid >= 0 && targetX > 0) {
       const bobY = Math.sin(State.chefBob) * 2;
       const stirFrame = Math.floor(State.chefBob) % 2;
-      drawChef(ctx, State.chefX, grillY - 78 + bobY, 3, stirFrame, '#E63946');
+      drawChef(ctx, State.chefX, grillY - 60 + bobY, 3, stirFrame, '#E63946');
       // Wooden tongs (long brown rod) when stationary
       if (Math.abs(State.chefTargetX - State.chefX) < 4) {
         ctx.fillStyle = '#1F2937';
@@ -1410,7 +1402,7 @@
       const phase = State.chefBob + l * 0.7;
       const bobY = Math.sin(phase * 8) * 2;
       const stirFrame = activeEntry ? (Math.floor(phase * 4) % 2) : 0;
-      drawChef(ctx, cx - 24, grillY - 88 + bobY, 3, stirFrame, accent);
+      drawChef(ctx, cx - 24, grillY - 70 + bobY, 3, stirFrame, accent);
 
       // Tongs in hand when stirring
       if (activeEntry && stirFrame === 1) {
@@ -1566,7 +1558,7 @@
       const stirFrame = isActive ? (Math.floor(phase * 4) % 2) : 0;
       const chefScale = Math.max(2, Math.min(3, Math.floor(innerW / 60)));
       // Chef sprite is now 24 rows tall, position chef so feet are near grill top
-      drawChef(ctx, grillCx - 8 * chefScale - 30, grillY - 24 * chefScale + bobY + 4,
+      drawChef(ctx, grillCx - 8 * chefScale - 30, grillY - 18 * chefScale + bobY + 4,
                chefScale, stirFrame, accent);
 
       // ── Hielera (own, private) on the left side of yard ────────────
@@ -1651,7 +1643,7 @@
     const slotW = (CANVAS_W - padX * 2) / Math.max(1, N);
     const chefScale = N <= 4 ? 3 : 2;
     const chefW = 16 * chefScale;
-    const chefH = 24 * chefScale;            // updated for new 24-row sprite
+    const chefH = 18 * chefScale;            // 18-row Toad-style sprite
     const homeY = floorY - chefH + 4;
     const asadorStandY = grillY + 38;        // chef stands in front of grill (a bit lower)
     const CHEF_ACCENTS = ['#E63946', '#22C55E', '#F472B6', '#3B82F6', '#FBBF24', '#A855F7', '#06B6D4', '#EAB308'];
@@ -1893,63 +1885,6 @@
     }
 
     ctx.restore();   // shake
-
-    // ── Scheduler Reasoning Panel ───────────────────────────────────
-    // Shows WHY the current thread was chosen and what the others are doing.
-    if (activeIdx >= 0 && threads[activeIdx]) {
-      const cur = threads[activeIdx];
-      const curLabel = (cur.tid > 0) ? `P${cur.pid}.T${cur.tid}` : `P${cur.pid}`;
-      const queueOrder = threads
-        .map((t, i) => ({ i, label: (t.tid > 0) ? `P${t.pid}.T${t.tid}` : `P${t.pid}` }))
-        .filter(x => x.i !== activeIdx)
-        .map(x => x.label)
-        .slice(0, 4);
-
-      const panelW = 460;
-      const panelH = 50;
-      const panelX = CANVAS_W / 2 - panelW / 2;
-      const panelY = CANVAS_H - 86;
-
-      ctx.save();
-      // Panel background
-      ctx.fillStyle = State.safeMode ? 'rgba(16,185,129,0.92)' : 'rgba(15,23,42,0.92)';
-      ctx.fillRect(panelX, panelY, panelW, panelH);
-      ctx.strokeStyle = State.safeMode ? '#A7F3D0' : '#FBBF24';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(panelX, panelY, panelW, panelH);
-      ctx.lineWidth = 1;
-
-      // Header
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 9px "Press Start 2P", "JetBrains Mono", monospace';
-      ctx.textAlign = 'left';
-      const headerText = State.safeMode
-        ? `🔒 MUTEX HELD — ${curLabel}`
-        : `🎯 SELECTED — ${curLabel}`;
-      ctx.fillText(headerText, panelX + 10, panelY + 14);
-
-      // Reasoning
-      ctx.font = '9px "JetBrains Mono", monospace';
-      ctx.fillStyle = State.safeMode ? '#ECFDF5' : '#FEF3C7';
-      const prevLabel = (prevIdx >= 0 && threads[prevIdx])
-        ? ((threads[prevIdx].tid > 0) ? `P${threads[prevIdx].pid}.T${threads[prevIdx].tid}` : `P${threads[prevIdx].pid}`)
-        : '—';
-      const reason = State.safeMode
-        ? `Mutex acquired before entering critical section. Others must wait.`
-        : (prevIdx === activeIdx)
-          ? `Same thread continuing (more burst remaining).`
-          : `Round-Robin: came right after ${prevLabel} in the ready queue.`;
-      ctx.fillText(reason, panelX + 10, panelY + 28);
-
-      // Waiting / blocked threads list
-      ctx.fillStyle = State.safeMode ? '#A7F3D0' : '#94A3B8';
-      ctx.font = '8px "JetBrains Mono", monospace';
-      const queueText = State.safeMode
-        ? `BLOCKED: ${queueOrder.join(', ') || '—'}`
-        : `READY:  ${queueOrder.join(', ') || '—'}`;
-      ctx.fillText(queueText, panelX + 10, panelY + 42);
-      ctx.restore();
-    }
 
     // HUD
     drawHUDText(ctx, `Tick: ${Math.floor(tick)} / ${sched.totalTime}`, 14, 36, '#34D399', 13);

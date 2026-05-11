@@ -368,7 +368,7 @@
         <!-- ─── Screen 1: Processes ───────────────────────────────── -->
         <section class="screen active" id="screen-processes" aria-labelledby="heading-processes">
           <header class="screen-header">
-            <h2 id="heading-processes">Process Input</h2>
+            <h2 id="heading-processes" style="font-size: 2.2rem; margin-bottom: 5px" class="tracking-in-expand">Process Input</h2>
             <p>
               Add processes, select a scheduling algorithm and run
               the simulation.
@@ -702,7 +702,7 @@
             </div>
           </div>
 
-          <!-- Cores en vivo + cola + CPU en vivo -->
+          <!-- Live Cores + Process States (row 1) -->
           <div class="grid-2 mb-lg">
             <div class="card">
               <div class="card-title flex-between">
@@ -724,25 +724,48 @@
               </p>
             </div>
 
-            <div class="card">
-              <div class="card-title">
-                <span class="card-icon"><i class="ph ph-crosshair"></i></span>
-                CPU &amp; Ready Queue
+            <!-- Process States (Mission Control) -->
+            <div class="card sps-card">
+              <div class="card-title flex-between">
+                <div>
+                  <span class="card-icon"><i class="ph ph-rocket-launch"></i></span>
+                  Process States
+                </div>
+                <div class="sps-mc-tag">MISSION CONTROL</div>
               </div>
-              <div class="cpu-panel">
-                <div class="cpu-core" id="cpu-core">
-                  <div class="cpu-label">CPU</div>
-                  <div class="cpu-pid" id="cpu-pid">IDLE</div>
+              <div class="sps-stage" id="sps-stage">
+                <canvas id="sps-canvas"></canvas>
+                <div class="sps-empty" id="sps-empty">
+                  Run a simulation to launch the fleet.
                 </div>
-                <div class="ready-queue" id="ready-queue">
-                  <div class="queue-label">Ready Queue</div>
-                  <div class="queue-items" id="queue-items">
-                    <span class="queue-empty">empty</span>
-                  </div>
-                </div>
+              </div>
+              <div class="sps-legend">
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-new"></span>New (launch pad)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-ready"></span>Ready (orbit)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-running"></span>Running (CPU)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-waiting"></span>Waiting (I/O blocked)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-term"></span>Terminated (hyperspace)</span>
+              </div>
+              <div class="sps-legend-extra">
+                <span class="sps-legend-item">
+                  <svg class="sps-mini-svg" viewBox="0 0 16 16" aria-hidden="true">
+                    <polygon points="8,2 12,8 8,14 4,8" fill="#A5B4FC" stroke="#FFFFFF" stroke-width="0.5"/>
+                    <line x1="8" y1="2" x2="8" y2="0" stroke="#A5B4FC" stroke-width="1"/>
+                  </svg>
+                  <span><strong>Drone = Thread</strong> — orbits the parent ship. One drone per thread; appears when Threads toggle is ON.</span>
+                </span>
+                <span class="sps-legend-item">
+                  <svg class="sps-mini-svg" viewBox="0 0 24 16" aria-hidden="true">
+                    <polygon points="6,8 2,4 2,12" fill="#22C55E"/>
+                    <line x1="6" y1="8" x2="18" y2="8" stroke="#22C55E" stroke-width="1" stroke-dasharray="2 2"/>
+                    <polygon points="22,8 18,5 19,8 18,11" fill="#22C55E"/>
+                  </svg>
+                  <span><strong>Mini-ship + line = Fork</strong> — a cloned child process tethered to its parent; appears when Forks toggle is ON.</span>
+                </span>
               </div>
             </div>
           </div>
+
 
           <div class="card">
             <div class="card-title">
@@ -861,7 +884,7 @@
         <!-- ─── Screen 3: Memory ─────────────────────────────────── -->
         <section class="screen" id="screen-memory" aria-labelledby="heading-memory">
           <header class="screen-header">
-            <h2 id="heading-memory">Memory Visualization</h2>
+            <h2 id="heading-memory" style="font-size: 2.2rem; margin-bottom: 5px" class="tracking-in-expand">Memory Visualization</h2>
             <p>Memory frame grid with paged allocation.</p>
           </header>
 
@@ -953,7 +976,7 @@
         <!-- ─── Screen 4: Page Replacement ────────────────────────── -->
         <section class="screen" id="screen-page-replace" aria-labelledby="heading-page-replace">
           <header class="screen-header">
-            <h2 id="heading-page-replace">📚 Library Study Table</h2>
+            <h2 id="heading-page-replace" style="font-size: 2.2rem; margin-bottom: 5px" class="tracking-in-expand">📚 Library Study Table</h2>
             <p>Page Replacement simulation — a student's desk with limited space for reference folders.</p>
           </header>
 
@@ -1185,7 +1208,7 @@
         <!-- ─── Screen 5: Comparison ──────────────────────────────── -->
         <section class="screen" id="screen-comparison" aria-labelledby="heading-comparison">
           <header class="screen-header">
-            <h2 id="heading-comparison">Algorithm Comparison</h2>
+            <h2 id="heading-comparison" style="font-size: 2.2rem; margin-bottom: 5px" class="tracking-in-expand">Algorithm Comparison</h2>
             <p>Cada algoritmo corre en su propio thread real del SO. Selecciona la categoría, los algoritmos y el número
               de cores.</p>
           </header>
@@ -1294,7 +1317,7 @@
         <section class="screen" id="screen-exec-modes" aria-labelledby="heading-exec-modes">
           <header class="screen-header text-center"
             style="border-bottom: none; display: flex; flex-direction: column; align-items: center;">
-            <h2 id="heading-exec-modes">Mushroom Kingdom BBQ! 🔥</h2>
+            <h2 id="heading-exec-modes" style="font-size: 2.2rem; margin-bottom: 5px" class="tracking-in-expand">Mushroom Kingdom BBQ! 🔥</h2>
             <p>How Mario and the crew share the grill — retro animations of the four execution modes.</p>
 
             <!-- Mode Tabs -->
@@ -1411,7 +1434,7 @@
         <!-- ─── Screen 6: CSV Extract ────────────────────────────── -->
         <section class="screen" id="screen-csv-extract" aria-labelledby="heading-csv-extract">
           <header class="screen-header">
-            <h2 id="heading-csv-extract">Regex + CSV Extraction</h2>
+            <h2 id="heading-csv-extract" style="font-size: 2.2rem; margin-bottom: 5px" class="tracking-in-expand">Regex + CSV Extraction</h2>
             <p>
               Extract data (dates, names, emails, phones, addresses)
               from text using regular expressions.
@@ -1591,6 +1614,7 @@ Address: 123 Main St, Monterrey, NL"></textarea>
   <script src="js/comparison.js?v=17"></script>
 
   <script src="js/exec_modes.js?v=4"></script>
+  <script src="js/space_states.js?v=1"></script>
   <script src="js/regex.js?v=4"></script>
 
   <!-- ── Responsive "Más" dropdown ───────────────────────────────── -->

@@ -110,6 +110,14 @@ function initNavigation() {
       const targetScreen = document.getElementById(`screen-${target}`);
       if (targetScreen) {
         targetScreen.classList.add("active");
+        // Re-trigger tracking-in-expand on the screen's heading so the
+        // typography effect plays every time the user navigates here.
+        const heading = targetScreen.querySelector('h2[id^="heading-"]');
+        if (heading && heading.classList.contains('tracking-in-expand')) {
+          heading.classList.remove('tracking-in-expand');
+          void heading.offsetWidth;       // force reflow
+          heading.classList.add('tracking-in-expand');
+        }
         if (target === 'comparison' && typeof initComparison === 'function') {
           initComparison();
         }

@@ -1186,6 +1186,7 @@ function resetGantt() {
   pauseGantt();
   GanttPlayer.currentTick = 0;
   resetMarioState();
+  if (typeof window.resetSpaceStates === 'function') window.resetSpaceStates();
   if (GanttPlayer.renderFn) GanttPlayer.renderFn(0);
 }
 
@@ -1291,6 +1292,11 @@ function updateLiveView(result, t) {
         return `<span class="queue-pid"><span class="queue-pid-dot" style="background:${c}"></span>P${pid}</span>`;
       }).join('');
     }
+  }
+
+  // Update Space Process States (Mission Control panel)
+  if (typeof window.updateSpaceStates === 'function') {
+    window.updateSpaceStates(result, t);
   }
 }
 
