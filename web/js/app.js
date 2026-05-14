@@ -122,8 +122,19 @@ function initNavigation() {
           initComparison();
         }
       }
+
+      const ganttPlayback = document.getElementById('gantt-playback');
+      if (ganttPlayback) {
+        ganttPlayback.style.display = target === 'scheduling' ? '' : 'none';
+      }
     });
   });
+
+  const initialScreen = document.querySelector('.screen.active');
+  const ganttPlayback = document.getElementById('gantt-playback');
+  if (ganttPlayback) {
+    ganttPlayback.style.display = initialScreen?.id === 'screen-scheduling' ? '' : 'none';
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
