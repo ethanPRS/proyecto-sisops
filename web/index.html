@@ -695,7 +695,13 @@
                 Gantt Chart
                 <span class="exec-mode-badge" id="gantt-mode-badge"><i class="ph ph-clock"></i> Sequential</span>
               </div>
-              <div class="gantt-tick-label" id="gantt-tick-label">t = 0</div>
+              <div class="gantt-title-actions">
+                <div class="gantt-toggle-group">
+                  <button class="btn btn-secondary btn-sm" id="btn-toggle-live-cores" type="button">Show live cores / states</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-toggle-metrics" type="button">Show metrics</button>
+                </div>
+                <div class="gantt-tick-label" id="gantt-tick-label">t = 0</div>
+              </div>
             </div>
             <div class="gantt-container" id="gantt-container">
               <canvas id="gantt-canvas" height="200"></canvas>
@@ -703,7 +709,7 @@
           </div>
 
           <!-- Live Cores + Process States (row 1) -->
-          <div class="grid-2 mb-lg">
+          <div class="grid-2 mb-lg hidden" id="live-cores-states-row">
             <div class="card">
               <div class="card-title flex-between">
                 <div>
@@ -767,7 +773,7 @@
           </div>
 
 
-          <div class="card">
+          <div class="card hidden" id="metrics-card">
             <div class="card-title">
               <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
               Per-Process Metrics

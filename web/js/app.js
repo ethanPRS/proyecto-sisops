@@ -904,6 +904,26 @@ function updateSchedulingStats(result) {
   }
 }
 
+function initSchedulingVisibilityToggles() {
+  const liveWrapper = document.getElementById("live-cores-states-row");
+  const metricsCard = document.getElementById("metrics-card");
+  const liveBtn = document.getElementById("btn-toggle-live-cores");
+  const metricsBtn = document.getElementById("btn-toggle-metrics");
+  if (!liveWrapper || !metricsCard || !liveBtn || !metricsBtn) return;
+
+  liveBtn.addEventListener("click", () => {
+    const hidden = liveWrapper.classList.toggle("hidden");
+    liveBtn.textContent = hidden
+      ? "Show live cores / states"
+      : "Hide live cores / states";
+  });
+
+  metricsBtn.addEventListener("click", () => {
+    const hidden = metricsCard.classList.toggle("hidden");
+    metricsBtn.textContent = hidden ? "Show metrics" : "Hide metrics";
+  });
+}
+
 window.updateLiveMetricsTable = function (result, t) {
   const tbody = document.getElementById("metrics-tbody");
   if (!tbody || !result) return;
@@ -1143,6 +1163,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initParticles();
   renderProcessTable();
   updateQuantumVisibility();
+  initSchedulingVisibilityToggles();
   checkConnection();
   const btnMemGame = document.getElementById("btn-memory-game");
   if (btnMemGame) btnMemGame.addEventListener("click", openMemoryGame);
