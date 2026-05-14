@@ -688,7 +688,7 @@
             </div>
           </div>
 
-          <div class="card mb-lg">
+          <div class="card mb-lg" id="gantt-card">
             <div class="card-title flex-between">
               <div>
                 <span class="card-icon"><i class="ph ph-chart-bar"></i></span>
@@ -697,8 +697,8 @@
               </div>
               <div class="gantt-title-actions">
                 <div class="gantt-toggle-group">
-                  <button class="btn btn-secondary btn-sm" id="btn-toggle-live-cores" type="button">Show live cores / states</button>
-                  <button class="btn btn-secondary btn-sm" id="btn-toggle-metrics" type="button">Show metrics</button>
+                  <button class="btn btn-secondary btn-lg" id="btn-toggle-live-cores" type="button">Live cores / states</button>
+                  <button class="btn btn-secondary btn-lg" id="btn-toggle-metrics" type="button">Metrics</button>
                 </div>
                 <div class="gantt-tick-label" id="gantt-tick-label">t = 0</div>
               </div>
@@ -708,28 +708,8 @@
             </div>
           </div>
 
-          <!-- Live Cores + Process States (row 1) -->
+          <!-- Process States + Live Cores (row 1) -->
           <div class="grid-2 mb-lg hidden" id="live-cores-states-row">
-            <div class="card">
-              <div class="card-title flex-between">
-                <div>
-                  <span class="card-icon"><i class="ph ph-cpu"></i></span>
-                  Live Cores
-                </div>
-                <div class="cores-live-tick" id="cores-live-tick">t = 0</div>
-              </div>
-              <div class="cores-live-grid" id="cores-live-grid">
-                <div class="cores-live-empty">
-                  Run a simulation to see per-core activity.
-                </div>
-              </div>
-              <p class="state-diagram-help">
-                Each bar shows the accumulated utilization of the core up to the
-                current tick. The bar lights up with the process or thread color
-                that is executing at that instant.
-              </p>
-            </div>
-
             <!-- Process States (Mission Control) -->
             <div class="card sps-card">
               <div class="card-title flex-between">
@@ -770,13 +750,64 @@
                 </span>
               </div>
             </div>
+
+            <div class="card">
+              <div class="card-title flex-between">
+                <div>
+                  <span class="card-icon"><i class="ph ph-cpu"></i></span>
+                  Live Cores
+                </div>
+                <div class="card-title-actions">
+                  <div class="cores-live-tick" id="cores-live-tick">t = 0</div>
+                  <button class="btn btn-secondary btn-sm panel-close-btn" id="btn-close-live-cores" type="button" aria-label="Close live cores panel">✕</button>
+                </div>
+              </div>
+              <div class="cores-live-grid" id="cores-live-grid">
+                <div class="cores-live-empty">
+                  Run a simulation to see per-core activity.
+                </div>
+              </div>
+              <p class="state-diagram-help">
+                Each bar shows the accumulated utilization of the core up to the
+                current tick. The bar lights up with the process or thread color
+                that is executing at that instant.
+              </p>
+            </div>
+              <div class="sps-legend">
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-new"></span>New (launch pad)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-ready"></span>Ready (orbit)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-running"></span>Running (CPU)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-waiting"></span>Waiting (I/O blocked)</span>
+                <span class="sps-legend-item"><span class="sps-dot sps-dot-term"></span>Terminated (hyperspace)</span>
+              </div>
+              <div class="sps-legend-extra">
+                <span class="sps-legend-item">
+                  <svg class="sps-mini-svg" viewBox="0 0 16 16" aria-hidden="true">
+                    <polygon points="8,2 12,8 8,14 4,8" fill="#A5B4FC" stroke="#FFFFFF" stroke-width="0.5"/>
+                    <line x1="8" y1="2" x2="8" y2="0" stroke="#A5B4FC" stroke-width="1"/>
+                  </svg>
+                  <span><strong>Drone = Thread</strong> — orbits the parent ship. One drone per thread; appears when Threads toggle is ON.</span>
+                </span>
+                <span class="sps-legend-item">
+                  <svg class="sps-mini-svg" viewBox="0 0 24 16" aria-hidden="true">
+                    <polygon points="6,8 2,4 2,12" fill="#22C55E"/>
+                    <line x1="6" y1="8" x2="18" y2="8" stroke="#22C55E" stroke-width="1" stroke-dasharray="2 2"/>
+                    <polygon points="22,8 18,5 19,8 18,11" fill="#22C55E"/>
+                  </svg>
+                  <span><strong>Mini-ship + line = Fork</strong> — a cloned child process tethered to its parent; appears when Forks toggle is ON.</span>
+                </span>
+              </div>
+            </div>
           </div>
 
 
           <div class="card hidden" id="metrics-card">
-            <div class="card-title">
-              <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
-              Per-Process Metrics
+            <div class="card-title flex-between">
+              <div>
+                <span class="card-icon"><i class="ph ph-clipboard-text"></i></span>
+                Per-Process Metrics
+              </div>
+              <button class="btn btn-secondary btn-sm panel-close-btn" id="btn-close-metrics" type="button" aria-label="Close metrics panel">✕</button>
             </div>
             <div class="table-wrapper">
               <table id="metrics-table">

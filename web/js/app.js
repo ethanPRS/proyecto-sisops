@@ -905,22 +905,48 @@ function updateSchedulingStats(result) {
 }
 
 function initSchedulingVisibilityToggles() {
+  const ganttCard = document.getElementById("gantt-card");
   const liveWrapper = document.getElementById("live-cores-states-row");
   const metricsCard = document.getElementById("metrics-card");
   const liveBtn = document.getElementById("btn-toggle-live-cores");
   const metricsBtn = document.getElementById("btn-toggle-metrics");
-  if (!liveWrapper || !metricsCard || !liveBtn || !metricsBtn) return;
+  const liveClose = document.getElementById("btn-close-live-cores");
+  const metricsClose = document.getElementById("btn-close-metrics");
+  if (!ganttCard || !liveWrapper || !metricsCard || !liveBtn || !metricsBtn || !liveClose || !metricsClose) return;
+
+  const openGantt = () => {
+    ganttCard.classList.remove("hidden");
+    liveBtn.classList.remove("active");
+    metricsBtn.classList.remove("active");
+  };
+
+  const closePanels = () => {
+    liveWrapper.classList.add("hidden");
+    metricsCard.classList.add("hidden");
+  };
 
   liveBtn.addEventListener("click", () => {
-    const hidden = liveWrapper.classList.toggle("hidden");
-    liveBtn.textContent = hidden
-      ? "Show live cores / states"
-      : "Hide live cores / states";
+    closePanels();
+    ganttCard.classList.add("hidden");
+    liveWrapper.classList.remove("hidden");
+    liveBtn.classList.add("active");
   });
 
   metricsBtn.addEventListener("click", () => {
-    const hidden = metricsCard.classList.toggle("hidden");
-    metricsBtn.textContent = hidden ? "Show metrics" : "Hide metrics";
+    closePanels();
+    ganttCard.classList.add("hidden");
+    metricsCard.classList.remove("hidden");
+    metricsBtn.classList.add("active");
+  });
+
+  liveClose.addEventListener("click", () => {
+    liveWrapper.classList.add("hidden");
+    openGantt();
+  });
+
+  metricsClose.addEventListener("click", () => {
+    metricsCard.classList.add("hidden");
+    openGantt();
   });
 }
 

@@ -1204,7 +1204,27 @@ tbody td:first-child {
   justify-content: flex-end;
 }
 .gantt-toggle-group .btn {
-  min-width: 12rem;
+  min-width: 16rem;
+}
+.gantt-toggle-group .btn.active {
+  background: var(--purple-main);
+  color: white;
+  border-color: var(--purple-main);
+}
+.panel-close-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .playback-controls {
