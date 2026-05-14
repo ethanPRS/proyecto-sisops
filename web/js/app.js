@@ -92,6 +92,19 @@ const AppState = {
 function initNavigation() {
   const navButtons = document.querySelectorAll(".nav-btn");
   const screens = document.querySelectorAll(".screen");
+  const ganttCard = document.getElementById("gantt-card");
+  const liveWrapper = document.getElementById("live-cores-states-row");
+  const metricsCard = document.getElementById("metrics-card");
+  const liveBtn = document.getElementById("btn-toggle-live-cores");
+  const metricsBtn = document.getElementById("btn-toggle-metrics");
+
+  const resetSchedulingPanels = () => {
+    if (liveWrapper) liveWrapper.classList.add("hidden");
+    if (metricsCard) metricsCard.classList.add("hidden");
+    if (ganttCard) ganttCard.classList.remove("hidden");
+    if (liveBtn) liveBtn.classList.remove("active");
+    if (metricsBtn) metricsBtn.classList.remove("active");
+  };
 
   navButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -127,6 +140,10 @@ function initNavigation() {
       if (ganttPlayback) {
         ganttPlayback.style.display = target === 'scheduling' ? '' : 'none';
       }
+
+      if (target !== 'scheduling') {
+        resetSchedulingPanels();
+      }
     });
   });
 
@@ -134,6 +151,9 @@ function initNavigation() {
   const ganttPlayback = document.getElementById('gantt-playback');
   if (ganttPlayback) {
     ganttPlayback.style.display = initialScreen?.id === 'screen-scheduling' ? '' : 'none';
+  }
+  if (initialScreen?.id !== 'screen-scheduling') {
+    resetSchedulingPanels();
   }
 }
 
